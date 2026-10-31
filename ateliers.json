@@ -1,0 +1,367 @@
+{
+  "format": "catalogue.ateliers",
+  "version": 1,
+  "app": "technostudio",
+  "app_version": "3.3.0",
+  "referentiel": "technologie-c4-2024",
+  "ateliers": [
+    {
+      "id": "charte-lampe-de-poche",
+      "titre": "Exemple : la lampe de poche",
+      "niveau": "5e",
+      "resume": "découvrir comment fonctionne une lampe de poche, repérer ses constituants et décrire le trajet de l’énergie, sur papier et sur ordinateur.",
+      "duree": "220 min",
+      "competences": [
+        "SFC11.5.1",
+        "SFC11.5.2",
+        "CCRI22.5.1",
+        "OST32.5.1",
+        "SFC21.5.1"
+      ],
+      "activites": [
+        {
+          "id": "charte-lampe-de-poche/P1",
+          "titre": "P1 · Séance 1 - Feuille 1",
+          "total": 6,
+          "competences": [
+            "SFC11.5.1",
+            "SFC11.5.2"
+          ]
+        },
+        {
+          "id": "charte-lampe-de-poche/P2",
+          "titre": "P2 · Séance 2 - Feuille 2",
+          "total": 5,
+          "competences": [
+            "SFC11.5.2",
+            "CCRI22.5.1",
+            "OST32.5.1"
+          ]
+        },
+        {
+          "id": "charte-lampe-de-poche/S1",
+          "titre": "S1 · Synthèse",
+          "total": 3,
+          "competences": []
+        },
+        {
+          "id": "charte-lampe-de-poche/E1",
+          "titre": "E1 · Évaluation (recto)",
+          "total": 4,
+          "competences": [
+            "SFC11.5.1",
+            "SFC11.5.2"
+          ]
+        },
+        {
+          "id": "charte-lampe-de-poche/E2",
+          "titre": "E2 · Évaluation (verso)",
+          "total": 4,
+          "competences": [
+            "SFC11.5.2",
+            "OST32.5.1",
+            "SFC21.5.1"
+          ]
+        },
+        {
+          "id": "charte-lampe-de-poche/S-P1",
+          "titre": "S·P1 · SEGPA - Feuille 1",
+          "total": 6,
+          "competences": [
+            "SFC11.5.1",
+            "SFC11.5.2"
+          ]
+        }
+      ],
+      "ouvrir": "charte-lampe-de-poche",
+      "version": 2,
+      "auteur": "Charte TechnoStudio"
+    },
+    {
+      "id": "charte-parking-connecte",
+      "titre": "Le parking connecté",
+      "niveau": "4e",
+      "resume": "comprendre comment une barrière connectée reconnaît les véhicules autorisés, décrire ses chaînes et programmer la carte ESP32 de la barrière.",
+      "duree": "275 min",
+      "competences": [
+        "SFC13.4.1",
+        "SFC15.4.1",
+        "SFC31.4.2",
+        "CCRI22.4.1"
+      ],
+      "activites": [
+        {
+          "id": "charte-parking-connecte/P1",
+          "titre": "P1 · Séance 3 - Feuille 1",
+          "total": 6,
+          "competences": [
+            "SFC13.4.1",
+            "SFC15.4.1",
+            "SFC31.4.2",
+            "CCRI22.4.1"
+          ]
+        }
+      ],
+      "ouvrir": "charte-parking-connecte",
+      "version": 2,
+      "auteur": "Pôle des Sciences et de la Technologie"
+    },
+    {
+      "id": "demo-circuits-serie-derivation",
+      "titre": "Circuits électriques : série et dérivation",
+      "niveau": "5e",
+      "resume": "Construire un circuit commandé, comparer série et dérivation, protéger une DEL.",
+      "duree": "55 min",
+      "competences": [
+        "SFC11.5.1",
+        "CCRI22.5.1"
+      ],
+      "activites": [
+        {
+          "id": "demo-circuits-serie-derivation/P1",
+          "titre": "P1 · Découvrir",
+          "total": 1,
+          "competences": [
+            "SFC11.5.1",
+            "CCRI22.5.1"
+          ]
+        },
+        {
+          "id": "demo-circuits-serie-derivation/P2",
+          "titre": "P2 · Mon premier circuit",
+          "total": 1,
+          "competences": [
+            "SFC11.5.1",
+            "CCRI22.5.1"
+          ]
+        },
+        {
+          "id": "demo-circuits-serie-derivation/P3",
+          "titre": "P3 · Série ou dérivation ?",
+          "total": 2,
+          "competences": [
+            "SFC11.5.1",
+            "CCRI22.5.1"
+          ]
+        },
+        {
+          "id": "demo-circuits-serie-derivation/P4",
+          "titre": "P4 · Protéger une DEL",
+          "total": 2,
+          "competences": [
+            "SFC11.5.1",
+            "CCRI22.5.1"
+          ]
+        },
+        {
+          "id": "demo-circuits-serie-derivation/P5",
+          "titre": "P5 · Bilan",
+          "total": 2,
+          "competences": [
+            "SFC11.5.1",
+            "CCRI22.5.1"
+          ]
+        }
+      ],
+      "ouvrir": "demo-circuits-serie-derivation",
+      "version": 3,
+      "auteur": "TechnoStudio (démo)"
+    },
+    {
+      "id": "demo-pro-consignation-mesures",
+      "titre": "Consignation et mesures électriques",
+      "niveau": "lycee",
+      "resume": "Étapes de la consignation (NF C18-510), EPI, mesures et loi d’Ohm sur maquette virtuelle.",
+      "duree": "90 min",
+      "competences": [],
+      "activites": [
+        {
+          "id": "demo-pro-consignation-mesures/P1",
+          "titre": "P1 · La consignation",
+          "total": 2,
+          "competences": []
+        },
+        {
+          "id": "demo-pro-consignation-mesures/P2",
+          "titre": "P2 · Mesures et loi d’Ohm",
+          "total": 3,
+          "competences": []
+        }
+      ],
+      "ouvrir": "demo-pro-consignation-mesures",
+      "version": 2,
+      "auteur": "TechnoStudio (démo)"
+    },
+    {
+      "id": "demo-eclairage-premier-programme",
+      "titre": "Éclairage automatique : mon premier programme",
+      "niveau": "5e",
+      "resume": "Capteurs, actionneurs, conditions : programmer l’éclairage d’un couloir pas à pas.",
+      "duree": "55 min",
+      "competences": [
+        "CCRI31.5.3",
+        "SFC13.5.1"
+      ],
+      "activites": [
+        {
+          "id": "demo-eclairage-premier-programme/P1",
+          "titre": "P1 · Capteurs et actionneurs",
+          "total": 1,
+          "competences": [
+            "CCRI31.5.3",
+            "SFC13.5.1"
+          ]
+        },
+        {
+          "id": "demo-eclairage-premier-programme/P2",
+          "titre": "P2 · Allumer quand quelqu’un passe",
+          "total": 2,
+          "competences": [
+            "CCRI31.5.3",
+            "SFC13.5.1"
+          ]
+        },
+        {
+          "id": "demo-eclairage-premier-programme/P3",
+          "titre": "P3 · Économiser l’énergie",
+          "total": 2,
+          "competences": [
+            "CCRI31.5.3",
+            "SFC13.5.1"
+          ]
+        },
+        {
+          "id": "demo-eclairage-premier-programme/P4",
+          "titre": "P4 · Défi : le feu tricolore",
+          "total": 1,
+          "competences": [
+            "CCRI31.5.3",
+            "SFC13.5.1"
+          ]
+        }
+      ],
+      "ouvrir": "demo-eclairage-premier-programme",
+      "version": 2,
+      "auteur": "TechnoStudio (démo)"
+    },
+    {
+      "id": "demo-portail-automatique",
+      "titre": "Le portail automatique",
+      "niveau": "4e",
+      "resume": "Fiche papier convertie : chaînes d’information et d’énergie, schéma à légender, programme de commande sécurisé.",
+      "duree": "110 min",
+      "competences": [
+        "SFC13.4.1",
+        "SFC11.4.1",
+        "CCRI31.4.3"
+      ],
+      "activites": [
+        {
+          "id": "demo-portail-automatique/P1",
+          "titre": "P1 · Observer le système",
+          "total": 1,
+          "competences": [
+            "SFC13.4.1",
+            "SFC11.4.1",
+            "CCRI31.4.3"
+          ]
+        },
+        {
+          "id": "demo-portail-automatique/P2",
+          "titre": "P2 · Les chaînes du système",
+          "total": 2,
+          "competences": [
+            "SFC13.4.1",
+            "SFC11.4.1",
+            "CCRI31.4.3"
+          ]
+        },
+        {
+          "id": "demo-portail-automatique/P3",
+          "titre": "P3 · Programmer le portail",
+          "total": 2,
+          "competences": [
+            "SFC13.4.1",
+            "SFC11.4.1",
+            "CCRI31.4.3"
+          ]
+        },
+        {
+          "id": "demo-portail-automatique/P4",
+          "titre": "P4 · Compte rendu",
+          "total": 1,
+          "competences": [
+            "SFC13.4.1",
+            "SFC11.4.1",
+            "CCRI31.4.3"
+          ]
+        }
+      ],
+      "ouvrir": "demo-portail-automatique",
+      "version": 3,
+      "auteur": "TechnoStudio (démo)"
+    },
+    {
+      "id": "demo-snt-parking-connecte",
+      "titre": "Parking connecté : variables et compteur",
+      "niveau": "lycee",
+      "resume": "Informatique embarquée : capteurs, variables, boucle d’événements, passage des blocs à Python.",
+      "duree": "90 min",
+      "competences": [],
+      "activites": [
+        {
+          "id": "demo-snt-parking-connecte/P1",
+          "titre": "P1 · Système embarqué",
+          "total": 1,
+          "competences": []
+        },
+        {
+          "id": "demo-snt-parking-connecte/P2",
+          "titre": "P2 · Compter les places",
+          "total": 1,
+          "competences": []
+        },
+        {
+          "id": "demo-snt-parking-connecte/P3",
+          "titre": "P3 · Vers Python",
+          "total": 2,
+          "competences": []
+        }
+      ],
+      "ouvrir": "demo-snt-parking-connecte",
+      "version": 2,
+      "auteur": "TechnoStudio (démo)"
+    },
+    {
+      "id": "demo-sti2d-serre-regulation",
+      "titre": "Serre automatisée : régulation tout ou rien",
+      "niveau": "lycee",
+      "resume": "Chaîne de puissance, bilan énergétique, régulation à hystérésis de la température et de l’arrosage.",
+      "duree": "120 min",
+      "competences": [],
+      "activites": [
+        {
+          "id": "demo-sti2d-serre-regulation/P1",
+          "titre": "P1 · Analyse fonctionnelle",
+          "total": 1,
+          "competences": []
+        },
+        {
+          "id": "demo-sti2d-serre-regulation/P2",
+          "titre": "P2 · Bilan énergétique",
+          "total": 3,
+          "competences": []
+        },
+        {
+          "id": "demo-sti2d-serre-regulation/P3",
+          "titre": "P3 · Régulation à hystérésis",
+          "total": 2,
+          "competences": []
+        }
+      ],
+      "ouvrir": "demo-sti2d-serre-regulation",
+      "version": 2,
+      "auteur": "TechnoStudio (démo)"
+    }
+  ]
+}

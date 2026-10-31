@@ -24,10 +24,16 @@ jobs:
       url: ${{ steps.deploiement.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
       - name: Préparer le site (l'appli seule, sans serveurs ni tests)
         run: |
+          # centrale.json, ateliers.json et le fichier unique sont refaits à partir du code et du dossier ateliers/ :
+          # un atelier ajouté dans ateliers/ est publié même si l'on n'a pas relancé les outils.
+          node tools/centrale-json.js && node tools/build.js
           mkdir -p _site
-          cp -r index.html manifest.webmanifest sw.js .nojekyll centrale.json PASSERELLE.md css js vendor icons dist docs _site/
+          cp -r index.html manifest.webmanifest sw.js .nojekyll centrale.json ateliers.json ateliers PASSERELLE.md css js vendor icons dist docs _site/
           rm -f _site/dist/artifact.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

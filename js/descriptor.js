@@ -24,6 +24,9 @@
   const any = {};
   const alt = str({ description: 'Réponse attendue ; variantes acceptées séparées par « | » (comparaison sans accents ni casse).' });
   const cellIn = obj({ a: alt, choices: arr(str()), check: bool });
+  /* Codes du référentiel commun de la Centrale (/passerelle/competences.json) : capacité SFC11.5.2 ou sous-compétence SFC11 */
+  const REF = '^(OST|SFC|CCRI)\\d{2}(\\.[3-6]\\.\\d+)?$';
+  const refs = (d) => arr(str({ pattern: REF }), { description: d });
 
   /* ---------- Champs communs à tous les blocs ---------- */
   const COMMON = {
@@ -32,7 +35,7 @@
     question: md,
     tag: str({ enum: ['papier', 'ordi', 'none'], description: 'Étiquette PAPIER (bleue) / ORDI (verte) de la charte.' }),
     num: str({ description: 'Numéro affiché (« 1. », « 1.6 »). Automatique si absent.' }),
-    comp: arr(str({ pattern: '^T\\d' }), { description: 'Pastilles de compétences (calque _Comp), ex. T2C11.' }),
+    comp: arr(str({ pattern: '^(T\\d|OST|SFC|CCRI)' }), { description: 'Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2).' }),
     bareme: num({ minimum: 0, description: 'Barème (feuilles d’évaluation, total ramené sur 20).' }),
     hint: str(), explanation: md,
     corr: md, // calque _Corr, réservé enseignant
@@ -85,7 +88,8 @@
     blocks: arr({ $ref: 'Block' }),
   }, ['title', 'blocks']);
 
-  const COMPETENCE = { anyOf: [str(), obj({ code: str({ pattern: '^T\\d' }), label: str(), color: str(), co: str(), sub: arr(obj({ code: str(), label: str() }, ['code', 'label'])) }, ['label'])] };
+  const COMPETENCE = { anyOf: [str(), obj({ code: str({ pattern: '^T\\d' }), label: str(), color: str(), co: str(), ref: refs('Codes du référentiel de la Centrale correspondant à cette compétence de la fiche.'),
+    sub: arr(obj({ code: str(), label: str(), ref: refs('Codes du référentiel de la Centrale (capacités) : ceux des questions portant ce code.') }, ['code', 'label'])) }, ['label'])] };
 
   const ENTITIES = {
     Workshop: obj({
@@ -93,7 +97,7 @@
       title: str(), level: str({ enum: ['college', 'sti2d', 'snt', 'pro'] }), niveau: str({ description: '5e, 4e, 3e… (couleur de pastille)' }),
       cycle: num(), seq: num({ description: 'numéro « AT SEQ »' }), duration: num(), author: str(), summary: str(),
       problematique: str(), objet: str(), position: num({ minimum: 0, maximum: 9 }),
-      competences: arr(COMPETENCE), presentation: md, synthese: md, evaluation: md, differenciation: md, materiel: md,
+      competences: arr(COMPETENCE), referentiel: refs('Capacités du référentiel travaillées par l’atelier ; elles servent aussi aux questions notées sans pastille.'), presentation: md, synthese: md, evaluation: md, differenciation: md, materiel: md,
       deroulement: arr(obj({ seance: str(), objectif: str(), activites: str(), ressources: str() })),
       prof: obj({ organisation: md, materiel: arr(obj({ seance: str(), contenu: str() })) }, [], { description: 'fiche professeur, jamais transmise aux élèves' }),
       steps: arr({ $ref: 'Step' }),

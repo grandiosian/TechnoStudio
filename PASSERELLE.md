@@ -130,6 +130,30 @@ Une activité par feuille notée, envoyée par `Centrale.progression(id, TechnoS
 | Σ barème × réussite | `score` / `score_max` | Barème du champ (1 par défaut). |
 | réponses ouvertes | `details.reponses` | 20 Ko au plus, tronqué au besoin ; les dessins sont remplacés par `[dessin]`. |
 
+### Les compétences
+
+TechnoStudio utilise les codes du référentiel commun de la Centrale (`/passerelle/competences.json`, règles : [Compétences](https://technoversailles.alwaysdata.net/passerelle/?doc=competences)).
+
+- **Dans l'atelier** : chaque pastille de la fiche (`T2C11`…) est reliée au référentiel par le champ `ref` de la compétence ou de la sous-compétence (`{ code: 'T2C11', label: '…', ref: ['SFC11.5.2'] }`). Une question peut aussi porter directement un code du référentiel dans `comp`. Une question notée sans pastille prend les capacités de l'atelier (`referentiel: ['SFC11.5.1', …]`).
+- **Déclaration** : chaque activité (feuille notée) envoie `competences`, la réunion des codes de ses questions notées.
+- **Constats** : quand une feuille est terminée, sa progression contient `constats`, un par code, avec le **niveau** d'après la part des points obtenus sur les questions de ce code : moins de 40 % → 1 (MI) ; moins de 70 % → 2 (MF) ; moins de 90 % → 3 (MS) ; sinon 4 (TBM). Une question qui attend la correction du professeur suspend son code. Les constats ne repartent que si les niveaux changent (`pg.constats`).
+
+```json
+"constats": [ { "competence": "SFC11.5.1", "niveau": 4, "reussi": true, "preuve": "Feuille P1 « Exemple : la lampe de poche » : 4 / 4 points" } ]
+```
+
+Les couleurs des thèmes sont celles de la Centrale : T1 (OST) vert, T2 (SFC) rose, T3 (CCRI) jaune orangé.
+
+### Les ateliers publiés et le travail sans serveur
+
+- **Dossier `ateliers/`** : un fichier `<id>.technostudio.json` par atelier créé par un enseignant (Mes ateliers → Publier). Ces ateliers sont lus au démarrage, sans serveur, et se comportent comme les ateliers intégrés ; une copie est gardée sur le poste (`publies`) pour l'ouverture hors ligne, et le fichier unique les contient.
+- **`ateliers.json`** (format `catalogue.ateliers` v1), produit par `node tools/centrale-json.js` avec `centrale.json` : ateliers intégrés et publiés, avec leurs feuilles notées et leurs compétences. La Centrale l'importe dans Ateliers → « Ateliers des applications ». La publication sur GitHub Pages refait ces fichiers à partir du dossier `ateliers/`.
+- **Ouvrir par l'adresse** : `#activite=<atelier>` ou `#activite=<atelier>/<feuille>` ouvre l'atelier ou la feuille, même sans la Centrale.
+- **Sauvegarde de secours** : Fichier → « Enregistrer mon travail (fichier) », « Ouvrir mon travail… » (fusion réponse par réponse) et « Déposer sur Nuage » : le travail est enregistré puis le dossier Nuage de la classe s'ouvre (lien de la Centrale, sinon lien collé une fois sur le poste par le professeur, `localStorage ts-nuage`).
+- Les ressources déposées dans la Centrale restent lues à la connexion, en attendant que les ateliers soient publiés avec l'appli.
+
+Règles communes : [Données, bonnes pratiques et compatibilité](https://technoversailles.alwaysdata.net/passerelle/?doc=donnees).
+
 ### Quand les données circulent
 
 | Moment | TechnoStudio fait |
@@ -150,7 +174,8 @@ Une activité par feuille notée, envoyée par `Centrale.progression(id, TechnoS
 | Membre | Rôle |
 |---|---|
 | `TechnoStudio.app`, `TechnoStudio.version` | Identifiant de l'atelier en cours (`technostudio` ou `?app=`), et version (identique à `centrale.json`). |
-| `TechnoStudio.activites()` | Liste envoyée à `declarerActivites`. |
+| `TechnoStudio.activites()` | Liste envoyée à `declarerActivites` (avec `competences`). |
+| `TechnoStudio.ateliers()` | Contenu de `ateliers.json` (ateliers intégrés et publiés). |
 | `TechnoStudio.catalogue()` | Ateliers du poste avec leurs feuilles notées. |
 | `TechnoStudio.progression(id)` | `{titre, faites, total, statut, score, score_max, details}` ou `null`. |
 | `TechnoStudio.donnees()` | Promesse `{ "at/<atelier>": …, "code/projet": … }`. |
@@ -160,7 +185,7 @@ Une activité par feuille notée, envoyée par `Centrale.progression(id, TechnoS
 
 ## 4. Faire évoluer TechnoStudio sans casser la Centrale
 
-1. **Ajouter un atelier ou une feuille notée** : nouvel `id`, jamais réutilisé. Puis `node tools/centrale-json.js`.
+1. **Ajouter un atelier ou une feuille notée** : nouvel `id`, jamais réutilisé ; un atelier d'enseignant va dans `ateliers/`. Puis `node tools/centrale-json.js` (refait `centrale.json` et `ateliers.json`) et `node tools/build.js`.
 2. **Changer la version** : modifier `VERSION` dans `js/passerelle.js`. Elle est reportée dans `atelier.version` et dans `TechnoStudio.version`.
 3. **Vérifier** : `node tools/verifier-ateliers.js` pour les ateliers, `node tools/centrale-json.js` pour régénérer le descripteur. La vérification GitHub valide `centrale.json` avec le schéma commun.
 4. **Changer la forme d'une donnée enregistrée** : mettre à jour `js/descriptor.js` (donc `$defs`) et garder la lecture de l'ancienne forme, puisque les élèves ont déjà du travail enregistré.
@@ -168,4 +193,4 @@ Une activité par feuille notée, envoyée par `Centrale.progression(id, TechnoS
 ## 5. Pistes pour la suite
 
 - **Ateliers transversaux** : TechnoStudio pourrait **produire** `programme.ino` ou `main.py` dans le dossier de projet, par exemple « Établi 3D modélise le boîtier, TechnoStudio programme la carte ». Il pourrait aussi **recevoir** un cahier des charges. Le format `recoit` / `produit` est déjà prévu par la spécification commune.
-- **Centrale** : lire `centrale.json` depuis l'onglet Ateliers, pour remplir la fiche, les colonnes du suivi et la liste des ressources attendues.
+- **Centrale** : fait (fiche, suivi et catalogue des ateliers importés).

@@ -19,6 +19,10 @@ const js = vendor.concat(scripts).map((s) => `/* ---- ${s} ---- */\n` + fs.readF
 const body = html.slice(html.indexOf('<!--APP-->') + 10, html.indexOf('<!--/APP-->'));
 const fonts = (html.match(/<link rel="stylesheet" href="https:\/\/fonts[^>]+>/) || [''])[0];
 const icon = 'data:image/svg+xml;base64,' + fs.readFileSync(path.join(APP, 'icons', 'icon.svg')).toString('base64');
+// Ateliers publiés avec l'appli (dossier ateliers/) : intégrés au fichier unique, qui s'ouvre sans serveur
+const publies = [];
+for (const { fichier, ateliers } of require('./charger-ateliers.js').lirePublies()) ateliers.forEach((w) => publies.push(Object.assign({}, w, { publie: fichier })));
+const scriptPublies = '<script>window.TL_ATELIERS_PUBLIES = ' + JSON.stringify(publies).replace(/<\//g, '<\\/') + ';</script>';
 
 const single = `<!doctype html>
 <html lang="fr">
@@ -36,6 +40,7 @@ ${css}
 <body>
 ${body}
 <script>window.TL_NO_SW = true;</script>
+${scriptPublies}
 <script>
 ${js}
 </script>
@@ -53,6 +58,7 @@ ${css}
 </style>
 ${body}
 <script>window.TL_NO_SW = true; window.TL_DEFAULT_PROFILE = { name: 'Lionel', role: 'prof', classe: '' };</script>
+${scriptPublies}
 <script>
 ${js}
 </script>

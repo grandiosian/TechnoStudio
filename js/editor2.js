@@ -146,7 +146,7 @@
       h('span.ed-bar-sp'),
       h('a.btn.small.ghost', { href: '#at-' + w.id, onclick: async () => { await app.saveWorkshop(w, w.source); } }, 'Voir comme un élève'),
       h('button.btn.small.ghost', { type: 'button', onclick: () => E.importDialog(w, () => { redraw(); touch(); TL.panels.refresh('ed-feuilles'); }) }, 'Importer fiche / texte'),
-      h('button.btn.small.primary', { type: 'button', onclick: async () => { await app.saveWorkshop(w, w.source); E.publish(app.workshops.get(w.id)); } }, 'Diffuser'));
+      h('button.btn.small.primary', { type: 'button', onclick: async () => { await app.saveWorkshop(w, w.source); E.publish(app.workshops.get(w.id)); } }, 'Publier'));
     root.append(bar, board);
     const save = TL.debounce(async () => {
       const v = TL.descriptor.validate('Workshop', w);

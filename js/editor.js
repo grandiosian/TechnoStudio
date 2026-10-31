@@ -32,7 +32,7 @@
       h('div', h('span.howto-n.mono', '1'), h('strong', 'Numérise'), h('p', 'Importe le PDF de ta fiche ou des photos des pages. Le texte des PDF est récupéré automatiquement.')),
       h('div', h('span.howto-n.mono', '2'), h('strong', 'Convertis'), h('p', 'Colle ou corrige le texte : les questions au format GIFT de Moodle deviennent des exercices interactifs.')),
       h('div', h('span.howto-n.mono', '3'), h('strong', 'Enrichis'), h('p', 'Ajoute simulateur de circuits, programmation, chaînes info/énergie, schémas à légender.')),
-      h('div', h('span.howto-n.mono', '4'), h('strong', 'Diffuse'), h('p', 'Dépose le fichier dans la Centrale (Ressources des ateliers) : tes élèves le reçoivent à la connexion.'))));
+      h('div', h('span.howto-n.mono', '4'), h('strong', 'Publie'), h('p', 'Ajoute le fichier au dossier ateliers/ de TechnoStudio : l’atelier est disponible pour tous, même sans serveur.'))));
     page.append(h('h2.sec', 'Mes ateliers'));
     if (!mine.length) page.append(h('p.muted', 'Aucun atelier personnel pour l’instant. Crée-en un, convertis une fiche ou duplique une démo ci-dessous.'));
     else page.append(h('div.rows', mine.map((w) => row(w))));
@@ -47,25 +47,33 @@
         h('div.wrow-acts',
           h('a.btn.small', { href: '#ed-' + w.id }, isDemo ? 'Dupliquer' : 'Modifier'),
           h('button.btn.small.ghost', { type: 'button', onclick: () => TL.saveAs(slug(w.title) + '.technostudio.json', JSON.stringify(exportable(w), null, 1)) }, 'Exporter'),
-          h('button.btn.small.ghost', { type: 'button', onclick: () => E.publish(w) }, 'Pour la Centrale'),
+          h('button.btn.small.ghost', { type: 'button', onclick: () => E.publish(w) }, 'Publier'),
           !isDemo ? h('button.btn.small.ghost.danger', { type: 'button', onclick: async () => { if (await TL.confirm('Supprimer l’atelier', '« ' + w.title + ' » sera supprimé de cet appareil. Le travail des élèves enregistré sur la Centrale n’est pas touché.', 'Supprimer')) { await TL.app.deleteWorkshop(w.id); TL.app.route(); } } }, 'Supprimer') : null));
     }
   };
   const exportable = (w) => { const c = TL.clone(w); delete c.source; return c; };
 
-  /** Diffusion par la Centrale : le fichier de l'atelier est déposé dans « Ressources des ateliers ». */
+  /** Publication : le fichier de l'atelier rejoint le dossier ateliers/ de l'appli (disponible sans serveur, importé
+      par la Centrale) ; en attendant, il peut encore être déposé dans « Ressources des ateliers » de la Centrale. */
   E.publish = function (w) {
     const v = TL.descriptor.validate('Workshop', exportable(w));
     const Z = TL.centrale;
-    const nom = slug(w.title) + '.technostudio.json';
-    TL.modal('Diffuser par la Centrale', h('div.form',
+    const nom = String(w.id).replace(/[^A-Za-z0-9_-]/g, '-') + '.technostudio.json';
+    const sansPublie = (x) => { const c = exportable(x); delete c.publie; return c; };
+    TL.modal('Publier l’atelier', h('div.form',
       v.ok ? null : h('p.callout.warn', 'L’atelier n’est pas conforme au descripteur : ' + v.errors[0]),
+      h('h3', 'Avec l’application (conseillé : disponible pour tous, sans serveur)'),
       h('ol.steps',
-        h('li', h('button.btn.small.primary', { type: 'button', disabled: !v.ok, onclick: () => TL.saveAs(nom, JSON.stringify(exportable(w), null, 1)) }, 'Télécharger ' + nom)),
+        h('li', h('button.btn.small.primary', { type: 'button', disabled: !v.ok, onclick: () => TL.saveAs(nom, JSON.stringify(sansPublie(w), null, 1)) }, 'Télécharger ' + nom)),
+        h('li', 'Sur GitHub, dans le dossier ', h('a', { href: 'https://github.com/grandiosian/TechnoStudio/tree/main/ateliers', target: '_blank', rel: 'noopener' }, 'ateliers/'), ' de TechnoStudio : Add file → Upload files, puis Commit changes.'),
+        h('li', 'Quelques minutes plus tard, l’atelier est dans la bibliothèque de TechnoStudio, pour tous les élèves.'),
+        h('li', 'Dans la Centrale : Ateliers → « Ateliers des applications » → TechnoStudio → Mettre à jour.')),
+      h('h3', 'Par la Centrale (en attendant)'),
+      h('ol.steps',
         h('li', 'Ouvre l’espace enseignant de la Centrale : ', h('a', { href: Z.serveur + 'admin/#ressources', target: '_blank', rel: 'noopener' }, Z.serveur.replace(/^https?:\/\//, '') + 'admin/')),
         h('li', 'Dans ', h('b', 'Ressources des ateliers'), ', dépose le fichier pour l’atelier ', h('code', Z.app), '.'),
         h('li', 'Les élèves le reçoivent à leur prochaine connexion (ou avec Centrale → Recevoir les ateliers). Redéposer le fichier avec le même nom le met à jour.')),
-      h('p.small.muted', 'Un atelier Centrale par niveau : crée par exemple « technostudio-5e » avec l’adresse ', h('code', location.origin + location.pathname + '?app=technostudio-5e'), ' et réserve-le aux classes de 5e.')),
+      h('p.small.muted', 'Les élèves ne le reçoivent qu’une fois connectés à la Centrale. Un atelier Centrale par niveau : crée par exemple « technostudio-5e » avec l’adresse ', h('code', location.origin + location.pathname + '?app=technostudio-5e'), ' et réserve-le aux classes de 5e.')),
     [{ label: 'Fermer', primary: true }]);
   };
 

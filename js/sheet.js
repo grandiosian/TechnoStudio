@@ -15,7 +15,7 @@
     papier: '#2F57A1', ordi: '#2FB844', comp: '#F08C14', objectif: '#FFF0C8', banque: '#E8F4FF', retenir: '#FFF9E1',
     fonction: '#FFE8CD', synthese: '#CB64FF', syntheseSoft: '#F6ECFF',
     niveaux: { '6': '#30C7C7', '5': '#30C700', '4': '#F5C400', '3': '#E53935' },
-    themes: { T1: '#30B34A', T2: '#3A6FD8', T3: '#E8962A', T4: '#C45CCE' },
+    themes: { T1: '#30B34A', T2: '#C45CCE', T3: '#E8B624', T4: '#3A6FD8' },   // couleurs des thèmes de la Centrale : OST vert, SFC rose, CCRI jaune orangé
   };
   const KIND = {
     feuille: { label: 'Feuille d’atelier', short: 'P', title: 'ATELIER' },

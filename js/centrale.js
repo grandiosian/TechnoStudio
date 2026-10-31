@@ -267,6 +267,12 @@
       const emp = JSON.stringify(envoi);
       if (envoyes[a.id] === emp) continue;
       envoyes[a.id] = emp;
+      // Feuille terminée : constats de compétences (niveau d'après le barème), renvoyés seulement s'ils changent
+      if (envoi.statut === 'termine') {
+        const c = P.constats(w, pg, a), sig = JSON.stringify(c.map((x) => [x.competence, x.niveau]));
+        pg.constats = pg.constats || {};
+        if (c.length && pg.constats[a.id] !== sig) { envoi.constats = c; pg.constats[a.id] = sig; TL.db.set('pg:' + wid, pg); }
+      }
       window.Centrale.progression(a.id, envoi);
     }
   };
@@ -302,6 +308,9 @@
     descripteur: 'centrale.json',
     /** Liste envoyée à la Centrale : [{ id, titre, groupe, total }]. */
     activites: () => Z.activites(),
+    /** Catalogue des ateliers publiés avec l'appli (contenu de ateliers.json) : intégrés au code et dossier ateliers/. */
+    ateliers: () => P.catalogue([...TL.app.workshops.values()].filter((w) => w.source === 'demo'),
+      Object.fromEntries([...TL.app.workshops.values()].filter((w) => w.publie).map((w) => [w.id, w.publie]))),
     /** Ateliers présents sur ce poste, avec leurs feuilles notées. */
     catalogue: () => [...TL.app.workshops.values()].map((w) => ({ id: w.id, titre: w.title, niveau: w.niveau || '', source: w.source, version: w.version || 1, feuilles: P.activitesAtelier(w).map((a) => ({ id: a.id, titre: a.titre, total: a.total })) })),
     /** Ce qui est (ou serait) envoyé à progression.php pour une activité, ou null. */

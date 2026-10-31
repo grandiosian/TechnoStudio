@@ -6,7 +6,7 @@
  "atelier": {
   "app": "technostudio",
   "nom": "TechnoStudio",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "description": "Ateliers de technologie au format de la charte (feuilles, ressources, synthèse, évaluation, SEGPA), simulateur de circuits, maquettes programmables et programmation Blockly de cartes Arduino, ESP32 et micro:bit.",
   "url": "https://grandiosian.github.io/TechnoStudio/",
   "urls_secours": [
@@ -24,6 +24,7 @@
    "Pro"
   ],
   "parametres": {
+   "#activite=<id>": "Ouvre directement un atelier (<atelier>) ou une feuille (<atelier>/<feuille>), même sans connexion à la Centrale.",
    "app": "Autre identifiant d’atelier Centrale ouvrant TechnoStudio (ex. ?app=technostudio-5e) : ressources, données et suivi lui sont propres.",
    "centrale": "Autre adresse de Centrale (ex. ?centrale=https://…/).",
    "compilateur": "Autre serveur de compilation pour les cartes (ex. ?compilateur=https://…/compilation/)."
@@ -75,13 +76,15 @@
   ]
  },
  "activites": {
-  "declaration": "Centrale.declarerActivites(TechnoStudio.activites()) après chaque connexion : la liste ci-dessous (ateliers intégrés), suivie des activités des ateliers reçus en ressources.",
+  "declaration": "Centrale.declarerActivites(TechnoStudio.activites()) après chaque connexion : la liste ci-dessous (ateliers intégrés et publiés dans ateliers/), suivie des activités des ateliers reçus en ressources.",
   "champs_envoyes": [
    "id",
    "titre",
    "groupe",
-   "total"
+   "total",
+   "competences"
   ],
+  "competences": "Codes du référentiel de la Centrale (/passerelle/competences.json) des champs notés de la feuille : pastille « comp » reliée au référentiel par « ref » (compétence ou sous-compétence de la fiche) ou code du référentiel ; sans pastille, les capacités de l’atelier (« referentiel »).",
   "identifiants_stables": true,
   "regle": "Une activité par feuille contenant au moins un champ noté : id = <id atelier>/<code feuille> (P1, R1, S1, E1, S-P1 pour la version SEGPA) ; total = nombre de champs notés.",
   "dynamiques": {
@@ -93,169 +96,262 @@
     "id": "charte-lampe-de-poche/P1",
     "titre": "P1 · Séance 1 - Feuille 1",
     "groupe": "5e · Exemple : la lampe de poche",
-    "total": 6
+    "total": 6,
+    "competences": [
+     "SFC11.5.1",
+     "SFC11.5.2"
+    ]
    },
    {
     "id": "charte-lampe-de-poche/P2",
     "titre": "P2 · Séance 2 - Feuille 2",
     "groupe": "5e · Exemple : la lampe de poche",
-    "total": 5
+    "total": 5,
+    "competences": [
+     "SFC11.5.2",
+     "CCRI22.5.1",
+     "OST32.5.1"
+    ]
    },
    {
     "id": "charte-lampe-de-poche/S1",
     "titre": "S1 · Synthèse",
     "groupe": "5e · Exemple : la lampe de poche",
-    "total": 3
+    "total": 3,
+    "competences": []
    },
    {
     "id": "charte-lampe-de-poche/E1",
     "titre": "E1 · Évaluation (recto)",
     "groupe": "5e · Exemple : la lampe de poche",
-    "total": 4
+    "total": 4,
+    "competences": [
+     "SFC11.5.1",
+     "SFC11.5.2"
+    ]
    },
    {
     "id": "charte-lampe-de-poche/E2",
     "titre": "E2 · Évaluation (verso)",
     "groupe": "5e · Exemple : la lampe de poche",
-    "total": 4
+    "total": 4,
+    "competences": [
+     "SFC11.5.2",
+     "OST32.5.1",
+     "SFC21.5.1"
+    ]
    },
    {
     "id": "charte-lampe-de-poche/S-P1",
     "titre": "S·P1 · SEGPA - Feuille 1",
     "groupe": "5e · Exemple : la lampe de poche",
-    "total": 6
+    "total": 6,
+    "competences": [
+     "SFC11.5.1",
+     "SFC11.5.2"
+    ]
    },
    {
     "id": "charte-parking-connecte/P1",
     "titre": "P1 · Séance 3 - Feuille 1",
     "groupe": "4e · Le parking connecté",
-    "total": 6
+    "total": 6,
+    "competences": [
+     "SFC13.4.1",
+     "SFC15.4.1",
+     "SFC31.4.2",
+     "CCRI22.4.1"
+    ]
    },
    {
     "id": "demo-circuits-serie-derivation/P1",
     "titre": "P1 · Découvrir",
     "groupe": "5e · Circuits électriques : série et dérivation",
-    "total": 1
+    "total": 1,
+    "competences": [
+     "SFC11.5.1",
+     "CCRI22.5.1"
+    ]
    },
    {
     "id": "demo-circuits-serie-derivation/P2",
     "titre": "P2 · Mon premier circuit",
     "groupe": "5e · Circuits électriques : série et dérivation",
-    "total": 1
+    "total": 1,
+    "competences": [
+     "SFC11.5.1",
+     "CCRI22.5.1"
+    ]
    },
    {
     "id": "demo-circuits-serie-derivation/P3",
     "titre": "P3 · Série ou dérivation ?",
     "groupe": "5e · Circuits électriques : série et dérivation",
-    "total": 2
+    "total": 2,
+    "competences": [
+     "SFC11.5.1",
+     "CCRI22.5.1"
+    ]
    },
    {
     "id": "demo-circuits-serie-derivation/P4",
     "titre": "P4 · Protéger une DEL",
     "groupe": "5e · Circuits électriques : série et dérivation",
-    "total": 2
+    "total": 2,
+    "competences": [
+     "SFC11.5.1",
+     "CCRI22.5.1"
+    ]
    },
    {
     "id": "demo-circuits-serie-derivation/P5",
     "titre": "P5 · Bilan",
     "groupe": "5e · Circuits électriques : série et dérivation",
-    "total": 2
+    "total": 2,
+    "competences": [
+     "SFC11.5.1",
+     "CCRI22.5.1"
+    ]
    },
    {
     "id": "demo-pro-consignation-mesures/P1",
     "titre": "P1 · La consignation",
     "groupe": "Pro · Consignation et mesures électriques",
-    "total": 2
+    "total": 2,
+    "competences": []
    },
    {
     "id": "demo-pro-consignation-mesures/P2",
     "titre": "P2 · Mesures et loi d’Ohm",
     "groupe": "Pro · Consignation et mesures électriques",
-    "total": 3
+    "total": 3,
+    "competences": []
    },
    {
     "id": "demo-eclairage-premier-programme/P1",
     "titre": "P1 · Capteurs et actionneurs",
     "groupe": "5e · Éclairage automatique : mon premier programme",
-    "total": 1
+    "total": 1,
+    "competences": [
+     "CCRI31.5.3",
+     "SFC13.5.1"
+    ]
    },
    {
     "id": "demo-eclairage-premier-programme/P2",
     "titre": "P2 · Allumer quand quelqu’un passe",
     "groupe": "5e · Éclairage automatique : mon premier programme",
-    "total": 2
+    "total": 2,
+    "competences": [
+     "CCRI31.5.3",
+     "SFC13.5.1"
+    ]
    },
    {
     "id": "demo-eclairage-premier-programme/P3",
     "titre": "P3 · Économiser l’énergie",
     "groupe": "5e · Éclairage automatique : mon premier programme",
-    "total": 2
+    "total": 2,
+    "competences": [
+     "CCRI31.5.3",
+     "SFC13.5.1"
+    ]
    },
    {
     "id": "demo-eclairage-premier-programme/P4",
     "titre": "P4 · Défi : le feu tricolore",
     "groupe": "5e · Éclairage automatique : mon premier programme",
-    "total": 1
+    "total": 1,
+    "competences": [
+     "CCRI31.5.3",
+     "SFC13.5.1"
+    ]
    },
    {
     "id": "demo-portail-automatique/P1",
     "titre": "P1 · Observer le système",
     "groupe": "4e · Le portail automatique",
-    "total": 1
+    "total": 1,
+    "competences": [
+     "SFC13.4.1",
+     "SFC11.4.1",
+     "CCRI31.4.3"
+    ]
    },
    {
     "id": "demo-portail-automatique/P2",
     "titre": "P2 · Les chaînes du système",
     "groupe": "4e · Le portail automatique",
-    "total": 2
+    "total": 2,
+    "competences": [
+     "SFC13.4.1",
+     "SFC11.4.1",
+     "CCRI31.4.3"
+    ]
    },
    {
     "id": "demo-portail-automatique/P3",
     "titre": "P3 · Programmer le portail",
     "groupe": "4e · Le portail automatique",
-    "total": 2
+    "total": 2,
+    "competences": [
+     "SFC13.4.1",
+     "SFC11.4.1",
+     "CCRI31.4.3"
+    ]
    },
    {
     "id": "demo-portail-automatique/P4",
     "titre": "P4 · Compte rendu",
     "groupe": "4e · Le portail automatique",
-    "total": 1
+    "total": 1,
+    "competences": [
+     "SFC13.4.1",
+     "SFC11.4.1",
+     "CCRI31.4.3"
+    ]
    },
    {
     "id": "demo-snt-parking-connecte/P1",
     "titre": "P1 · Système embarqué",
     "groupe": "2nde · Parking connecté : variables et compteur",
-    "total": 1
+    "total": 1,
+    "competences": []
    },
    {
     "id": "demo-snt-parking-connecte/P2",
     "titre": "P2 · Compter les places",
     "groupe": "2nde · Parking connecté : variables et compteur",
-    "total": 1
+    "total": 1,
+    "competences": []
    },
    {
     "id": "demo-snt-parking-connecte/P3",
     "titre": "P3 · Vers Python",
     "groupe": "2nde · Parking connecté : variables et compteur",
-    "total": 2
+    "total": 2,
+    "competences": []
    },
    {
     "id": "demo-sti2d-serre-regulation/P1",
     "titre": "P1 · Analyse fonctionnelle",
     "groupe": "1re · Serre automatisée : régulation tout ou rien",
-    "total": 1
+    "total": 1,
+    "competences": []
    },
    {
     "id": "demo-sti2d-serre-regulation/P2",
     "titre": "P2 · Bilan énergétique",
     "groupe": "1re · Serre automatisée : régulation tout ou rien",
-    "total": 3
+    "total": 3,
+    "competences": []
    },
    {
     "id": "demo-sti2d-serre-regulation/P3",
     "titre": "P3 · Régulation à hystérésis",
     "groupe": "1re · Serre automatisée : régulation tout ou rien",
-    "total": 2
+    "total": 2,
+    "competences": []
    }
   ]
  },
@@ -272,7 +368,8 @@
    "statut": "termine quand tous les champs notés sont faits, sinon commence",
    "score": "points obtenus (barème de chaque champ, 1 par défaut) × réussite",
    "score_max": "somme des barèmes de la feuille",
-   "details": "{ feuille, reponses: [{ q, type, r, note, aCorriger }] } : réponses ouvertes à lire ou corriger (20 Ko au plus)"
+   "details": "{ feuille, reponses: [{ q, type, r, note, aCorriger }] } : réponses ouvertes à lire ou corriger (20 Ko au plus)",
+   "constats": "Feuille terminée seulement : un constat par code du référentiel, { competence, niveau, reussi, preuve } ; niveau d’après la part des points de ce code (moins de 40 % : 1 ; moins de 70 % : 2 ; moins de 90 % : 3 ; sinon 4). Un champ qui attend la correction du professeur suspend son code. Renvoyé seulement si les niveaux changent (pg.constats)."
   },
   "champs_non_utilises": [],
   "a_la_connexion": "Le travail (donnees at/…) est fusionné réponse par réponse ; la progression est recalculée à partir de lui, pas relue avec mesProgressions().",
@@ -323,6 +420,10 @@
   "produit": [],
   "note": "TechnoStudio lit les ressources de l’atelier ; il n’envoie pas de fichiers et n’utilise pas encore le dossier de projet. Piste : produit programme.ino / main.py dans un atelier transversal."
  },
+ "ateliers": {
+  "catalogue": "ateliers.json",
+  "note": "Ateliers intégrés au code (js/demos*.js) et ateliers publiés avec l’appli dans le dossier ateliers/ (un fichier .technostudio.json par atelier, lus au démarrage sans serveur). Un atelier = un atelier du catalogue ; ses activités = ses feuilles notées."
+ },
  "stockage_local": {
   "description": "Copies dans le navigateur de l’élève (IndexedDB « technostudio », magasin kv), utilisées sans connexion.",
   "cles": {
@@ -350,8 +451,14 @@
    "ui:panels": {
     "contenu": "disposition des panneaux ; jamais envoyée"
    },
+   "publies": {
+    "contenu": "copie des ateliers publiés (dossier ateliers/), pour une ouverture hors ligne"
+   },
    "localStorage ts-centrale, ts-app, ts-compilateur": {
     "contenu": "réglages de connexion du poste"
+   },
+   "localStorage ts-nuage": {
+    "contenu": "lien du dossier Nuage de la classe, collé par le professeur sur ce poste (Fichier → Déposer sur Nuage)"
    }
   }
  },
@@ -361,7 +468,8 @@
    "app": "Identifiant de l’atelier en cours (« technostudio » ou la valeur de ?app=).",
    "version": "Version de TechnoStudio (identique à atelier.version).",
    "descripteur": "Chemin de ce fichier : \"centrale.json\".",
-   "activites()": "Liste envoyée à la Centrale : [{id, titre, groupe, total}].",
+   "activites()": "Liste envoyée à la Centrale : [{id, titre, groupe, total, competences}].",
+   "ateliers()": "Catalogue des ateliers publiés avec l’appli (contenu de ateliers.json).",
    "catalogue()": "Ateliers du poste avec leurs feuilles notées.",
    "progression(id)": "{titre, faites, total, statut, score, score_max, details} ou null.",
    "donnees()": "Promesse : { \"at/<atelier>\": travail, \"code/projet\": programme }.",
@@ -545,6 +653,14 @@
          "co": {
           "type": "string"
          },
+         "ref": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "pattern": "^(OST|SFC|CCRI)\\d{2}(\\.[3-6]\\.\\d+)?$"
+          },
+          "description": "Codes du référentiel de la Centrale correspondant à cette compétence de la fiche."
+         },
          "sub": {
           "type": "array",
           "items": {
@@ -555,6 +671,14 @@
             },
             "label": {
              "type": "string"
+            },
+            "ref": {
+             "type": "array",
+             "items": {
+              "type": "string",
+              "pattern": "^(OST|SFC|CCRI)\\d{2}(\\.[3-6]\\.\\d+)?$"
+             },
+             "description": "Codes du référentiel de la Centrale (capacités) : ceux des questions portant ce code."
             }
            },
            "required": [
@@ -570,6 +694,14 @@
        }
       ]
      }
+    },
+    "referentiel": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^(OST|SFC|CCRI)\\d{2}(\\.[3-6]\\.\\d+)?$"
+     },
+     "description": "Capacités du référentiel travaillées par l’atelier ; elles servent aussi aux questions notées sans pastille."
     },
     "presentation": {
      "type": "string",

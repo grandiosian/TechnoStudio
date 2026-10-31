@@ -29,6 +29,7 @@ Ateliers de technologie au **format de la charte** (fiche pédagogique, feuilles
 | `index.html`, `js/`, `css/`, `vendor/`, `sw.js` | l'application (publiée telle quelle par GitHub Pages) |
 | `js/centrale.js` | connexion à la Centrale : code, portail, ateliers reçus, sauvegarde, avancement |
 | `js/flash.js` | compilation à distance et téléversement par le navigateur (STK500, esptool-js) |
+| `ateliers/`, `ateliers.json` | ateliers des enseignants publiés avec l'appli, et catalogue des ateliers importé par la Centrale (produit par `tools/centrale-json.js`) |
 | `centrale.json`, `PASSERELLE.md` | **descripteur d'atelier** commun aux applications de la Centrale (`passerelle.atelier` v1), produit par `tools/centrale-json.js` |
 | `js/passerelle.js` | ce que l'appli déclare et envoie à la Centrale (activités, progression, clés) : source de `centrale.json` |
 | `js/descriptor.js` | format des ateliers (33 types de champs) et de leurs réponses |
@@ -48,8 +49,8 @@ Ateliers de technologie au **format de la charte** (fiche pédagogique, feuilles
    - classes concernées : celles de votre choix.
 
    Pour séparer les niveaux, créez plusieurs ateliers, chacun avec ses classes et ses ressources. Par exemple, l'atelier `technostudio-5e` a pour adresse `https://grandiosian.github.io/TechnoStudio/?app=technostudio-5e`.
-3. **Diffuser un atelier** :
-   - dans TechnoStudio (profil Enseignant), menu Fichier → Mes ateliers → **Pour la Centrale**, ce qui télécharge `<atelier>.technostudio.json` ;
+3. **Diffuser un atelier** : de préférence en le **publiant avec l'application** (dossier `ateliers/`, voir § 3) : il est alors disponible sans serveur et la Centrale l'importe (Ateliers → « Ateliers des applications »). En attendant, on peut encore passer par la Centrale :
+   - dans TechnoStudio (profil Enseignant), menu Fichier → Mes ateliers → **Publier**, ce qui télécharge `<atelier>.technostudio.json` ;
    - dans la Centrale, déposez ce fichier dans **Ressources des ateliers** pour l'atelier `technostudio`. Les fichiers GIFT (`.gift`) sont aussi acceptés.
 
    Les élèves le reçoivent à leur connexion. Redéposer un fichier du même nom le met à jour ; supprimer la ressource retire l'atelier.
@@ -141,6 +142,10 @@ La copie de la Centrale est déclarée comme adresse de secours dans `centrale.j
 
 ## 3. Créer des ateliers
 
+**Publier avec l'application (conseillé)** : Mes ateliers → **Publier** → télécharger `<id>.technostudio.json`, puis le déposer dans le dossier [`ateliers/`](ateliers/) du dépôt (GitHub : Add file → Upload files). L'atelier est alors disponible pour tous les élèves, **sans serveur** ; la Centrale l'importe dans Ateliers → « Ateliers des applications ». Voir [`ateliers/LISEZMOI.md`](ateliers/LISEZMOI.md).
+
+Chaque atelier s'ouvre aussi directement par son adresse : `…/TechnoStudio/#activite=charte-lampe-de-poche` (ou `…/P2` pour une feuille).
+
 **Fichier → Nouvel atelier** ou **Convertir une fiche papier** (PDF, photos, texte GIFT), avec le profil Enseignant (Compte → Mon profil).
 
 L'éditeur montre la feuille telle que l'élève la verra :
@@ -165,7 +170,7 @@ Le fichier est **produit par le code** (`node tools/centrale-json.js`), à parti
 La spécification commune, son schéma JSON et un modèle vierge sont dans [`docs/passerelle-atelier/`](docs/passerelle-atelier/SPECIFICATION.md), à reprendre dans le dépôt de la Centrale.
 
 ```bash
-node tools/centrale-json.js                 # régénérer centrale.json
+node tools/centrale-json.js                 # régénérer centrale.json et ateliers.json
 npm i --no-save ajv@8 && node tools/valider-centrale-json.js centrale.json ../NetSim/centrale.json
 node tools/verifier-ateliers.js mon-atelier.technostudio.json   # vérifier des ateliers produits ailleurs
 node tools/descripteur-doc.js               # régénérer docs/descripteur-ateliers.md

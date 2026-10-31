@@ -95,6 +95,14 @@
          "co": {
           "type": "string"
          },
+         "ref": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "pattern": "^(OST|SFC|CCRI)\\d{2}(\\.[3-6]\\.\\d+)?$"
+          },
+          "description": "Codes du référentiel de la Centrale correspondant à cette compétence de la fiche."
+         },
          "sub": {
           "type": "array",
           "items": {
@@ -105,6 +113,14 @@
             },
             "label": {
              "type": "string"
+            },
+            "ref": {
+             "type": "array",
+             "items": {
+              "type": "string",
+              "pattern": "^(OST|SFC|CCRI)\\d{2}(\\.[3-6]\\.\\d+)?$"
+             },
+             "description": "Codes du référentiel de la Centrale (capacités) : ceux des questions portant ce code."
             }
            },
            "required": [
@@ -120,6 +136,14 @@
        }
       ]
      }
+    },
+    "referentiel": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^(OST|SFC|CCRI)\\d{2}(\\.[3-6]\\.\\d+)?$"
+     },
+     "description": "Capacités du référentiel travaillées par l’atelier ; elles servent aussi aux questions notées sans pastille."
     },
     "presentation": {
      "type": "string",
@@ -670,9 +694,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -735,9 +759,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -806,9 +830,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -870,9 +894,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -941,9 +965,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1018,9 +1042,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1098,9 +1122,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1176,9 +1200,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1241,9 +1265,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1306,9 +1330,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1364,9 +1388,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1422,9 +1446,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1517,9 +1541,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1608,9 +1632,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1686,9 +1710,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1765,9 +1789,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1850,9 +1874,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -1924,9 +1948,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -2012,9 +2036,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -2127,9 +2151,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -2261,9 +2285,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -2366,9 +2390,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -2482,9 +2506,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -2589,9 +2613,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -2709,9 +2733,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -2818,9 +2842,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -2910,9 +2934,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -3001,9 +3025,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -3105,9 +3129,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -3187,9 +3211,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -3265,9 +3289,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -3380,9 +3404,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -3533,9 +3557,9 @@
      "type": "array",
      "items": {
       "type": "string",
-      "pattern": "^T\\d"
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
      },
-     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
     },
     "bareme": {
      "type": "number",
@@ -3638,9 +3662,9 @@
    "type": "array",
    "items": {
     "type": "string",
-    "pattern": "^T\\d"
+    "pattern": "^(T\\d|OST|SFC|CCRI)"
    },
-   "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+   "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
   },
   "bareme": {
    "type": "number",

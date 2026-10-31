@@ -33,6 +33,7 @@ Le descripteur est le contrat entre l’application **centralisatrice** (la [Cen
 | `objet` | string |  |
 | `position` | number [0–9] |  |
 | `competences` | string \| object[] |  |
+| `referentiel` | string /^(OST\|SFC\|CCRI)\d{2}(\.[3-6]\.\d+)?$/[] — Capacités du référentiel travaillées par l’atelier ; elles servent aussi aux questions notées sans pastille. |  |
 | `presentation` | string |  |
 | `synthese` | string |  |
 | `evaluation` | string |  |
@@ -194,7 +195,7 @@ Champs communs à tous les blocs :
 | `question` | string |
 | `tag` | string (papier, ordi, none) — Étiquette PAPIER (bleue) / ORDI (verte) de la charte. |
 | `num` | string — Numéro affiché (« 1. », « 1.6 »). Automatique si absent. |
-| `comp` | string /^T\d/[] — Pastilles de compétences (calque _Comp), ex. T2C11. |
+| `comp` | string /^(T\d|OST|SFC|CCRI)/[] — Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2). |
 | `bareme` | number [0–…] — Barème (feuilles d’évaluation, total ramené sur 20). |
 | `hint` | string |
 | `explanation` | string |

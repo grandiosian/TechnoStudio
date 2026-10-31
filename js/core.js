@@ -3,7 +3,7 @@
 (function () {
   'use strict';
   const TL = (window.TL = window.TL || {});
-  TL.VERSION = '3.2.1';
+  TL.VERSION = '3.3.0';
   TL.FORMAT = 2;
 
   /* ---------- DOM ---------- */

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Produit centrale.json (format passerelle.atelier v1) à la racine du site.
+/* Produit centrale.json (format passerelle.atelier v1) et ateliers.json (catalogue.ateliers v1) à la racine du site.
    Tout ce qui décrit ce que l'appli envoie vient du code de l'appli elle-même :
    activités (js/passerelle.js appliqué aux ateliers intégrés), schémas (js/descriptor.js).
    Relancer après toute modification ; la vérification GitHub échoue si le fichier n'est pas à jour.
@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const D = require('../js/descriptor.js');
 const P = require('../js/passerelle.js');
-const { ateliers, LEVELS } = require('./charger-ateliers.js')();
+const { ateliers, LEVELS, publies } = require('./charger-ateliers.js')();
 
 const URL_APP = 'https://grandiosian.github.io/TechnoStudio/';
 
@@ -48,6 +48,7 @@ const desc = {
     url: URL_APP, urls_secours: ['https://technoversailles.alwaysdata.net/miroir/technostudio/'], icone: '🛠️', depot: 'https://github.com/grandiosian/TechnoStudio', langue: 'fr',
     classes: ['5e', '4e', '3e', 'STI2D', 'SNT', 'Pro'],
     parametres: {
+      '#activite=<id>': 'Ouvre directement un atelier (<atelier>) ou une feuille (<atelier>/<feuille>), même sans connexion à la Centrale.',
       app: 'Autre identifiant d’atelier Centrale ouvrant TechnoStudio (ex. ?app=technostudio-5e) : ressources, données et suivi lui sont propres.',
       centrale: 'Autre adresse de Centrale (ex. ?centrale=https://…/).',
       compilateur: 'Autre serveur de compilation pour les cartes (ex. ?compilateur=https://…/compilation/).',
@@ -70,8 +71,9 @@ const desc = {
     fonctions_non_utilisees: ['envoyerFichier', 'listeFichiers', 'chargerFichier', 'mesProgressions', 'etape', 'projet.*', 'parcours', 'ateliers', 'lien', 'ouvrir'],
   },
   activites: {
-    declaration: 'Centrale.declarerActivites(TechnoStudio.activites()) après chaque connexion : la liste ci-dessous (ateliers intégrés), suivie des activités des ateliers reçus en ressources.',
-    champs_envoyes: ['id', 'titre', 'groupe', 'total'],
+    declaration: 'Centrale.declarerActivites(TechnoStudio.activites()) après chaque connexion : la liste ci-dessous (ateliers intégrés et publiés dans ateliers/), suivie des activités des ateliers reçus en ressources.',
+    champs_envoyes: ['id', 'titre', 'groupe', 'total', 'competences'],
+    competences: 'Codes du référentiel de la Centrale (/passerelle/competences.json) des champs notés de la feuille : pastille « comp » reliée au référentiel par « ref » (compétence ou sous-compétence de la fiche) ou code du référentiel ; sans pastille, les capacités de l’atelier (« referentiel »).',
     identifiants_stables: true,
     regle: 'Une activité par feuille contenant au moins un champ noté : id = <id atelier>/<code feuille> (P1, R1, S1, E1, S-P1 pour la version SEGPA) ; total = nombre de champs notés.',
     dynamiques: { motif: '^[A-Za-z0-9-]+/(S-)?[PRSE][0-9]+$', description: 'Ateliers déposés par l’enseignant dans Ressources des ateliers : mêmes règles, déclarés à la connexion après les ateliers intégrés.' },
@@ -88,6 +90,7 @@ const desc = {
       score: 'points obtenus (barème de chaque champ, 1 par défaut) × réussite',
       score_max: 'somme des barèmes de la feuille',
       details: '{ feuille, reponses: [{ q, type, r, note, aCorriger }] } : réponses ouvertes à lire ou corriger (20 Ko au plus)',
+      constats: 'Feuille terminée seulement : un constat par code du référentiel, { competence, niveau, reussi, preuve } ; niveau d’après la part des points de ce code (moins de 40 % : 1 ; moins de 70 % : 2 ; moins de 90 % : 3 ; sinon 4). Un champ qui attend la correction du professeur suspend son code. Renvoyé seulement si les niveaux changent (pg.constats).',
     },
     champs_non_utilises: [],
     a_la_connexion: 'Le travail (donnees at/…) est fusionné réponse par réponse ; la progression est recalculée à partir de lui, pas relue avec mesProgressions().',
@@ -121,6 +124,10 @@ const desc = {
     produit: [],
     note: 'TechnoStudio lit les ressources de l’atelier ; il n’envoie pas de fichiers et n’utilise pas encore le dossier de projet. Piste : produit programme.ino / main.py dans un atelier transversal.',
   },
+  ateliers: {
+    catalogue: 'ateliers.json',
+    note: 'Ateliers intégrés au code (js/demos*.js) et ateliers publiés avec l’appli dans le dossier ateliers/ (un fichier .technostudio.json par atelier, lus au démarrage sans serveur). Un atelier = un atelier du catalogue ; ses activités = ses feuilles notées.',
+  },
   stockage_local: {
     description: 'Copies dans le navigateur de l’élève (IndexedDB « technostudio », magasin kv), utilisées sans connexion.',
     cles: {
@@ -129,7 +136,9 @@ const desc = {
       'code:projet': { contenu: 'programme libre de l’atelier Code', format: { $ref: '#/$defs/ProjetCode' } },
       profile: { contenu: 'profil local (nom affiché, rôle) ; jamais envoyé à la Centrale' },
       'ui:panels': { contenu: 'disposition des panneaux ; jamais envoyée' },
+      publies: { contenu: 'copie des ateliers publiés (dossier ateliers/), pour une ouverture hors ligne' },
       'localStorage ts-centrale, ts-app, ts-compilateur': { contenu: 'réglages de connexion du poste' },
+      'localStorage ts-nuage': { contenu: 'lien du dossier Nuage de la classe, collé par le professeur sur ce poste (Fichier → Déposer sur Nuage)' },
     },
   },
   acces_javascript: {
@@ -138,7 +147,8 @@ const desc = {
       app: 'Identifiant de l’atelier en cours (« technostudio » ou la valeur de ?app=).',
       version: 'Version de TechnoStudio (identique à atelier.version).',
       descripteur: 'Chemin de ce fichier : "centrale.json".',
-      'activites()': 'Liste envoyée à la Centrale : [{id, titre, groupe, total}].',
+      'activites()': 'Liste envoyée à la Centrale : [{id, titre, groupe, total, competences}].',
+      'ateliers()': 'Catalogue des ateliers publiés avec l’appli (contenu de ateliers.json).',
       'catalogue()': 'Ateliers du poste avec leurs feuilles notées.',
       'progression(id)': '{titre, faites, total, statut, score, score_max, details} ou null.',
       'donnees()': 'Promesse : { "at/<atelier>": travail, "code/projet": programme }.',
@@ -168,3 +178,8 @@ const desc = {
 const sortie = path.join(__dirname, '..', 'centrale.json');
 fs.writeFileSync(sortie, JSON.stringify(desc, null, 1) + '\n');
 console.log('centrale.json : ' + liste.length + ' activités, ' + Object.keys(desc.donnees).length + ' clés de données, version ' + P.VERSION + '.');
+
+// Catalogue des ateliers, importé par la Centrale (Ateliers → « Ateliers des applications »)
+const cat = P.catalogue(ateliers, publies);
+fs.writeFileSync(path.join(__dirname, '..', 'ateliers.json'), JSON.stringify(cat, null, 2) + '\n');
+console.log('ateliers.json : ' + cat.ateliers.length + ' ateliers dont ' + Object.keys(publies).length + ' publiés dans ateliers/.');

@@ -13,8 +13,31 @@
   app.loadWorkshops = async function () {
     app.workshops.clear();
     (TL.DEMOS || []).forEach((w) => app.workshops.set(w.id, w));
+    (await ateliersPublies()).forEach((w) => app.workshops.set(w.id, w));
     (await TL.db.all('ws:')).forEach((w) => app.workshops.set(w.id, TL.normalizeWorkshop(w)));
   };
+  /* Ateliers publiés avec l'appli (dossier ateliers/, listés dans ateliers.json) : disponibles sans serveur.
+     Fichier unique (double-clic) : intégrés par tools/build.js. Sinon lus à côté de la page ; une copie est
+     gardée sur le poste pour la prochaine ouverture hors ligne. Ils se comportent comme les ateliers intégrés. */
+  async function ateliersPublies() {
+    const lire = (u, ms) => Promise.race([fetch(u, { cache: 'no-cache' }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
+      new Promise((_, ko) => setTimeout(() => ko(new Error('délai')), ms))]);
+    let liste = null;
+    if (Array.isArray(window.TL_ATELIERS_PUBLIES)) liste = window.TL_ATELIERS_PUBLIES;
+    else if (/^https?:$/.test(location.protocol)) {
+      try {
+        const base = new URL('ateliers.json', location.href), cat = await lire(base, 4000);
+        liste = [];
+        for (const e of (cat.ateliers || []).filter((x) => x && x.fichier)) {
+          const d = await lire(new URL(e.fichier, base), 4000);
+          (Array.isArray(d) ? d : d.workshops || [d]).forEach((w) => liste.push(Object.assign({}, w, { publie: e.fichier })));
+        }
+        TL.db.set('publies', liste).catch(() => {});
+      } catch (e) { liste = null; }
+    }
+    if (!liste) liste = (await TL.db.get('publies').catch(() => null)) || [];
+    return liste.filter((w) => TL.descriptor.validate('Workshop', w).ok).map((w) => Object.assign(TL.normalizeWorkshop(TL.clone(w)), { source: 'demo', publie: w.publie || true }));
+  }
   app.saveWorkshop = async function (w, source) {
     w = TL.normalizeWorkshop(w);
     w.source = source || w.source || 'local';
@@ -83,6 +106,10 @@
         { label: 'Importer un paquet…', action: importPackage },
         { label: 'Exporter le paquet de l’atelier', disabled: !w, action: () => w && TL.saveAs(slug(w.title) + '.technostudio.json', JSON.stringify(exportable(w), null, 1)) },
         { label: 'Export Moodle (GIFT)', disabled: !w, action: () => w && TL.saveAs(slug(w.title) + '.gift.txt', TL.gift.toGift(w), 'text/plain') },
+        { sep: true },
+        { label: 'Enregistrer mon travail (fichier)', disabled: !w, action: () => w && enregistrerTravail(w) },
+        { label: 'Ouvrir mon travail…', action: ouvrirTravail },
+        { label: 'Déposer sur Nuage', disabled: !w, action: () => w && deposerSurNuage(w) },
         { sep: true },
         { label: 'Imprimer la feuille', disabled: mode !== 'at' && mode !== 'fiche', action: () => window.print() },
       ] },
@@ -171,6 +198,8 @@
   }
   async function routeNow() {
     const hash = (location.hash || '#accueil').slice(1);
+    // #activite=<atelier> ou <atelier>/<feuille> : ouverture directe, même sans la Centrale
+    if (/^activite=/.test(hash)) { let id = ''; try { id = decodeURIComponent(hash.slice(9).split('&')[0]); } catch (e) { /* adresse illisible */ } if (id) { await TL.centrale.ouvrirActivite(id); if (/^#activite=/.test(location.hash)) app.go('accueil'); return; } }
     TL.menubar.render(menus());
     const st = stage();
     st.innerHTML = ''; st.className = 'stage';
@@ -582,6 +611,56 @@
     document.body.append(fileIn); fileIn.click();
   }
   app.importPackage = importPackage;
+
+  /* ---------- Travail de l'élève dans un fichier, et dépôt Nuage de secours (avec ou sans Centrale) ---------- */
+  const CLE_NUAGE = 'ts-nuage';
+  const lienNuageLocal = () => { try { return localStorage.getItem(CLE_NUAGE) || ''; } catch (e) { return ''; } };
+  function nomTravail(w) {
+    const s = TL.centrale.session();
+    return ((s ? s.classe + '-' + s.eleve + '-' : 'technostudio-') + w.id).replace(/[^A-Za-z0-9_.-]/g, '-') + '.json';
+  }
+  async function enregistrerTravail(w) {
+    const pg = await app.getProgress(w.id);
+    TL.download(nomTravail(w), JSON.stringify({ app: 'technostudio', format: 'travail', version: 1, atelier: w.id, titre: w.title, travail: pg }, null, 1), 'application/json');
+    TL.toast('Travail enregistré dans tes téléchargements : ' + nomTravail(w), 'ok');
+    return true;
+  }
+  app.enregistrerTravail = enregistrerTravail;
+  function ouvrirTravail() {
+    const fileIn = h('input', { type: 'file', accept: '.json', hidden: true });
+    fileIn.onchange = async () => {
+      const f = fileIn.files[0]; fileIn.remove(); if (!f) return;
+      try {
+        const d = JSON.parse(await TL.readFileText(f));
+        if (!d || d.app !== 'technostudio' || d.format !== 'travail' || !d.travail || !d.atelier) throw new Error('format');
+        if (!app.workshops.get(d.atelier)) { TL.toast('L’atelier de ce travail n’est pas sur ce poste : ' + (d.titre || d.atelier), 'bad'); return; }
+        const pg = TL.centrale.fusion(await app.getProgress(d.atelier), Object.assign({}, d.travail, { wid: d.atelier }));
+        app.progress.set(d.atelier, pg); app.saveProgress(pg);
+        TL.toast('Travail repris : ' + (d.titre || d.atelier), 'ok'); app.go('at-' + d.atelier);
+      } catch (e) { TL.toast('Ce fichier n’est pas un travail TechnoStudio (.json).', 'bad'); }
+    };
+    document.body.append(fileIn); fileIn.click();
+  }
+  async function deposerSurNuage(w) {
+    await enregistrerTravail(w);
+    const s = TL.centrale.session(), lien = (s && s.depot && s.depot.url) || lienNuageLocal();
+    if (lien) {
+      window.open(lien, '_blank', 'noopener');
+      TL.toast('Travail enregistré : glisse le fichier dans la page Nuage qui vient de s’ouvrir.' + (s && s.depot && s.depot.mot_de_passe ? ' Mot de passe : ' + s.depot.mot_de_passe : ''), 'ok');
+      return;
+    }
+    const champ = h('input', { type: 'url', placeholder: 'https://nuage03.apps.education.fr/s/…', value: lienNuageLocal(), 'aria-label': 'Lien du dossier Nuage de la classe' });
+    TL.modal('Dépôt Nuage', h('div.form',
+      h('p', 'Ton travail est enregistré dans tes téléchargements. Aucun dossier Nuage n’est réglé sur cet ordinateur : demande le lien à ton professeur.'),
+      h('label', h('b', 'Professeur : '), 'lien de partage du dossier Nuage de la classe (gardé sur cet ordinateur)', champ)),
+    [{ label: 'Fermer' }, { label: 'Garder et ouvrir', primary: true, onClick: () => {
+      const v = champ.value.trim();
+      if (!/^https:\/\/\S+$/.test(v)) { TL.toast('Le lien doit commencer par https://', 'bad'); return false; }
+      try { localStorage.setItem(CLE_NUAGE, v); } catch (e) { /* stockage indisponible */ }
+      window.open(v, '_blank', 'noopener'); TL.toast('Lien gardé. Glisse le fichier dans la page Nuage.', 'ok');
+    } }]);
+  }
+  app.deposerSurNuage = deposerSurNuage;
   function about() {
     TL.modal('TechnoStudio ' + TL.VERSION, h('div.prose', { html: TL.md('Ateliers de technologie au format de la charte (feuilles P, ressources R, synthèse S, évaluation E, version SEGPA), simulations, programmation de cartes.\n\nFonctionne hors ligne ; se connecte à la **Centrale élèves** (code élève, ateliers reçus, sauvegarde, suivi) selon le **descripteur de passerelle ' + TL.descriptor.version + '** (format ' + TL.descriptor.format + ').') }), [{ label: 'Fermer', primary: true }]);
   }
@@ -633,7 +712,7 @@
 
   app.start = async function () {
     try { const t = localStorage.getItem('tl-theme'); if (t && t !== 'auto') document.documentElement.dataset.theme = t; } catch (e) { /* rien */ }
-    const depuisPortail = /(^|[#&])centrale=/.test(location.hash);
+    const depuisPortail = /(^|[#&])centrale=/.test(location.hash) || /^#activite=/.test(location.hash);   // ou lien direct vers un atelier
     app.profile = await TL.db.get('profile');
     if (!app.profile && window.TL_DEFAULT_PROFILE) app.profile = Object.assign({ createdAt: Date.now() }, window.TL_DEFAULT_PROFILE);
     if (!app.profile && depuisPortail) app.profile = { name: 'Élève', role: 'eleve', classe: '', createdAt: Date.now() };

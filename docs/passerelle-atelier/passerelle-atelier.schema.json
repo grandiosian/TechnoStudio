@@ -84,11 +84,12 @@
             "statut": { "type": "string" },
             "score": { "type": "string" },
             "score_max": { "type": "string" },
-            "details": { "type": "string" }
+            "details": { "type": "string" },
+            "constats": { "type": "string", "description": "Quand et comment l'application envoie des constats de compétences (COMPETENCES.md)." }
           },
           "additionalProperties": false
         },
-        "champs_non_utilises": { "type": "array", "items": { "enum": ["titre", "faites", "total", "statut", "score", "score_max", "details"] } },
+        "champs_non_utilises": { "type": "array", "items": { "enum": ["titre", "faites", "total", "statut", "score", "score_max", "details", "constats"] } },
         "format": { "$ref": "#/$defs/schemaOuRef" }
       }
     },
@@ -127,7 +128,25 @@
       "then": { "anyOf": [{ "required": ["recoit"] }, { "required": ["produit"] }, { "required": ["ressources"] }] }
     },
 
-    "centrale": { "type": "object" },
+    "ateliers": {
+      "description": "Catalogue des ateliers de l'application (ateliers.json, format catalogue.ateliers v1), s'il n'est pas à côté de centrale.json.",
+      "type": "object",
+      "properties": { "catalogue": { "type": "string", "description": "Adresse relative à centrale.json, ou absolue." } }
+    },
+    "centrale": {
+      "type": "object",
+      "properties": {
+        "sites_a_autoriser": { "type": "array", "items": { "type": "string", "pattern": "^https?://[^/]+$" } },
+        "parcours": {
+          "type": "object",
+          "description": "Passage d'une étape de parcours à la suivante (§ 2.6).",
+          "properties": {
+            "bouton_suivant": { "enum": ["module", "application", "aucun"] },
+            "avant_de_quitter": { "type": "string" }
+          }
+        }
+      }
+    },
     "stockage_local": { "type": "object" },
     "acces_javascript": {
       "type": "object",

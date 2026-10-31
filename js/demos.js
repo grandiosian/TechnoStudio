@@ -43,6 +43,7 @@
       level: 'college', duration: 55, version: 3, author: 'TechnoStudio (démo)',
       summary: 'Construire un circuit commandé, comparer série et dérivation, protéger une DEL.',
       competences: ['Mesurer des grandeurs de manière directe ou indirecte', 'Associer des solutions techniques à des fonctions', 'Simuler numériquement la structure d’un objet'],
+      referentiel: ['SFC11.5.1', 'CCRI22.5.1'], // capacités du référentiel de la Centrale
       steps: [
         {
           title: 'Découvrir',
@@ -121,6 +122,7 @@
       level: 'college', duration: 110, version: 3, author: 'TechnoStudio (démo)',
       summary: 'Fiche papier convertie : chaînes d’information et d’énergie, schéma à légender, programme de commande sécurisé.',
       competences: ['Décrire le fonctionnement d’un objet technique à l’aide de ses chaînes', 'Écrire, mettre au point et exécuter un programme'],
+      referentiel: ['SFC13.4.1', 'SFC11.4.1', 'CCRI31.4.3'], // capacités du référentiel de la Centrale
       steps: [
         {
           title: 'Observer le système',
@@ -177,6 +179,7 @@
       level: 'college', duration: 55, version: 2, author: 'TechnoStudio (démo)',
       summary: 'Capteurs, actionneurs, conditions : programmer l’éclairage d’un couloir pas à pas.',
       competences: ['Écrire, mettre au point et exécuter un programme', 'Identifier les entrées et sorties d’un système'],
+      referentiel: ['CCRI31.5.3', 'SFC13.5.1'], // capacités du référentiel de la Centrale
       steps: [
         {
           title: 'Capteurs et actionneurs',
