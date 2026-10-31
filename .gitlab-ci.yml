@@ -1,0 +1,15 @@
+# Forge des communs numériques éducatifs : publie l'appli avec GitLab Pages
+# (adresse affichée dans Déployer → Pages). Le dépôt y est copié depuis GitHub
+# par le workflow .github/workflows/miroirs.yml.
+pages:
+  stage: deploy
+  image: alpine:3.20
+  script:
+    - mkdir -p public
+    - cp -r index.html manifest.webmanifest sw.js .nojekyll centrale.json PASSERELLE.md css js vendor icons dist docs public/
+    - rm -f public/dist/artifact.html
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

@@ -1,0 +1,50 @@
+# Copies de TechnoStudio ailleurs que sur GitHub :
+#  1. La Forge des communs numériques éducatifs (GitLab) : le dépôt y est poussé à chaque envoi sur main.
+#     À configurer une seule fois dans GitHub : Settings → Secrets and variables → Actions → Secrets
+#       FORGE_DEPOT  adresse du dépôt, ex. https://forge.apps.education.fr/lionel.caruana/technostudio
+#       FORGE_JETON  jeton d'accès du projet sur la Forge (Paramètres → Jetons d'accès,
+#                    rôle Maintainer, portée write_repository)
+#     Sur la Forge, .gitlab-ci.yml publie aussi l'appli avec GitLab Pages.
+#  2. Le serveur de la Centrale (technoversailles.alwaysdata.net/miroir/technostudio/) : la copie est faite
+#     par la Centrale elle-même (miroirs.txt, à chaque déploiement et toutes les heures). Ce workflow
+#     vérifie seulement qu'elle est à jour.
+name: Copies (Forge, Centrale)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '47 * * * *'
+
+jobs:
+  forge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Pousser sur la Forge
+        env:
+          DEPOT: ${{ secrets.FORGE_DEPOT }}
+          JETON: ${{ secrets.FORGE_JETON }}
+        run: |
+          if [ -z "$DEPOT" ] || [ -z "$JETON" ]; then echo "::notice title=Forge::Copie ignorée : ajoutez les secrets FORGE_DEPOT et FORGE_JETON."; exit 0; fi
+          URL="https://oauth2:${JETON}@${DEPOT#https://}"; URL="${URL%.git}.git"
+          git push --force "$URL" HEAD:refs/heads/main 2>&1 | sed "s#${JETON}#***#g"
+          git push --force --tags "$URL" 2>&1 | sed "s#${JETON}#***#g" || true
+          echo "::notice title=Forge::Dépôt copié sur ${DEPOT} ($(git rev-parse --short HEAD))"
+
+  centrale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copie sur le serveur de la Centrale à jour ?
+        run: |
+          U=https://technoversailles.alwaysdata.net/miroir/technostudio/
+          ici=$(node -p "require('./centrale.json').atelier.version")
+          code=$(curl -s -o distant.json -w '%{http_code}' "${U}centrale.json")
+          la=$(node -p "try{require('./distant.json').atelier.version}catch(e){'?'}" 2>/dev/null)
+          page=$(curl -s -o /dev/null -w '%{http_code}' "$U")
+          if [ "$code" = 200 ] && [ "$la" = "$ici" ]; then echo "::notice title=Centrale::$U à jour (version $la, page $page)"
+          else echo "::warning title=Centrale::$U : centrale.json $code, version $la (attendue $ici) — la Centrale recopie l'appli à chaque déploiement et toutes les heures"; fi
