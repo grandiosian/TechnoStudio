@@ -80,7 +80,7 @@ Le programme de l'élève part à la Centrale, `https://technoversailles.alwaysd
 | Carte | Ce qui revient | Ce qu'en fait le navigateur |
 |---|---|---|
 | Arduino Uno / Nano | `.hex` (arduino-cli, `arduino:avr`) | l'écrit par USB (Web Serial, STK500 ; vitesse du bootloader trouvée seule) |
-| ESP32 (C++) | images `.bin` (arduino-cli, `esp32:esp32` 2.0.17) | les écrit par USB (esptool-js ; bouton BOOT sur certaines cartes) |
+| ESP32 (C++) | images `.bin` (arduino-cli, `esp32:esp32` 2.0.17) — **sur option**, voir ci-dessous | les écrit par USB (esptool-js ; bouton BOOT sur certaines cartes) |
 | micro:bit | `.hex` universel V1/V2 = MicroPython + `main.py` | l'enregistre : à glisser sur le lecteur **MICROBIT**, sans rien installer avant |
 | ESP32 MicroPython | (pas de compilation) | `main.py` envoyé directement par le câble |
 
@@ -95,6 +95,12 @@ Le programme de l'élève part à la Centrale, `https://technoversailles.alwaysd
   - chaque nuit (pour reprendre les mises à jour de ce dépôt) ;
   - à la demande : Actions → Chaîne de compilation → Run workflow.
 - Rien n'est placé dans le site de la Centrale, sauf `api/compilation.php`, qui lit `~/technostudio-compilation/config.json`.
+
+**ESP32 en C++** : sa chaîne occupe environ 700 Mo de plus. L'hébergement actuel de la Centrale (environ 1 Go au total) ne le permet pas, d'où :
+
+- Uno, Nano et micro:bit sont installés et vérifiés en ligne ;
+- pour l'ESP32 en C++, il faut un hébergement plus grand, puis la variable `COMPILATION_ESP32 = oui` dans le dépôt `centrale` (Settings → Secrets and variables → Actions → Variables) et un nouveau lancement du workflow ;
+- en attendant, l'ESP32 se programme en **MicroPython** (USB direct, sans compilation) ou par le pont local.
 
 **Accès** :
 
