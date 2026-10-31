@@ -129,6 +129,16 @@ Le programme de l'élève part à la Centrale, `https://technoversailles.alwaysd
 | Windows | `pont/installer-windows.ps1` | `pont/demarrer-pont.bat` |
 | Linux | `bash pont/installer-linux.sh` | `node pont/pont.js` |
 
+## 2 bis. Copies du dépôt et de l'appli
+
+| Où | Comment | Adresse |
+|---|---|---|
+| GitHub (référence) | ce dépôt | https://grandiosian.github.io/TechnoStudio/ |
+| Serveur de la Centrale | copie faite par la Centrale (`miroirs.txt`), à chaque déploiement et toutes les heures | https://technoversailles.alwaysdata.net/miroir/technostudio/ |
+| Forge des communs numériques éducatifs | workflow `Copies (Forge, Centrale)` à chaque envoi ; `.gitlab-ci.yml` publie l'appli avec GitLab Pages | une fois les secrets `FORGE_DEPOT` et `FORGE_JETON` ajoutés |
+
+La copie de la Centrale est déclarée comme adresse de secours dans `centrale.json`. Le workflow vérifie toutes les heures qu'elle est à jour.
+
 ## 3. Créer des ateliers
 
 **Fichier → Nouvel atelier** ou **Convertir une fiche papier** (PDF, photos, texte GIFT), avec le profil Enseignant (Compte → Mon profil).
