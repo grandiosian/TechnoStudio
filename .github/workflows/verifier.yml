@@ -50,15 +50,7 @@ jobs:
         run: |
           mkdir -p ~/technostudio-compilation
           cp -r serveur-compilation ~/technostudio-compilation/code
-          bash ~/technostudio-compilation/code/installer-centrale.sh
+          bash ~/technostudio-compilation/code/installer-centrale.sh > installation.log 2>&1 || { echo "::error title=installation::$(tail -c 3000 installation.log | sed -e ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"; exit 1; }
+          echo "::notice title=installation::$(grep -E '^(== |arduino-cli|Version|espace|déjà|!!)' installation.log | tail -c 3000 | sed -e ':a;N;$!ba;s/\n/%0A/g')"
       - name: Compiler les programmes des blocs
-        run: |
-          cd ~/technostudio-compilation/code
-          D=~/technostudio-compilation/travail
-          ko=0
-          for f in "$GITHUB_WORKSPACE"/tests/croquis/*; do
-            b=$(basename "$f"); carte=${b%%-*}
-            node compiler-cli.js fichier "$carte" "$f" --dossier "$D" || ko=1
-          done
-          for c in uno nano esp32 microbit; do node compiler-cli.js essai $c --dossier "$D" || ko=1; done
-          exit $ko
+        run: bash tests/compiler-croquis.sh ~/technostudio-compilation/code ~/technostudio-compilation/travail
