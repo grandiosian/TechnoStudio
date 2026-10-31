@@ -57,4 +57,4 @@ printf '#include <ESP32Servo.h>\nServo s;\nvoid setup(){pinMode(2,OUTPUT);s.atta
 rm -rf "$T"
 # arduino-cli recrée parfois l'index des bibliothèques : inutile sur le serveur
 rm -rf "$SORTIE/arduino15/library_index.json"* "$SORTIE/arduino15/staging" "$SORTIE/arduino15/"*.sig "$SORTIE/telechargements"
-du -sh "$SORTIE"/* "$SORTIE/arduino15/packages"/* "$SORTIE"/arduino15/packages/esp32/hardware/esp32/*/tools/sdk/* 2>/dev/null
+du -sh "$SORTIE"/* "$SORTIE/arduino15/packages"/* "$SORTIE"/arduino15/packages/esp32/hardware/esp32/*/tools/sdk/* 2>/dev/null || true
