@@ -19,12 +19,16 @@ mkdir -p "$HOME/bin" "$TRAVAIL/travaux"
 chmod 700 "$BASE" "$TRAVAIL"
 
 etape "Node.js"
+# Pas de readlink : sur alwaysdata, /usr/bin/node est un aiguillage qui choisit la version du compte
 NODE="$(command -v node || true)"
-[ -z "$NODE" ] && for n in /usr/alwaysdata/node/*/bin/node; do [ -x "$n" ] && NODE="$n"; done
 if [ -z "$NODE" ]; then echo "Node.js introuvable"; exit 1; fi
-NODE="$(readlink -f "$NODE")"
-"$NODE" --version
+echo "$NODE $("$NODE" --version)"
+COPIEE=0; for a in "$@"; do [ "$a" = "--chaine-copiee" ] && COPIEE=1; done
 
+if [ "$COPIEE" = 1 ]; then
+  etape "Chaîne arduino-cli copiée depuis la machine de construction"
+  "$CLI" version && "$CLI" core list && "$CLI" lib list
+else
 etape "arduino-cli"
 if [ ! -x "$CLI" ]; then
   ARCH=$(uname -m); case "$ARCH" in x86_64) F=Linux_64bit;; aarch64|arm64) F=Linux_ARM64;; *) echo "Architecture $ARCH non prévue"; exit 1;; esac
@@ -57,6 +61,8 @@ else
   fi
 fi
 "$CLI" lib install ESP32Servo >/dev/null 2>&1 || true
+
+fi
 
 etape "MicroPython micro:bit"
 mkdir -p "$CODE/microbit"

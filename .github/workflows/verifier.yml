@@ -46,11 +46,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Installer le compilateur (script du serveur)
+      - name: Préparer la chaîne (comme pour le serveur) et l'installer à l'emplacement du serveur
         run: |
-          mkdir -p ~/technostudio-compilation
+          bash serveur-compilation/preparer-chaine.sh ~/chaine > preparation.log 2>&1 || { echo "::error title=préparation::$(tail -c 3000 preparation.log | sed -e ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"; exit 1; }
+          echo "::notice title=préparation::$(grep -E 'Ko →|^[0-9.]+[KMG]\s' preparation.log | tail -c 3000 | sed -e ':a;N;$!ba;s/\n/%0A/g')"
+          mkdir -p ~/bin ~/.arduino15 ~/Arduino ~/technostudio-compilation
+          cp ~/chaine/bin/arduino-cli ~/bin/ && cp -r ~/chaine/arduino15/. ~/.arduino15/ && cp -r ~/chaine/Arduino/. ~/Arduino/
+          rm -rf ~/chaine
           cp -r serveur-compilation ~/technostudio-compilation/code
-          bash ~/technostudio-compilation/code/installer-centrale.sh > installation.log 2>&1 || { echo "::error title=installation::$(tail -c 3000 installation.log | sed -e ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"; exit 1; }
-          echo "::notice title=installation::$(grep -E '^(== |arduino-cli|Version|espace|déjà|!!)' installation.log | tail -c 3000 | sed -e ':a;N;$!ba;s/\n/%0A/g')"
+          bash ~/technostudio-compilation/code/installer-centrale.sh --chaine-copiee > installation.log 2>&1 || { echo "::error title=installation::$(tail -c 3000 installation.log | sed -e ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"; exit 1; }
       - name: Compiler les programmes des blocs
         run: bash tests/compiler-croquis.sh ~/technostudio-compilation/code ~/technostudio-compilation/travail
