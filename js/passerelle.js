@@ -10,7 +10,7 @@
   'use strict';
 
   const APP = 'technostudio';
-  const VERSION = '3.1.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
+  const VERSION = '3.2.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
   const KIND = { feuille: 'P', ressource: 'R', synthese: 'S', evaluation: 'E', fiche: 'F' };
 
   /** Codes des feuilles d'un atelier, comme sur le papier : P1, P2, R1, S1, E1, S·P1 (SEGPA). */

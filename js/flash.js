@@ -1,6 +1,7 @@
 /* TechnoStudio — compilation à distance et téléversement depuis le navigateur.
-   1. Le code C++ part au serveur de compilation (serveur-compilation/serveur.js),
-      qui renvoie le binaire (.hex pour Arduino AVR, images .bin pour ESP32).
+   1. Le programme part au serveur de compilation (la Centrale : api/compilation.php, qui
+      appelle serveur-compilation/compiler-cli.js), qui renvoie le binaire : .hex pour Arduino AVR,
+      images .bin pour ESP32, .hex universel MicroPython pour micro:bit (à glisser sur MICROBIT).
    2. Le navigateur l'écrit lui-même dans la carte branchée en USB (Web Serial,
       Chrome ou Edge) : protocole STK500 pour Uno/Nano, esptool-js pour ESP32.
    Rien à installer sur les postes élèves. */
@@ -9,40 +10,66 @@
   const TL = window.TL || (window.TL = {});
   const F = (TL.flash = {});
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const DEFAUT = 'https://technoversailles.alwaysdata.net/compilation/';
+  // Compilation hébergée par la Centrale (public/api/compilation.php) ; un serveur Node autonome
+  // (serveur-compilation/serveur.js) s'indique par son adresse de base, ex. http://poste-prof:8790/
+  const DEFAUT = 'https://technoversailles.alwaysdata.net/api/compilation.php';
 
   /* ================= Serveur de compilation ================= */
   F.adresse = function () {
     let u = window.TS_COMPILATEUR || '';
     try { u = new URLSearchParams(location.search).get('compilateur') || localStorage.getItem('ts-compilateur') || u; } catch (e) { /* stockage indisponible */ }
     u = String(u || DEFAUT).trim();
-    return u.replace(/\/?$/, '/');
+    return /\.php(\?.*)?$/.test(u) ? u : u.replace(/\/?$/, '/');
   };
+  const estPhp = () => /\.php(\?.*)?$/.test(F.adresse());
+  const urlEtat = () => (estPhp() ? F.adresse() : F.adresse() + 'etat');
+  const urlCompiler = () => (estPhp() ? F.adresse() : F.adresse() + 'compiler');
+  const urlTravail = (id) => (estPhp() ? F.adresse() + '?travail=' + id : F.adresse() + 'travail?id=' + id);
   F.reglerAdresse = function (u) { try { if (u) localStorage.setItem('ts-compilateur', u.trim()); else localStorage.removeItem('ts-compilateur'); } catch (e) { /* rien */ } F.etat = null; };
   F.etat = null;
   F.verifier = async function () {
     try {
-      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 5000);
-      const r = await fetch(F.adresse() + 'etat', { signal: ctl.signal, cache: 'no-store' }); clearTimeout(t);
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
+      const r = await fetch(urlEtat(), { signal: ctl.signal, cache: 'no-store' }); clearTimeout(t);
       F.etat = r.ok ? await r.json() : null;
     } catch (e) { F.etat = null; }
     if (TL.emit) TL.emit('compilateur', F.etat);
     return F.etat;
   };
-  F.compiler = async function (carte, code) {
+  const enTetes = () => {
     const headers = { 'Content-Type': 'application/json' };
     const jeton = TL.centrale && TL.centrale.jeton();
     if (jeton) headers['X-Jeton'] = jeton;
     let cle = ''; try { cle = localStorage.getItem('ts-compilateur-cle') || ''; } catch (e) { /* rien */ }
     if (cle) headers['X-Cle'] = cle;
-    let r;
-    try { r = await fetch(F.adresse() + 'compiler', { method: 'POST', headers, body: JSON.stringify({ carte, code }) }); } catch (e) {
-      throw new Error('Serveur de compilation injoignable (' + F.adresse() + ').');
+    return headers;
+  };
+  const lire = async (r) => { let j = {}; try { j = await r.json(); } catch (e) { /* non JSON */ } if (!r.ok && !j.journal) throw new Error(j.erreur || 'Erreur du serveur de compilation (' + r.status + ').'); return j; };
+  /** Compile ; une compilation longue (ESP32 à froid) est suivie jusqu'au bout. attendre(s) : message d'attente. */
+  F.compiler = async function (carte, code, attendre) {
+    let j;
+    try { j = await lire(await fetch(urlCompiler(), { method: 'POST', headers: enTetes(), body: JSON.stringify({ carte, code }) })); } catch (e) {
+      if (e instanceof TypeError) throw new Error('Serveur de compilation injoignable (' + F.adresse().replace(/^https?:\/\//, '') + ').');
+      throw e;
     }
-    let j = {};
-    try { j = await r.json(); } catch (e) { /* réponse non JSON */ }
-    if (!r.ok && !j.journal) throw new Error(j.erreur || 'Erreur du serveur de compilation (' + r.status + ').');
+    const debut = Date.now();
+    let n = 0;
+    while (j.enCours && j.travail) {
+      if (Date.now() - debut > 6 * 60000) throw new Error('La compilation dure trop longtemps : réessaie dans quelques minutes.');
+      if (attendre && n++ % 5 === 0) attendre('… compilation en cours sur le serveur (' + Math.round((Date.now() - debut) / 1000 + 25) + ' s)');
+      await wait(2000);
+      try { j = await lire(await fetch(urlTravail(j.travail), { headers: enTetes(), cache: 'no-store' })); } catch (e) { if (!(e instanceof TypeError)) throw e; }
+    }
     return j;
+  };
+
+  /** micro:bit : le fichier .hex universel est enregistré, à glisser sur le lecteur MICROBIT. */
+  F.enregistrerHex = function (hex, nom) {
+    const blob = new Blob([hex], { type: 'application/octet-stream' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = nom || 'microbit.hex';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   };
 
   /* ================= Port USB ================= */
@@ -236,11 +263,17 @@
   F.televerser = async function (port, carte, code, o) {
     o = o || {};
     const log = o.log || (() => {});
-    log('Compilation sur le serveur (' + F.adresse().replace(/^https?:\/\//, '') + ')…');
-    const r = await F.compiler(carte, code);
+    log('Compilation sur le serveur (' + F.adresse().replace(/^https?:\/\//, '').replace(/\?.*$/, '') + ')…');
+    const r = await F.compiler(carte, code, log);
     if (r.journal) log(r.journal.trim().split('\n').slice(-25).join('\n'));
     if (!r.ok) { log('✗ ' + (r.erreur || 'Erreur de compilation : corrige le programme.')); return false; }
     log('✓ Compilé' + (r.cache ? ' (déjà en cache)' : r.duree ? ' en ' + (r.duree / 1000).toFixed(1) + ' s' : '') + '.');
+    if (r.format === 'hex-microbit') {
+      F.enregistrerHex(r.hex, r.nom || 'microbit-technostudio.hex');
+      log('✓ Fichier ' + (r.nom || 'microbit-technostudio.hex') + ' enregistré : glisse-le sur le lecteur MICROBIT (la carte redémarre avec ton programme).');
+      return true;
+    }
+    if (!port) throw new Error('Aucun port USB choisi.');
     if (r.format === 'hex') return F.avr(port, r.hex, Object.assign({ bauds: carte === 'nano' ? [57600, 115200] : [115200, 57600] }, o));
     if (r.format === 'bin') return F.esp32(port, r.images, o);
     throw new Error('Réponse inconnue du serveur.');

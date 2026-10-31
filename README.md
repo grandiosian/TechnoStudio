@@ -73,46 +73,47 @@ Le serveur ne reçoit ni nom ni prénom : seulement la classe, le numéro et l'i
 
 > Copie de secours : ajoutez `technostudio https://github.com/grandiosian/TechnoStudio` dans `miroirs.txt` de la Centrale. L'appli sera aussi servie à `https://technoversailles.alwaysdata.net/miroir/technostudio/`. Ajoutez cette adresse en adresse de secours de l'atelier.
 
-## 2. Serveur de compilation (cartes Arduino et ESP32)
+## 2. Compilation des cartes (hébergée par la Centrale)
 
-Le C++ généré par Blockly est envoyé au serveur, qui renvoie le binaire. Le navigateur écrit ensuite ce binaire dans la carte par Web Serial :
+Le programme de l'élève part à la Centrale, `https://technoversailles.alwaysdata.net/api/compilation.php`, qui renvoie :
 
-- **Uno / Nano** : protocole STK500. Les deux vitesses de bootloader sont essayées, ce qui couvre les Nano anciennes et récentes.
-- **ESP32** : esptool-js.
-- **MicroPython** (ESP32, micro:bit) : pas de compilation. `main.py` est envoyé directement par le câble.
+| Carte | Ce qui revient | Ce qu'en fait le navigateur |
+|---|---|---|
+| Arduino Uno / Nano | `.hex` (arduino-cli, `arduino:avr`) | l'écrit par USB (Web Serial, STK500 ; vitesse du bootloader trouvée seule) |
+| ESP32 (C++) | images `.bin` (arduino-cli, `esp32:esp32` 2.0.17) | les écrit par USB (esptool-js ; bouton BOOT sur certaines cartes) |
+| micro:bit | `.hex` universel V1/V2 = MicroPython + `main.py` | l'enregistre : à glisser sur le lecteur **MICROBIT**, sans rien installer avant |
+| ESP32 MicroPython | (pas de compilation) | `main.py` envoyé directement par le câble |
 
-**Installation sur alwaysdata** (terminal SSH) :
+**Installation : automatique.**
 
-```bash
-git clone https://github.com/grandiosian/TechnoStudio ~/technostudio
-bash ~/technostudio/serveur-compilation/installer.sh            # Uno, Nano et ESP32 (~2 Go)
-# ou : bash ~/technostudio/serveur-compilation/installer.sh --sans-esp32
-```
+- Le workflow **« Chaîne de compilation »** du dépôt `centrale` utilise les secrets SSH déjà configurés pour la Centrale. Il :
+  - envoie `serveur-compilation/` dans `~/technostudio-compilation/code/` ;
+  - lance `installer-centrale.sh` : arduino-cli dans `~/bin`, cœurs Arduino et ESP32, MicroPython micro:bit ;
+  - compile un essai par carte sur le serveur, puis vérifie l'API en ligne.
+- Il tourne :
+  - à chaque modification de `public/api/compilation.php` ou du workflow ;
+  - chaque nuit (pour reprendre les mises à jour de ce dépôt) ;
+  - à la demande : Actions → Chaîne de compilation → Run workflow.
+- Rien n'est placé dans le site de la Centrale, sauf `api/compilation.php`, qui lit `~/technostudio-compilation/config.json`.
 
-Ensuite, dans l'administration alwaysdata, **Web → Sites → Ajouter un site** :
+**Accès** :
 
-| Réglage | Valeur |
-|---|---|
-| Type | Node.js |
-| Adresse | `technoversailles.alwaysdata.net/compilation` |
-| Commande | `node ~/technostudio/serveur-compilation/serveur.js` |
-| Variables | `CENTRALE=https://technoversailles.alwaysdata.net/api/` et `ORIGINES=https://grandiosian.github.io,https://technoversailles.alwaysdata.net` |
+- Un élève connecté à la Centrale compile sans rien faire de plus : le jeton est vérifié par la Centrale.
+- Un enseignant peut compiler sans code élève avec la **clé enseignant** créée à l'installation.
+  - Pour la lire : `cat ~/technostudio-compilation/config.json` en SSH.
+  - Pour l'utiliser : la saisir dans Compte → Réglages de connexion.
 
-Vérification : `https://technoversailles.alwaysdata.net/compilation/etat`. C'est l'adresse utilisée par défaut par l'appli. Une autre adresse se règle dans Compte → Réglages de connexion, ou avec `?compilateur=` dans l'adresse.
+**Sécurité et limites** :
 
-**Sécurité** :
+- Le code reçu est seulement compilé, jamais exécuté.
+- Seules les bibliothèques connues peuvent être incluses. `#include "…"`, `asm`, `.incbin`, `#pragma`, `#line` et `#embed` sont refusés, pour que le préprocesseur ne puisse pas lire de fichiers du serveur.
+- 15 compilations par minute et par élève, une compilation arduino-cli à la fois.
+- Les résultats sont en cache, si bien qu'une classe qui compile le même exemple n'occupe le processeur qu'une fois.
+- Une compilation de plus de 25 s (premier ESP32) continue en arrière-plan, et l'appli attend son résultat.
 
-- Seul un élève connecté à la Centrale peut compiler. Son jeton est vérifié auprès d'elle, sans effet de bord.
-- Un enseignant peut compiler sans code élève avec une clé : variable `CLES=…`, saisie dans les réglages de l'appli.
-- Le code reçu est seulement compilé, jamais exécuté. Le préprocesseur pourrait pourtant lire des fichiers du serveur : seules les bibliothèques connues peuvent donc être incluses. `#include "…"`, `asm`, `.incbin`, `#pragma`, `#line` et `#embed` sont refusés.
-- Limites :
-  - 12 compilations par minute et par élève ;
-  - file d'attente de 40 demandes ;
-  - les résultats sont mis en cache, si bien qu'une classe qui compile le même exemple n'occupe le processeur qu'une fois.
+**Autre hébergement** : `serveur-compilation/serveur.js` est un serveur Node autonome, avec les mêmes règles et le même compilateur (`compilation.js`). Il s'installe avec `installer.sh`, et son adresse se règle dans Compte → Réglages de connexion.
 
-  Pour isoler complètement les fichiers de la Centrale, le serveur peut tourner sur un autre compte.
-
-**Mise à jour automatique** : le workflow `.github/workflows/deployer-compilation.yml` envoie le dossier `serveur-compilation/` à chaque modification. Il faut ajouter dans GitHub les secrets `ALWAYSDATA_COMPTE` et `ALWAYSDATA_SSH_KEY`, les mêmes que pour la Centrale. Pour redémarrer le site automatiquement, ajoutez aussi `ALWAYSDATA_API_TOKEN` et la variable `ALWAYSDATA_SITE_ID`.
+**Vérification** : à chaque envoi, GitHub installe le compilateur avec le script du serveur, puis compile pour chaque carte les programmes produits par les blocs (`tests/croquis/`).
 
 **Sans internet** : le pont local (`pont/`) compile et téléverse depuis un poste équipé.
 

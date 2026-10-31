@@ -154,8 +154,8 @@ avancement d’une feuille (progression.php) ; la Centrale garde le meilleur
 
 | champ | type | obligatoire |
 |---|---|---|
-| `carte` | string (uno, nano, esp32) | oui |
-| `code` | string — C++ Arduino, 100 Ko au plus ; seules les bibliothèques connues peuvent être incluses | oui |
+| `carte` | string (uno, nano, esp32, microbit) | oui |
+| `code` | string — C++ Arduino (100 Ko au plus ; seules les bibliothèques connues peuvent être incluses) ou MicroPython pour microbit (30 Ko) | oui |
 
 ### CompilationReponse
 
@@ -165,11 +165,14 @@ avancement d’une feuille (progression.php) ; la Centrale garde le meilleur
 | `ok` | boolean | oui |
 | `journal` | string |  |
 | `erreur` | string |  |
-| `format` | string (hex, bin) |  |
+| `format` | string (hex, bin, hex-microbit) |  |
 | `hex` | string |  |
+| `nom` | string |  |
 | `images` | object[] |  |
 | `duree` | number |  |
 | `cache` | boolean |  |
+| `enCours` | boolean |  |
+| `travail` | string |  |
 
 ### Package
 
@@ -288,7 +291,7 @@ L’appli garde la main hors ligne. Connecté, chaque modification est envoyée 
 |---|---|
 | `jeton` | En-tête X-Jeton: <jeton> fourni par le module de la Centrale (formulaire Centrale.afficherConnexion ou jeton du portail). Les codes élèves sont gérés par la Centrale seule. |
 | `site` | Origine du site autorisée dans la Centrale (Réglages → Sites autorisés), sinon 403. |
-| `compilation` | Serveur de compilation : X-Jeton de la Centrale (vérifié auprès d’elle, gardé 20 min) ou X-Cle enseignant ; OUVERT=1 sur un réseau local seulement. |
+| `compilation` | Compilation : X-Jeton d’un élève connecté (vérifié par la Centrale) ou X-Cle enseignant. Serveur Node autonome (serveur-compilation/serveur.js) : mêmes règles, OUVERT=1 sur un réseau local seulement. |
 | `none` | Sans authentification. |
 | `local` | Pont local (127.0.0.1:8765) : origine autorisée (localhost, réseau local, site de l’appli) ; aucun compte. |
 
@@ -308,8 +311,9 @@ L’appli garde la main hors ligne. Connecté, chaque modification est envoyée 
 | POST | `<Centrale>/api/progression.php` | jeton | { app } & ProgressionEnvoi | { progression } | 413 details > 20 Ko |
 | POST | `<Centrale>/api/activites.php` | jeton | { app, activites: Activite[] } |  |  |
 | POST | `<Centrale>/api/surnom.php` | jeton | { surnom } | { identifiant, surnom } |  |
-| GET | `<compilation>/etat` | none |  | { version, arduinoCli, cartes: { uno\|nano\|esp32: { installee } }, auth, file } |  |
-| POST | `<compilation>/compiler` | compilation | CompilationDemande | CompilationReponse | 400 code refusé (directive ou bibliothèque non autorisée) ; 401 non connecté ; 429 12 compilations par minute au plus ; 503 serveur occupé ou carte non installée |
+| GET | `<Centrale>/api/compilation.php` | none |  | { version, arduinoCli, cartes: { uno\|nano\|esp32\|microbit: { installee } }, auth } |  |
+| POST | `<Centrale>/api/compilation.php` | compilation | CompilationDemande | CompilationReponse (ou { enCours, travail } après 25 s) | 400 code refusé (directive ou bibliothèque non autorisée) ; 401 non connecté ; 429 15 compilations par minute au plus ; 503 compilateur non installé |
+| GET | `<Centrale>/api/compilation.php?travail=<id>` | compilation |  | CompilationReponse ou { enCours } |  |
 | GET | `http://127.0.0.1:8765/status` | local |  | { pont, arduinoCli, mpremote, cores } |  |
 | GET | `http://127.0.0.1:8765/ports` | local |  | { ports: { address, label, board?, fqbn? }[] } |  |
 | POST | `http://127.0.0.1:8765/compile` | local | { board, fqbn, code } | { ok, log, size? } |  |

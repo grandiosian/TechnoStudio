@@ -342,14 +342,15 @@
       const chip = (k, label, dis) => h('button.fchip' + (via === k ? '.on' : ''), { type: 'button', disabled: !!dis, onclick: () => { via = k; TL.panels.refresh('carte'); } }, label);
       let detail;
       if (via === 'serveur') {
-        const carteOk = fe && fe.cartes && fe.cartes[C.board] && fe.cartes[C.board].installee;
+        const cs = C.carteServeur(C.board);
+        const carteOk = fe && fe.cartes && fe.cartes[cs] && fe.cartes[cs].installee;
         detail = h('div.p-col',
           h('div.p-state' + (carteOk ? '.ok' : fe ? '.warn' : '.bad'), fe ? (carteOk ? 'Serveur de compilation prêt' : 'Serveur joint, mais la carte ' + C.BOARDS[C.board].name + ' n’y est pas installée') : 'Serveur de compilation injoignable'),
           h('small.muted.mono', TL.flash.adresse().replace(/^https?:\/\//, '')),
           !TL.centrale.connecte() && fe && fe.auth !== 'ouvert' ? h('p.small', 'Connecte-toi avec ton code élève (menu Centrale) pour compiler sur le serveur.') : null,
-          !TL.flash.supporte ? h('p.small.callout.warn', 'Téléversement USB : utilise Chrome ou Edge sur ordinateur.') : h('p.small.muted', 'Au premier envoi, choisis le port USB de la carte.'),
+          C.board === 'microbit' ? null : !TL.flash.supporte ? h('p.small.callout.warn', 'Téléversement USB : utilise Chrome ou Edge sur ordinateur.') : h('p.small.muted', 'Au premier envoi, choisis le port USB de la carte.'),
           h('div.p-row2', h('button.btn.small.ghost', { type: 'button', onclick: async () => { await TL.flash.verifier(); TL.panels.refresh('carte'); } }, '↻ Tester'),
-            TL.flash.supporte ? h('button.btn.small.ghost', { type: 'button', onclick: async () => { try { const p = await TL.flash.choisirPort(true); C.serial.port = p; log('Port USB choisi.'); } catch (e) { /* annulé */ } } }, 'Changer de port') : null));
+            TL.flash.supporte && C.board !== 'microbit' ? h('button.btn.small.ghost', { type: 'button', onclick: async () => { try { const p = await TL.flash.choisirPort(true); C.serial.port = p; log('Port USB choisi.'); } catch (e) { /* annulé */ } } }, 'Changer de port') : null));
       } else if (via === 'pont') {
         const psel = h('select.field', { 'aria-label': 'Port' }, h('option', { value: '' }, ports.length ? 'Choisir le port…' : 'Aucun port détecté'), ports.map((p) => h('option', { value: p.address }, p.label + (p.board ? ' · ' + p.board : ''))));
         psel.value = port; psel.onchange = () => (port = psel.value);
@@ -362,11 +363,12 @@
       } else detail = h('p.small.muted', 'Chrome ou Edge : la carte MicroPython (ESP32, micro:bit) reçoit main.py directement par le câble USB.');
       body.append(h('div.p-label', 'Carte'), bsel, ex,
         h('div.p-label', 'Téléversement'),
-        h('div.p-chips', lang === 'cpp' ? chip('serveur', 'Serveur + USB') : chip('webserial', 'USB direct', !C.serial.supported), chip('pont', 'Pont local')),
+        h('div.p-chips', lang === 'cpp' ? chip('serveur', 'Serveur + USB') : C.board === 'microbit' ? chip('serveur', 'Fichier .hex') : null, lang === 'mpy' ? chip('webserial', 'USB direct', !C.serial.supported) : null, chip('pont', 'Pont local')),
         detail,
         h('div.p-label', 'Actions'),
         h('div.p-col',
           lang === 'cpp' ? h('button.btn.small.ghost', { type: 'button', onclick: () => C.actions.verify(log, via) }, '✓ Vérifier (compiler)') : null,
+          C.board === 'microbit' && via === 'serveur' ? h('p.small.muted', 'Le fichier .hex contient MicroPython et ton programme : glisse-le sur le lecteur MICROBIT, aucune installation préalable.') : null,
           h('button.btn.small.primary', { type: 'button', onclick: () => C.actions.upload({ via, port, log }) }, '⇪ Téléverser'),
           h('button.btn.small.ghost', { type: 'button', onclick: () => C.actions.exportFile() }, 'Exporter ' + (lang === 'cpp' ? 'le .ino' : 'main.py'))));
     } });
@@ -491,7 +493,7 @@
             try { if (cle.value) localStorage.setItem('ts-compilateur-cle', cle.value); else localStorage.removeItem('ts-compilateur-cle'); } catch (e) { /* rien */ }
             TL.toast('Réglages enregistrés : rechargement…', 'ok'); setTimeout(() => location.reload(), 600);
           } }, 'Enregistrer'),
-          h('button.btn.ghost', { type: 'button', onclick: async () => { compEtat.textContent = 'Test…'; const e = await TL.flash.verifier(); compEtat.textContent = e ? 'Serveur de compilation ' + e.version + ' · ' + Object.entries(e.cartes).filter(([, c]) => c.installee).map(([k]) => k).join(', ') : 'Serveur de compilation injoignable.'; } }, 'Tester le serveur de compilation'), compEtat))));
+          h('button.btn.ghost', { type: 'button', onclick: async () => { compEtat.textContent = 'Test…'; const e = await TL.flash.verifier(); compEtat.textContent = e ? 'Serveur de compilation ' + e.version + ' · cartes prêtes : ' + (Object.entries(e.cartes).filter(([, c]) => c.installee).map(([k]) => k).join(', ') || 'aucune') : 'Serveur de compilation injoignable.'; } }, 'Tester le serveur de compilation'), compEtat))));
 
     const restoreIn = h('input', { type: 'file', accept: '.json', hidden: true });
     restoreIn.onchange = async () => {

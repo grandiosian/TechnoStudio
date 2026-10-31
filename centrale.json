@@ -6,7 +6,7 @@
  "atelier": {
   "app": "technostudio",
   "nom": "TechnoStudio",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Ateliers de technologie au format de la charte (feuilles, ressources, synthèse, évaluation, SEGPA), simulateur de circuits, maquettes programmables et programmation Blockly de cartes Arduino, ESP32 et micro:bit.",
   "url": "https://grandiosian.github.io/TechnoStudio/",
   "urls_secours": [],
@@ -368,12 +368,20 @@
   }
  },
  "compilation": {
-  "description": "Programmes C++ des cartes Arduino et ESP32 : compilés par serveur-compilation/serveur.js, puis écrits dans la carte par le navigateur (Web Serial).",
-  "serveur_par_defaut": "https://technoversailles.alwaysdata.net/compilation/",
-  "acces": "En-tête X-Jeton de la Centrale (vérifié par GET progression.php?app=technostudio) ou clé enseignant X-Cle.",
+  "description": "Programmes des cartes : compilés par la Centrale (api/compilation.php, qui appelle serveur-compilation/compiler-cli.js de ce dépôt), puis écrits dans la carte par le navigateur (Web Serial) ou, pour la micro:bit, enregistrés en .hex à glisser sur le lecteur MICROBIT.",
+  "adresse_par_defaut": "https://technoversailles.alwaysdata.net/api/compilation.php",
+  "installation": "Workflow « Chaîne de compilation » du dépôt centrale : arduino-cli, cœurs arduino:avr et esp32:esp32, MicroPython micro:bit, dans ~/technostudio-compilation (hors du site).",
+  "cartes": {
+   "uno": ".hex (STK500)",
+   "nano": ".hex (STK500, 57600 ou 115200 bauds)",
+   "esp32": "images .bin (esptool-js)",
+   "microbit": ".hex universel V1/V2 : MicroPython + main.py"
+  },
+  "acces": "En-tête X-Jeton d’un élève connecté, ou X-Cle (clé enseignant, ~/technostudio-compilation/config.json).",
   "points_acces": {
-   "GET etat": "{ version, cartes, auth, file }",
-   "POST compiler": "{ carte, code } → { ok, journal, format: hex|bin, hex | images }"
+   "GET": "état : { version, cartes: { <carte>: { installee } } }",
+   "POST { carte, code }": "{ ok, format: hex|bin|hex-microbit, hex | images, journal } ou { enCours, travail }",
+   "GET ?travail=<id>": "suite d’une compilation longue"
   },
   "demande": {
    "$ref": "#/$defs/CompilationDemande"
@@ -813,12 +821,13 @@
      "enum": [
       "uno",
       "nano",
-      "esp32"
+      "esp32",
+      "microbit"
      ]
     },
     "code": {
      "type": "string",
-     "description": "C++ Arduino, 100 Ko au plus ; seules les bibliothèques connues peuvent être incluses"
+     "description": "C++ Arduino (100 Ko au plus ; seules les bibliothèques connues peuvent être incluses) ou MicroPython pour microbit (30 Ko)"
     }
    },
    "required": [
@@ -842,10 +851,14 @@
      "type": "string",
      "enum": [
       "hex",
-      "bin"
+      "bin",
+      "hex-microbit"
      ]
     },
     "hex": {
+     "type": "string"
+    },
+    "nom": {
      "type": "string"
     },
     "images": {
@@ -868,6 +881,12 @@
     },
     "cache": {
      "type": "boolean"
+    },
+    "enCours": {
+     "type": "boolean"
+    },
+    "travail": {
+     "type": "string"
     }
    },
    "required": [

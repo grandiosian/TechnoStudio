@@ -1,0 +1,4 @@
+Micrologiciels MicroPython de la micro:bit, téléchargés par l'installation (installer.sh) :
+  micropython-microbit-v1.1.1.hex  https://github.com/bbcmicrobit/micropython/releases
+  micropython-microbit-v2.1.2.hex  https://github.com/microbit-foundation/micropython-microbit-v2/releases
+Ils ne sont pas versionnés dans le dépôt.

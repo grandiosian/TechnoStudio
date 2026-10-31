@@ -34,3 +34,31 @@ jobs:
         run: |
           node tools/build.js
           git diff --quiet -- dist/technostudio-autonome.html || { echo "::error::dist/technostudio-autonome.html n'est pas à jour : lancez node tools/build.js"; exit 1; }
+
+  # Compilation réelle avec arduino-cli, exactement comme sur le serveur de la Centrale :
+  # le script d'installation du serveur est lancé sur la machine GitHub, puis les programmes
+  # produits par les blocs (tests/croquis) sont compilés pour chaque carte.
+  compilation-reelle:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Installer le compilateur (script du serveur)
+        run: |
+          mkdir -p ~/technostudio-compilation
+          cp -r serveur-compilation ~/technostudio-compilation/code
+          bash ~/technostudio-compilation/code/installer-centrale.sh
+      - name: Compiler les programmes des blocs
+        run: |
+          cd ~/technostudio-compilation/code
+          D=~/technostudio-compilation/travail
+          ko=0
+          for f in "$GITHUB_WORKSPACE"/tests/croquis/*; do
+            b=$(basename "$f"); carte=${b%%-*}
+            node compiler-cli.js fichier "$carte" "$f" --dossier "$D" || ko=1
+          done
+          for c in uno nano esp32 microbit; do node compiler-cli.js essai $c --dossier "$D" || ko=1; done
+          exit $ko

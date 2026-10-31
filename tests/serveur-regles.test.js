@@ -1,6 +1,6 @@
 /* Règles d'acceptation du code par le serveur de compilation (sans arduino-cli). */
 'use strict';
-const { controlerCode } = require('../serveur-compilation/serveur.js');
+const { controlerCode } = require("../serveur-compilation/compilation.js");
 const prog = 'void setup(){}\nvoid loop(){}\n';
 const cas = [
   [true, '#include <Servo.h>\n' + prog], [true, '#include <ESP32Servo.h> // servo\n' + prog], [true, '#define LED 13\n#ifdef LED\n#endif\n' + prog],

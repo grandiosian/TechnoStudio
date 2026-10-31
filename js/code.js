@@ -389,14 +389,17 @@
   };
 
   // Mode de téléversement conseillé pour une carte
-  C.viaDefaut = (board) => (C.BOARDS[board] && C.BOARDS[board].lang === 'mpy' ? (C.serial.supported ? 'webserial' : 'pont') : 'serveur');
+  // micro:bit : fichier .hex fabriqué par le serveur (aucun micrologiciel à installer avant, tout navigateur)
+  C.viaDefaut = (board) => (board === 'microbit' ? 'serveur' : C.BOARDS[board] && C.BOARDS[board].lang === 'mpy' ? (C.serial.supported ? 'webserial' : 'pont') : 'serveur');
+  /** Carte telle que le serveur de compilation la connaît. */
+  C.carteServeur = (board) => (board === 'microbit' ? 'microbit' : C.BOARDS[board] && C.BOARDS[board].lang === 'cpp' ? board : null);
   const pourcent = (log) => { let dernier = -1; return (v) => { const p = Math.floor(v * 10) * 10; if (p !== dernier) { dernier = p; log('… ' + p + ' %'); } }; };
 
   // Actions communes (panneaux et bloc d'atelier)
   C.actions = {
     async verify(log, via) {
       const cur = C.current; if (!cur) return;
-      if (cur.lang !== 'cpp') { log('Code MicroPython : pas de compilation, il est vérifié par la carte au lancement.'); return; }
+      if (cur.lang !== 'cpp' && !(cur.board === 'microbit' && via === 'serveur')) { log('Code MicroPython : pas de compilation, il est vérifié par la carte au lancement.'); return; }
       if (via === 'pont') {
         if (!(await C.pont.check())) { log('Pont local introuvable : lance pont/demarrer-pont, ou utilise le serveur de compilation.'); return; }
         log('Compilation locale pour ' + C.BOARDS[cur.board].name + '…');
@@ -406,9 +409,9 @@
       }
       log('Compilation sur le serveur pour ' + C.BOARDS[cur.board].name + '…');
       try {
-        const r = await TL.flash.compiler(cur.board, cur.code);
+        const r = await TL.flash.compiler(C.carteServeur(cur.board), cur.code, log);
         if (r.journal) log(r.journal.trim().split('\n').slice(-25).join('\n'));
-        log(r.ok ? '✓ Compilation réussie' + (r.hex ? ' (' + TL.flash.lireHex(r.hex).length + ' octets).' : '.') : '✗ ' + (r.erreur || 'Erreur de compilation.'));
+        log(r.ok ? '✓ Compilation réussie' + (r.format === 'hex' ? ' (' + TL.flash.lireHex(r.hex).length + ' octets).' : '.') : '✗ ' + (r.erreur || 'Erreur de compilation.'));
         return r.ok;
       } catch (e) { log('✗ ' + e.message); return false; }
     },
@@ -418,10 +421,13 @@
       const log = o.log || (() => {});
       const via = o.via || C.viaDefaut(cur.board);
       if (via === 'serveur') {
-        if (cur.lang !== 'cpp') { log('Carte MicroPython : choisis « USB direct ».'); return false; }
-        let usb;
-        try { usb = await TL.flash.choisirPort(o.nouveauPort); } catch (e) { log(e.name === 'NotFoundError' ? 'Aucun port choisi.' : '✗ ' + e.message); return false; }
-        try { return await TL.flash.televerser(usb, cur.board, cur.code, { log, progres: pourcent(log) }); } catch (e) { log('✗ ' + e.message); return false; }
+        const carte = C.carteServeur(cur.board);
+        if (!carte) { log('ESP32 en MicroPython : choisis « USB direct ».'); return false; }
+        let usb = null;
+        if (carte !== 'microbit') { // le port se choisit dans le clic, avant d'attendre le serveur
+          try { usb = await TL.flash.choisirPort(o.nouveauPort); } catch (e) { log(e.name === 'NotFoundError' ? 'Aucun port choisi.' : '✗ ' + e.message); return false; }
+        }
+        try { return await TL.flash.televerser(usb, carte, cur.code, { log, progres: pourcent(log) }); } catch (e) { log('✗ ' + e.message); return false; }
       }
       if (via === 'webserial') {
         if (cur.lang !== 'mpy') { log('Carte Arduino / ESP32 C++ : choisis « Serveur ».'); return false; }

@@ -3398,7 +3398,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
 (function () {
   'use strict';
   const TL = (window.TL = window.TL || {});
-  TL.VERSION = '3.1.0';
+  TL.VERSION = '3.2.0';
   TL.FORMAT = 2;
 
   /* ---------- DOM ---------- */
@@ -4037,8 +4037,8 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     Ressource: obj({ nom: str({ description: '<atelier>.technostudio.json (ou .gift / .txt GIFT)' }), taille: num(), type: str(), maj: num() }, ['nom', 'maj'], { description: 'fichier déposé par l’enseignant (ressources.php) : un Workshop, un Workshop[] ou un Package' }),
     Activite: obj({ id: str({ pattern: '^[A-Za-z0-9_./-]+$', description: '<atelier>/<code feuille>, ex. charte-lampe-de-poche/P1' }), titre: str(), groupe: str(), total: num() }, ['id'], { description: 'colonne du tableau de suivi (activites.php)' }),
     ProgressionEnvoi: obj({ activite: str(), titre: str(), statut: str({ enum: ['commence', 'termine'] }), faites: num(), total: num(), score: num(), score_max: num(), details: obj({ feuille: str(), reponses: arr(obj({ q: str(), type: str(), r: str(), note: str(), aCorriger: bool })) }, [], { description: '20 Ko au plus' }) }, ['activite'], { description: 'avancement d’une feuille (progression.php) ; la Centrale garde le meilleur' }),
-    CompilationDemande: obj({ carte: str({ enum: ['uno', 'nano', 'esp32'] }), code: str({ description: 'C++ Arduino, 100 Ko au plus ; seules les bibliothèques connues peuvent être incluses' }) }, ['carte', 'code']),
-    CompilationReponse: obj({ ok: bool, journal: str(), erreur: str(), format: str({ enum: ['hex', 'bin'] }), hex: str(), images: arr(obj({ adresse: num(), donnees: str({ description: 'base64' }) })), duree: num(), cache: bool }, ['ok']),
+    CompilationDemande: obj({ carte: str({ enum: ['uno', 'nano', 'esp32', 'microbit'] }), code: str({ description: 'C++ Arduino (100 Ko au plus ; seules les bibliothèques connues peuvent être incluses) ou MicroPython pour microbit (30 Ko)' }) }, ['carte', 'code']),
+    CompilationReponse: obj({ ok: bool, journal: str(), erreur: str(), format: str({ enum: ['hex', 'bin', 'hex-microbit'] }), hex: str(), nom: str(), images: arr(obj({ adresse: num(), donnees: str({ description: 'base64' }) })), duree: num(), cache: bool, enCours: bool, travail: str() }, ['ok']),
     Package: obj({ workshops: arr({ $ref: 'Workshop' }), classes: arr(str()) }, ['workshops'], { description: 'paquet de plusieurs ateliers (.technostudio.json)' }),
   };
 
@@ -4090,7 +4090,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
   const AUTH = {
     jeton: 'En-tête X-Jeton: <jeton> fourni par le module de la Centrale (formulaire Centrale.afficherConnexion ou jeton du portail). Les codes élèves sont gérés par la Centrale seule.',
     site: 'Origine du site autorisée dans la Centrale (Réglages → Sites autorisés), sinon 403.',
-    compilation: 'Serveur de compilation : X-Jeton de la Centrale (vérifié auprès d’elle, gardé 20 min) ou X-Cle enseignant ; OUVERT=1 sur un réseau local seulement.',
+    compilation: 'Compilation : X-Jeton d’un élève connecté (vérifié par la Centrale) ou X-Cle enseignant. Serveur Node autonome (serveur-compilation/serveur.js) : mêmes règles, OUVERT=1 sur un réseau local seulement.',
     none: 'Sans authentification.',
     local: 'Pont local (127.0.0.1:8765) : origine autorisée (localhost, réseau local, site de l’appli) ; aucun compte.',
   };
@@ -4109,8 +4109,9 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     { method: 'POST', path: C + 'progression.php', auth: 'jeton', request: '{ app } & ProgressionEnvoi', response: '{ progression }', errors: { 413: 'details > 20 Ko' } },
     { method: 'POST', path: C + 'activites.php', auth: 'jeton', request: '{ app, activites: Activite[] }' },
     { method: 'POST', path: C + 'surnom.php', auth: 'jeton', request: '{ surnom }', response: '{ identifiant, surnom }' },
-    { method: 'GET', path: '<compilation>/etat', auth: 'none', response: '{ version, arduinoCli, cartes: { uno|nano|esp32: { installee } }, auth, file }', note: 'serveur de compilation (serveur-compilation/serveur.js)' },
-    { method: 'POST', path: '<compilation>/compiler', auth: 'compilation', request: 'CompilationDemande', response: 'CompilationReponse', errors: { 400: 'code refusé (directive ou bibliothèque non autorisée)', 401: 'non connecté', 429: '12 compilations par minute au plus', 503: 'serveur occupé ou carte non installée' } },
+    { method: 'GET', path: C + 'compilation.php', auth: 'none', response: '{ version, arduinoCli, cartes: { uno|nano|esp32|microbit: { installee } }, auth }', note: 'compilation hébergée par la Centrale' },
+    { method: 'POST', path: C + 'compilation.php', auth: 'compilation', request: 'CompilationDemande', response: 'CompilationReponse (ou { enCours, travail } après 25 s)', errors: { 400: 'code refusé (directive ou bibliothèque non autorisée)', 401: 'non connecté', 429: '15 compilations par minute au plus', 503: 'compilateur non installé' } },
+    { method: 'GET', path: C + 'compilation.php?travail=<id>', auth: 'compilation', response: 'CompilationReponse ou { enCours }' },
     { method: 'GET', path: 'http://127.0.0.1:8765/status', auth: 'local', response: '{ pont, arduinoCli, mpremote, cores }', note: 'pont local d’un poste équipé (facultatif)' },
     { method: 'GET', path: 'http://127.0.0.1:8765/ports', auth: 'local', response: '{ ports: { address, label, board?, fqbn? }[] }' },
     { method: 'POST', path: 'http://127.0.0.1:8765/compile', auth: 'local', request: '{ board, fqbn, code }', response: '{ ok, log, size? }' },
@@ -4193,7 +4194,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
   'use strict';
 
   const APP = 'technostudio';
-  const VERSION = '3.1.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
+  const VERSION = '3.2.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
   const KIND = { feuille: 'P', ressource: 'R', synthese: 'S', evaluation: 'E', fiche: 'F' };
 
   /** Codes des feuilles d'un atelier, comme sur le papier : P1, P2, R1, S1, E1, S·P1 (SEGPA). */
@@ -6966,14 +6967,17 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
   };
 
   // Mode de téléversement conseillé pour une carte
-  C.viaDefaut = (board) => (C.BOARDS[board] && C.BOARDS[board].lang === 'mpy' ? (C.serial.supported ? 'webserial' : 'pont') : 'serveur');
+  // micro:bit : fichier .hex fabriqué par le serveur (aucun micrologiciel à installer avant, tout navigateur)
+  C.viaDefaut = (board) => (board === 'microbit' ? 'serveur' : C.BOARDS[board] && C.BOARDS[board].lang === 'mpy' ? (C.serial.supported ? 'webserial' : 'pont') : 'serveur');
+  /** Carte telle que le serveur de compilation la connaît. */
+  C.carteServeur = (board) => (board === 'microbit' ? 'microbit' : C.BOARDS[board] && C.BOARDS[board].lang === 'cpp' ? board : null);
   const pourcent = (log) => { let dernier = -1; return (v) => { const p = Math.floor(v * 10) * 10; if (p !== dernier) { dernier = p; log('… ' + p + ' %'); } }; };
 
   // Actions communes (panneaux et bloc d'atelier)
   C.actions = {
     async verify(log, via) {
       const cur = C.current; if (!cur) return;
-      if (cur.lang !== 'cpp') { log('Code MicroPython : pas de compilation, il est vérifié par la carte au lancement.'); return; }
+      if (cur.lang !== 'cpp' && !(cur.board === 'microbit' && via === 'serveur')) { log('Code MicroPython : pas de compilation, il est vérifié par la carte au lancement.'); return; }
       if (via === 'pont') {
         if (!(await C.pont.check())) { log('Pont local introuvable : lance pont/demarrer-pont, ou utilise le serveur de compilation.'); return; }
         log('Compilation locale pour ' + C.BOARDS[cur.board].name + '…');
@@ -6983,9 +6987,9 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
       }
       log('Compilation sur le serveur pour ' + C.BOARDS[cur.board].name + '…');
       try {
-        const r = await TL.flash.compiler(cur.board, cur.code);
+        const r = await TL.flash.compiler(C.carteServeur(cur.board), cur.code, log);
         if (r.journal) log(r.journal.trim().split('\n').slice(-25).join('\n'));
-        log(r.ok ? '✓ Compilation réussie' + (r.hex ? ' (' + TL.flash.lireHex(r.hex).length + ' octets).' : '.') : '✗ ' + (r.erreur || 'Erreur de compilation.'));
+        log(r.ok ? '✓ Compilation réussie' + (r.format === 'hex' ? ' (' + TL.flash.lireHex(r.hex).length + ' octets).' : '.') : '✗ ' + (r.erreur || 'Erreur de compilation.'));
         return r.ok;
       } catch (e) { log('✗ ' + e.message); return false; }
     },
@@ -6995,10 +6999,13 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
       const log = o.log || (() => {});
       const via = o.via || C.viaDefaut(cur.board);
       if (via === 'serveur') {
-        if (cur.lang !== 'cpp') { log('Carte MicroPython : choisis « USB direct ».'); return false; }
-        let usb;
-        try { usb = await TL.flash.choisirPort(o.nouveauPort); } catch (e) { log(e.name === 'NotFoundError' ? 'Aucun port choisi.' : '✗ ' + e.message); return false; }
-        try { return await TL.flash.televerser(usb, cur.board, cur.code, { log, progres: pourcent(log) }); } catch (e) { log('✗ ' + e.message); return false; }
+        const carte = C.carteServeur(cur.board);
+        if (!carte) { log('ESP32 en MicroPython : choisis « USB direct ».'); return false; }
+        let usb = null;
+        if (carte !== 'microbit') { // le port se choisit dans le clic, avant d'attendre le serveur
+          try { usb = await TL.flash.choisirPort(o.nouveauPort); } catch (e) { log(e.name === 'NotFoundError' ? 'Aucun port choisi.' : '✗ ' + e.message); return false; }
+        }
+        try { return await TL.flash.televerser(usb, carte, cur.code, { log, progres: pourcent(log) }); } catch (e) { log('✗ ' + e.message); return false; }
       }
       if (via === 'webserial') {
         if (cur.lang !== 'mpy') { log('Carte Arduino / ESP32 C++ : choisis « Serveur ».'); return false; }
@@ -7611,8 +7618,9 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
 ;
 /* ---- js/flash.js ---- */
 /* TechnoStudio — compilation à distance et téléversement depuis le navigateur.
-   1. Le code C++ part au serveur de compilation (serveur-compilation/serveur.js),
-      qui renvoie le binaire (.hex pour Arduino AVR, images .bin pour ESP32).
+   1. Le programme part au serveur de compilation (la Centrale : api/compilation.php, qui
+      appelle serveur-compilation/compiler-cli.js), qui renvoie le binaire : .hex pour Arduino AVR,
+      images .bin pour ESP32, .hex universel MicroPython pour micro:bit (à glisser sur MICROBIT).
    2. Le navigateur l'écrit lui-même dans la carte branchée en USB (Web Serial,
       Chrome ou Edge) : protocole STK500 pour Uno/Nano, esptool-js pour ESP32.
    Rien à installer sur les postes élèves. */
@@ -7621,40 +7629,66 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
   const TL = window.TL || (window.TL = {});
   const F = (TL.flash = {});
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const DEFAUT = 'https://technoversailles.alwaysdata.net/compilation/';
+  // Compilation hébergée par la Centrale (public/api/compilation.php) ; un serveur Node autonome
+  // (serveur-compilation/serveur.js) s'indique par son adresse de base, ex. http://poste-prof:8790/
+  const DEFAUT = 'https://technoversailles.alwaysdata.net/api/compilation.php';
 
   /* ================= Serveur de compilation ================= */
   F.adresse = function () {
     let u = window.TS_COMPILATEUR || '';
     try { u = new URLSearchParams(location.search).get('compilateur') || localStorage.getItem('ts-compilateur') || u; } catch (e) { /* stockage indisponible */ }
     u = String(u || DEFAUT).trim();
-    return u.replace(/\/?$/, '/');
+    return /\.php(\?.*)?$/.test(u) ? u : u.replace(/\/?$/, '/');
   };
+  const estPhp = () => /\.php(\?.*)?$/.test(F.adresse());
+  const urlEtat = () => (estPhp() ? F.adresse() : F.adresse() + 'etat');
+  const urlCompiler = () => (estPhp() ? F.adresse() : F.adresse() + 'compiler');
+  const urlTravail = (id) => (estPhp() ? F.adresse() + '?travail=' + id : F.adresse() + 'travail?id=' + id);
   F.reglerAdresse = function (u) { try { if (u) localStorage.setItem('ts-compilateur', u.trim()); else localStorage.removeItem('ts-compilateur'); } catch (e) { /* rien */ } F.etat = null; };
   F.etat = null;
   F.verifier = async function () {
     try {
-      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 5000);
-      const r = await fetch(F.adresse() + 'etat', { signal: ctl.signal, cache: 'no-store' }); clearTimeout(t);
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
+      const r = await fetch(urlEtat(), { signal: ctl.signal, cache: 'no-store' }); clearTimeout(t);
       F.etat = r.ok ? await r.json() : null;
     } catch (e) { F.etat = null; }
     if (TL.emit) TL.emit('compilateur', F.etat);
     return F.etat;
   };
-  F.compiler = async function (carte, code) {
+  const enTetes = () => {
     const headers = { 'Content-Type': 'application/json' };
     const jeton = TL.centrale && TL.centrale.jeton();
     if (jeton) headers['X-Jeton'] = jeton;
     let cle = ''; try { cle = localStorage.getItem('ts-compilateur-cle') || ''; } catch (e) { /* rien */ }
     if (cle) headers['X-Cle'] = cle;
-    let r;
-    try { r = await fetch(F.adresse() + 'compiler', { method: 'POST', headers, body: JSON.stringify({ carte, code }) }); } catch (e) {
-      throw new Error('Serveur de compilation injoignable (' + F.adresse() + ').');
+    return headers;
+  };
+  const lire = async (r) => { let j = {}; try { j = await r.json(); } catch (e) { /* non JSON */ } if (!r.ok && !j.journal) throw new Error(j.erreur || 'Erreur du serveur de compilation (' + r.status + ').'); return j; };
+  /** Compile ; une compilation longue (ESP32 à froid) est suivie jusqu'au bout. attendre(s) : message d'attente. */
+  F.compiler = async function (carte, code, attendre) {
+    let j;
+    try { j = await lire(await fetch(urlCompiler(), { method: 'POST', headers: enTetes(), body: JSON.stringify({ carte, code }) })); } catch (e) {
+      if (e instanceof TypeError) throw new Error('Serveur de compilation injoignable (' + F.adresse().replace(/^https?:\/\//, '') + ').');
+      throw e;
     }
-    let j = {};
-    try { j = await r.json(); } catch (e) { /* réponse non JSON */ }
-    if (!r.ok && !j.journal) throw new Error(j.erreur || 'Erreur du serveur de compilation (' + r.status + ').');
+    const debut = Date.now();
+    let n = 0;
+    while (j.enCours && j.travail) {
+      if (Date.now() - debut > 6 * 60000) throw new Error('La compilation dure trop longtemps : réessaie dans quelques minutes.');
+      if (attendre && n++ % 5 === 0) attendre('… compilation en cours sur le serveur (' + Math.round((Date.now() - debut) / 1000 + 25) + ' s)');
+      await wait(2000);
+      try { j = await lire(await fetch(urlTravail(j.travail), { headers: enTetes(), cache: 'no-store' })); } catch (e) { if (!(e instanceof TypeError)) throw e; }
+    }
     return j;
+  };
+
+  /** micro:bit : le fichier .hex universel est enregistré, à glisser sur le lecteur MICROBIT. */
+  F.enregistrerHex = function (hex, nom) {
+    const blob = new Blob([hex], { type: 'application/octet-stream' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = nom || 'microbit.hex';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   };
 
   /* ================= Port USB ================= */
@@ -7848,11 +7882,17 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
   F.televerser = async function (port, carte, code, o) {
     o = o || {};
     const log = o.log || (() => {});
-    log('Compilation sur le serveur (' + F.adresse().replace(/^https?:\/\//, '') + ')…');
-    const r = await F.compiler(carte, code);
+    log('Compilation sur le serveur (' + F.adresse().replace(/^https?:\/\//, '').replace(/\?.*$/, '') + ')…');
+    const r = await F.compiler(carte, code, log);
     if (r.journal) log(r.journal.trim().split('\n').slice(-25).join('\n'));
     if (!r.ok) { log('✗ ' + (r.erreur || 'Erreur de compilation : corrige le programme.')); return false; }
     log('✓ Compilé' + (r.cache ? ' (déjà en cache)' : r.duree ? ' en ' + (r.duree / 1000).toFixed(1) + ' s' : '') + '.');
+    if (r.format === 'hex-microbit') {
+      F.enregistrerHex(r.hex, r.nom || 'microbit-technostudio.hex');
+      log('✓ Fichier ' + (r.nom || 'microbit-technostudio.hex') + ' enregistré : glisse-le sur le lecteur MICROBIT (la carte redémarre avec ton programme).');
+      return true;
+    }
+    if (!port) throw new Error('Aucun port USB choisi.');
     if (r.format === 'hex') return F.avr(port, r.hex, Object.assign({ bauds: carte === 'nano' ? [57600, 115200] : [115200, 57600] }, o));
     if (r.format === 'bin') return F.esp32(port, r.images, o);
     throw new Error('Réponse inconnue du serveur.');
@@ -9504,14 +9544,15 @@ Actionneurs = moteur, lampe`;
       const chip = (k, label, dis) => h('button.fchip' + (via === k ? '.on' : ''), { type: 'button', disabled: !!dis, onclick: () => { via = k; TL.panels.refresh('carte'); } }, label);
       let detail;
       if (via === 'serveur') {
-        const carteOk = fe && fe.cartes && fe.cartes[C.board] && fe.cartes[C.board].installee;
+        const cs = C.carteServeur(C.board);
+        const carteOk = fe && fe.cartes && fe.cartes[cs] && fe.cartes[cs].installee;
         detail = h('div.p-col',
           h('div.p-state' + (carteOk ? '.ok' : fe ? '.warn' : '.bad'), fe ? (carteOk ? 'Serveur de compilation prêt' : 'Serveur joint, mais la carte ' + C.BOARDS[C.board].name + ' n’y est pas installée') : 'Serveur de compilation injoignable'),
           h('small.muted.mono', TL.flash.adresse().replace(/^https?:\/\//, '')),
           !TL.centrale.connecte() && fe && fe.auth !== 'ouvert' ? h('p.small', 'Connecte-toi avec ton code élève (menu Centrale) pour compiler sur le serveur.') : null,
-          !TL.flash.supporte ? h('p.small.callout.warn', 'Téléversement USB : utilise Chrome ou Edge sur ordinateur.') : h('p.small.muted', 'Au premier envoi, choisis le port USB de la carte.'),
+          C.board === 'microbit' ? null : !TL.flash.supporte ? h('p.small.callout.warn', 'Téléversement USB : utilise Chrome ou Edge sur ordinateur.') : h('p.small.muted', 'Au premier envoi, choisis le port USB de la carte.'),
           h('div.p-row2', h('button.btn.small.ghost', { type: 'button', onclick: async () => { await TL.flash.verifier(); TL.panels.refresh('carte'); } }, '↻ Tester'),
-            TL.flash.supporte ? h('button.btn.small.ghost', { type: 'button', onclick: async () => { try { const p = await TL.flash.choisirPort(true); C.serial.port = p; log('Port USB choisi.'); } catch (e) { /* annulé */ } } }, 'Changer de port') : null));
+            TL.flash.supporte && C.board !== 'microbit' ? h('button.btn.small.ghost', { type: 'button', onclick: async () => { try { const p = await TL.flash.choisirPort(true); C.serial.port = p; log('Port USB choisi.'); } catch (e) { /* annulé */ } } }, 'Changer de port') : null));
       } else if (via === 'pont') {
         const psel = h('select.field', { 'aria-label': 'Port' }, h('option', { value: '' }, ports.length ? 'Choisir le port…' : 'Aucun port détecté'), ports.map((p) => h('option', { value: p.address }, p.label + (p.board ? ' · ' + p.board : ''))));
         psel.value = port; psel.onchange = () => (port = psel.value);
@@ -9524,11 +9565,12 @@ Actionneurs = moteur, lampe`;
       } else detail = h('p.small.muted', 'Chrome ou Edge : la carte MicroPython (ESP32, micro:bit) reçoit main.py directement par le câble USB.');
       body.append(h('div.p-label', 'Carte'), bsel, ex,
         h('div.p-label', 'Téléversement'),
-        h('div.p-chips', lang === 'cpp' ? chip('serveur', 'Serveur + USB') : chip('webserial', 'USB direct', !C.serial.supported), chip('pont', 'Pont local')),
+        h('div.p-chips', lang === 'cpp' ? chip('serveur', 'Serveur + USB') : C.board === 'microbit' ? chip('serveur', 'Fichier .hex') : null, lang === 'mpy' ? chip('webserial', 'USB direct', !C.serial.supported) : null, chip('pont', 'Pont local')),
         detail,
         h('div.p-label', 'Actions'),
         h('div.p-col',
           lang === 'cpp' ? h('button.btn.small.ghost', { type: 'button', onclick: () => C.actions.verify(log, via) }, '✓ Vérifier (compiler)') : null,
+          C.board === 'microbit' && via === 'serveur' ? h('p.small.muted', 'Le fichier .hex contient MicroPython et ton programme : glisse-le sur le lecteur MICROBIT, aucune installation préalable.') : null,
           h('button.btn.small.primary', { type: 'button', onclick: () => C.actions.upload({ via, port, log }) }, '⇪ Téléverser'),
           h('button.btn.small.ghost', { type: 'button', onclick: () => C.actions.exportFile() }, 'Exporter ' + (lang === 'cpp' ? 'le .ino' : 'main.py'))));
     } });
@@ -9653,7 +9695,7 @@ Actionneurs = moteur, lampe`;
             try { if (cle.value) localStorage.setItem('ts-compilateur-cle', cle.value); else localStorage.removeItem('ts-compilateur-cle'); } catch (e) { /* rien */ }
             TL.toast('Réglages enregistrés : rechargement…', 'ok'); setTimeout(() => location.reload(), 600);
           } }, 'Enregistrer'),
-          h('button.btn.ghost', { type: 'button', onclick: async () => { compEtat.textContent = 'Test…'; const e = await TL.flash.verifier(); compEtat.textContent = e ? 'Serveur de compilation ' + e.version + ' · ' + Object.entries(e.cartes).filter(([, c]) => c.installee).map(([k]) => k).join(', ') : 'Serveur de compilation injoignable.'; } }, 'Tester le serveur de compilation'), compEtat))));
+          h('button.btn.ghost', { type: 'button', onclick: async () => { compEtat.textContent = 'Test…'; const e = await TL.flash.verifier(); compEtat.textContent = e ? 'Serveur de compilation ' + e.version + ' · cartes prêtes : ' + (Object.entries(e.cartes).filter(([, c]) => c.installee).map(([k]) => k).join(', ') || 'aucune') : 'Serveur de compilation injoignable.'; } }, 'Tester le serveur de compilation'), compEtat))));
 
     const restoreIn = h('input', { type: 'file', accept: '.json', hidden: true });
     restoreIn.onchange = async () => {

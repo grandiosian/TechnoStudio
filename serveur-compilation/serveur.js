@@ -31,9 +31,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const { spawn } = require('child_process');
 
-const VERSION = '1.0.0';
+const C = require('./compilation.js');
+const VERSION = C.VERSION;
 const env = process.env;
 const PORT = +(env.PORT || 8790);
 const IP = env.IP || env.HOST || '0.0.0.0';
@@ -42,77 +42,10 @@ const ORIGINES = (env.ORIGINES || 'https://grandiosian.github.io,https://technov
   .split(',').map((s) => s.trim().replace(/\/$/, '')).filter(Boolean);
 const CLES = (env.CLES || '').split(',').map((s) => s.trim()).filter((s) => s.length >= 12);
 const OUVERT = env.OUVERT === '1';
-const PARALLELE = Math.max(1, +(env.PARALLELE || 1));
-const FILE_MAX = Math.max(1, +(env.FILE_MAX || 40));
-const DOSSIER = env.DOSSIER || path.join(os.homedir(), '.technostudio-compilation');
 const MAX_CODE = 100 * 1024;
-
-const CARTES = {
-  uno: { nom: 'Arduino Uno', fqbn: 'arduino:avr:uno', coeur: 'arduino:avr', format: 'hex' },
-  nano: { nom: 'Arduino Nano', fqbn: 'arduino:avr:nano', coeur: 'arduino:avr', format: 'hex' },
-  esp32: { nom: 'ESP32', fqbn: 'esp32:esp32:esp32', coeur: 'esp32:esp32', format: 'bin' },
-};
-
-/* ---------- arduino-cli ---------- */
-function trouverCli() {
-  const cands = [env.ARDUINO_CLI, path.join(os.homedir(), 'bin', 'arduino-cli'), path.join(os.homedir(), '.local', 'bin', 'arduino-cli')].filter(Boolean);
-  for (const c of cands) if (fs.existsSync(c)) return c;
-  for (const d of (env.PATH || '').split(path.delimiter)) { const c = path.join(d, process.platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli'); if (fs.existsSync(c)) return c; }
-  return null;
-}
-const CLI = trouverCli();
-
-function lancer(cmd, args, opts) {
-  return new Promise((resolve) => {
-    let out = '';
-    const p = spawn(cmd, args, Object.assign({ env }, opts));
-    const t = setTimeout(() => { out += '\n[délai dépassé]'; p.kill('SIGKILL'); }, (opts && opts.timeout) || 240000);
-    p.stdout.on('data', (d) => { if (out.length < 400000) out += d; });
-    p.stderr.on('data', (d) => { if (out.length < 400000) out += d; });
-    p.on('error', (e) => { clearTimeout(t); resolve({ code: -1, out: out + e.message }); });
-    p.on('close', (code) => { clearTimeout(t); resolve({ code, out }); });
-  });
-}
-
-let coeursInstalles = [];
-async function lireCoeurs() {
-  if (!CLI) return [];
-  const r = await lancer(CLI, ['core', 'list', '--format', 'json'], { timeout: 30000 });
-  try {
-    const j = JSON.parse(r.out);
-    const liste = Array.isArray(j) ? j : j.platforms || [];
-    coeursInstalles = liste.map((p) => p.id || (p.metadata && p.metadata.id)).filter(Boolean);
-  } catch (e) { coeursInstalles = []; }
-  return coeursInstalles;
-}
-
-/* ---------- Contrôle du code envoyé ----------
-   Le code est compilé, jamais exécuté sur le serveur. Mais le préprocesseur peut lire des
-   fichiers du serveur (#include "/chemin", .incbin, #embed…) et les renvoyer dans le journal
-   ou le binaire. On n'accepte donc que les directives utiles aux programmes des élèves. */
-const ENTETES = new Set(['Arduino.h', 'Servo.h', 'ESP32Servo.h', 'Wire.h', 'SPI.h', 'WiFi.h', 'WebServer.h', 'EEPROM.h', 'math.h', 'stdlib.h', 'string.h', 'stdint.h', 'SoftwareSerial.h', 'LiquidCrystal.h', 'LiquidCrystal_I2C.h', 'Adafruit_NeoPixel.h', 'DHT.h', 'Stepper.h']);
-function controlerCode(code) {
-  if (typeof code !== 'string' || !code.trim()) return 'Programme vide.';
-  if (code.length > MAX_CODE) return 'Programme trop long (100 Ko au plus).';
-  if (/[\0]/.test(code)) return 'Caractère interdit dans le programme.';
-  const net = code.replace(/\\\r?\n/g, '').replace(/\?\?=/g, '#').replace(/%:/g, '#');
-  if (/\b(asm|__asm__|__asm|_Pragma|__has_include|__has_include_next|incbin|__FILE__|__BASE_FILE__)\b/.test(net)) return 'Instruction non autorisée (assembleur, pragma ou inclusion de fichier).';
-  const lignes = net.split(/\r?\n/);
-  for (let i = 0; i < lignes.length; i++) {
-    const l = lignes[i].replace(/\/\*.*?\*\//g, '').trim();
-    if (!l.startsWith('#')) continue;
-    const m = l.match(/^#\s*([a-z_]+)\s*(.*)$/);
-    if (!m) continue;
-    const dir = m[1];
-    if (dir === 'include') {
-      const f = m[2].match(/^<([A-Za-z0-9_]+\.h)>\s*(\/\/.*)?$/);
-      if (!f || !ENTETES.has(f[1])) return 'Ligne ' + (i + 1) + ' : seules les bibliothèques connues peuvent être incluses (' + [...ENTETES].slice(0, 6).join(', ') + '…).';
-    } else if (!['define', 'undef', 'if', 'ifdef', 'ifndef', 'elif', 'else', 'endif'].includes(dir)) {
-      return 'Ligne ' + (i + 1) + ' : directive #' + dir + ' non autorisée.';
-    }
-  }
-  return null;
-}
+const OPTIONS = { dossier: env.DOSSIER || path.join(os.homedir(), '.technostudio-compilation') };
+const CARTES = C.CARTES;
+const controlerCode = C.controlerCode;
 
 /* ---------- Accès ---------- */
 const jetonsValides = new Map(); // empreinte → expiration
@@ -152,83 +85,6 @@ function tropDeDemandes(id) {
   return l.length > 12;
 }
 
-/* ---------- File d'attente et cache ---------- */
-let enCours = 0;
-const attente = [];
-function dansLaFile(tache) {
-  return new Promise((resolve, reject) => {
-    if (attente.length >= FILE_MAX) return reject(Object.assign(new Error('Serveur occupé : réessaie dans une minute.'), { statut: 503 }));
-    attente.push({ tache, resolve, reject });
-    suivant();
-  });
-}
-function suivant() {
-  while (enCours < PARALLELE && attente.length) {
-    const { tache, resolve, reject } = attente.shift();
-    enCours++;
-    tache().then(resolve, reject).finally(() => { enCours--; suivant(); });
-  }
-}
-const CACHE = path.join(DOSSIER, 'cache');
-fs.mkdirSync(CACHE, { recursive: true });
-function lireCache(cle) {
-  const f = path.join(CACHE, cle + '.json');
-  try { const r = JSON.parse(fs.readFileSync(f, 'utf8')); fs.utimesSync(f, new Date(), new Date()); return r; } catch (e) { return null; }
-}
-function ecrireCache(cle, r) {
-  try {
-    fs.writeFileSync(path.join(CACHE, cle + '.json'), JSON.stringify(r));
-    const fichiers = fs.readdirSync(CACHE).map((f) => ({ f, t: fs.statSync(path.join(CACHE, f)).mtimeMs })).sort((a, b) => b.t - a.t);
-    fichiers.slice(300).forEach((x) => fs.unlinkSync(path.join(CACHE, x.f)));
-  } catch (e) { /* cache facultatif */ }
-}
-
-/* ---------- Compilation ---------- */
-function trouver(dir, test) {
-  try {
-    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      const p = path.join(dir, e.name);
-      if (e.isDirectory()) { const r = trouver(p, test); if (r) return r; } else if (test(p)) return p;
-    }
-  } catch (e) { /* dossier absent */ }
-  return null;
-}
-async function compiler(carte, code) {
-  const c = CARTES[carte];
-  const id = crypto.randomBytes(6).toString('hex');
-  const racine = path.join(DOSSIER, 'travail', id);
-  const croquis = path.join(racine, 'sketch');
-  const sortie = path.join(racine, 'out');
-  fs.mkdirSync(croquis, { recursive: true });
-  fs.mkdirSync(sortie, { recursive: true });
-  fs.writeFileSync(path.join(croquis, 'sketch.ino'), code);
-  try {
-    const args = ['compile', '--fqbn', c.fqbn, '--output-dir', sortie, '--build-cache-path', path.join(DOSSIER, 'build-cache', carte), '--warnings', 'default', croquis];
-    const r = await lancer(CLI, args, { timeout: 300000 });
-    const journal = r.out.split(racine).join('').split(DOSSIER).join('').split(os.homedir()).join('~').slice(-12000);
-    if (r.code !== 0) return { ok: false, journal };
-    if (c.format === 'hex') {
-      const f = path.join(sortie, 'sketch.ino.hex');
-      if (!fs.existsSync(f)) return { ok: false, journal: journal + '\nFichier .hex introuvable après compilation.' };
-      return { ok: true, journal, format: 'hex', hex: fs.readFileSync(f, 'utf8') };
-    }
-    const b64 = (f) => fs.readFileSync(f).toString('base64');
-    const fusion = path.join(sortie, 'sketch.ino.merged.bin');
-    if (fs.existsSync(fusion)) return { ok: true, journal, format: 'bin', images: [{ adresse: 0, donnees: b64(fusion) }] };
-    const boot = path.join(sortie, 'sketch.ino.bootloader.bin');
-    const part = path.join(sortie, 'sketch.ino.partitions.bin');
-    const appli = path.join(sortie, 'sketch.ino.bin');
-    const bootApp0 = trouver(path.join(os.homedir(), '.arduino15', 'packages', 'esp32', 'hardware'), (p) => p.endsWith(path.join('partitions', 'boot_app0.bin')));
-    if (![boot, part, appli].every((f) => fs.existsSync(f))) return { ok: false, journal: journal + '\nImages ESP32 introuvables après compilation.' };
-    const images = [{ adresse: 0x1000, donnees: b64(boot) }, { adresse: 0x8000, donnees: b64(part) }];
-    if (bootApp0) images.push({ adresse: 0xe000, donnees: b64(bootApp0) });
-    images.push({ adresse: 0x10000, donnees: b64(appli) });
-    return { ok: true, journal, format: 'bin', images };
-  } finally {
-    fs.rm(racine, { recursive: true, force: true }, () => {});
-  }
-}
-
 /* ---------- HTTP ---------- */
 function cors(req, res) {
   const o = req.headers.origin;
@@ -261,9 +117,7 @@ const serveur = http.createServer(async (req, res) => {
   const fin = new URL(req.url, 'http://x').pathname.replace(/\/+$/, '').split('/').pop();
   try {
     if (req.method === 'GET' && (fin === 'etat' || fin === '')) {
-      const cartes = {};
-      for (const [k, c] of Object.entries(CARTES)) cartes[k] = { nom: c.nom, format: c.format, installee: coeursInstalles.includes(c.coeur) };
-      return json(res, 200, { ok: true, nom: 'technostudio-compilation', version: VERSION, arduinoCli: !!CLI, cartes, auth: OUVERT ? 'ouvert' : 'centrale' + (CLES.length ? '+cle' : ''), file: attente.length, enCours });
+      return json(res, 200, Object.assign(await C.etat(OPTIONS), { auth: OUVERT ? 'ouvert' : 'centrale' + (CLES.length ? '+cle' : '') }));
     }
     if (req.method === 'POST' && fin === 'compiler') {
       const qui = await identifier(req);
@@ -271,20 +125,9 @@ const serveur = http.createServer(async (req, res) => {
       if (tropDeDemandes(qui.id)) return json(res, 429, { ok: false, erreur: 'Trop de compilations en une minute : attends un peu.' });
       const corps = await lireCorps(req, MAX_CODE * 2);
       const carte = String(corps.carte || '');
-      if (!CARTES[carte]) return json(res, 400, { ok: false, erreur: 'Carte inconnue (uno, nano ou esp32).' });
-      const refus = controlerCode(corps.code);
-      if (refus) return json(res, 400, { ok: false, erreur: refus, journal: refus });
-      if (!CLI) return json(res, 503, { ok: false, erreur: 'arduino-cli n’est pas installé sur le serveur.' });
-      if (!coeursInstalles.includes(CARTES[carte].coeur)) await lireCoeurs();
-      if (!coeursInstalles.includes(CARTES[carte].coeur)) return json(res, 503, { ok: false, erreur: 'Le cœur ' + CARTES[carte].coeur + ' n’est pas installé sur le serveur.' });
-      const cle = empreinte(carte + '\n' + corps.code);
-      const deja = lireCache(cle);
-      if (deja) return json(res, 200, Object.assign({ cache: true }, deja));
-      const debut = Date.now();
-      const r = await dansLaFile(() => compiler(carte, corps.code));
-      r.duree = Date.now() - debut;
-      if (r.ok) ecrireCache(cle, r);
-      console.log(new Date().toISOString(), qui.id, carte, r.ok ? 'ok' : 'erreur', r.duree + ' ms');
+      const r = await C.compiler(carte, corps.code, OPTIONS);
+      if (r.refuse) return json(res, 400, r);
+      console.log(new Date().toISOString(), qui.id, carte, r.ok ? 'ok' : 'erreur', (r.duree || 0) + ' ms' + (r.cache ? ' (cache)' : ''));
       return json(res, 200, r);
     }
     json(res, 404, { ok: false, erreur: 'Inconnu. Utilise GET /etat ou POST /compiler.' });
@@ -294,11 +137,10 @@ const serveur = http.createServer(async (req, res) => {
 });
 
 if (require.main === module) {
-  fs.mkdirSync(path.join(DOSSIER, 'travail'), { recursive: true });
-  lireCoeurs().then((c) => {
+  C.etat(OPTIONS).then((e) => {
     serveur.listen(PORT, IP, () => {
       console.log(`Serveur de compilation TechnoStudio ${VERSION} sur http://${IP}:${PORT}`);
-      console.log('arduino-cli : ' + (CLI || 'INTROUVABLE (voir installer-alwaysdata.sh)') + ' · cœurs : ' + (c.join(', ') || 'aucun'));
+      console.log('Cartes : ' + Object.entries(e.cartes).map(([k, c]) => k + (c.installee ? ' ✓' : ' ✗')).join(', '));
       console.log('Accès : ' + (OUVERT ? 'OUVERT (sans contrôle)' : 'élèves connectés à ' + CENTRALE + (CLES.length ? ' ou clé enseignant' : '')));
     });
   });

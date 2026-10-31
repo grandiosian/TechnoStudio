@@ -541,12 +541,13 @@
      "enum": [
       "uno",
       "nano",
-      "esp32"
+      "esp32",
+      "microbit"
      ]
     },
     "code": {
      "type": "string",
-     "description": "C++ Arduino, 100 Ko au plus ; seules les bibliothèques connues peuvent être incluses"
+     "description": "C++ Arduino (100 Ko au plus ; seules les bibliothèques connues peuvent être incluses) ou MicroPython pour microbit (30 Ko)"
     }
    },
    "required": [
@@ -570,10 +571,14 @@
      "type": "string",
      "enum": [
       "hex",
-      "bin"
+      "bin",
+      "hex-microbit"
      ]
     },
     "hex": {
+     "type": "string"
+    },
+    "nom": {
      "type": "string"
     },
     "images": {
@@ -597,6 +602,12 @@
     },
     "cache": {
      "type": "boolean"
+    },
+    "enCours": {
+     "type": "boolean"
+    },
+    "travail": {
+     "type": "string"
     }
    },
    "required": [
@@ -3702,7 +3713,7 @@
  "auth": {
   "jeton": "En-tête X-Jeton: <jeton> fourni par le module de la Centrale (formulaire Centrale.afficherConnexion ou jeton du portail). Les codes élèves sont gérés par la Centrale seule.",
   "site": "Origine du site autorisée dans la Centrale (Réglages → Sites autorisés), sinon 403.",
-  "compilation": "Serveur de compilation : X-Jeton de la Centrale (vérifié auprès d’elle, gardé 20 min) ou X-Cle enseignant ; OUVERT=1 sur un réseau local seulement.",
+  "compilation": "Compilation : X-Jeton d’un élève connecté (vérifié par la Centrale) ou X-Cle enseignant. Serveur Node autonome (serveur-compilation/serveur.js) : mêmes règles, OUVERT=1 sur un réseau local seulement.",
   "none": "Sans authentification.",
   "local": "Pont local (127.0.0.1:8765) : origine autorisée (localhost, réseau local, site de l’appli) ; aucun compte."
  },
@@ -3797,23 +3808,29 @@
   },
   {
    "method": "GET",
-   "path": "<compilation>/etat",
+   "path": "<Centrale>/api/compilation.php",
    "auth": "none",
-   "response": "{ version, arduinoCli, cartes: { uno|nano|esp32: { installee } }, auth, file }",
-   "note": "serveur de compilation (serveur-compilation/serveur.js)"
+   "response": "{ version, arduinoCli, cartes: { uno|nano|esp32|microbit: { installee } }, auth }",
+   "note": "compilation hébergée par la Centrale"
   },
   {
    "method": "POST",
-   "path": "<compilation>/compiler",
+   "path": "<Centrale>/api/compilation.php",
    "auth": "compilation",
    "request": "CompilationDemande",
-   "response": "CompilationReponse",
+   "response": "CompilationReponse (ou { enCours, travail } après 25 s)",
    "errors": {
     "400": "code refusé (directive ou bibliothèque non autorisée)",
     "401": "non connecté",
-    "429": "12 compilations par minute au plus",
-    "503": "serveur occupé ou carte non installée"
+    "429": "15 compilations par minute au plus",
+    "503": "compilateur non installé"
    }
+  },
+  {
+   "method": "GET",
+   "path": "<Centrale>/api/compilation.php?travail=<id>",
+   "auth": "compilation",
+   "response": "CompilationReponse ou { enCours }"
   },
   {
    "method": "GET",

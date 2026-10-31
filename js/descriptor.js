@@ -111,8 +111,8 @@
     Ressource: obj({ nom: str({ description: '<atelier>.technostudio.json (ou .gift / .txt GIFT)' }), taille: num(), type: str(), maj: num() }, ['nom', 'maj'], { description: 'fichier déposé par l’enseignant (ressources.php) : un Workshop, un Workshop[] ou un Package' }),
     Activite: obj({ id: str({ pattern: '^[A-Za-z0-9_./-]+$', description: '<atelier>/<code feuille>, ex. charte-lampe-de-poche/P1' }), titre: str(), groupe: str(), total: num() }, ['id'], { description: 'colonne du tableau de suivi (activites.php)' }),
     ProgressionEnvoi: obj({ activite: str(), titre: str(), statut: str({ enum: ['commence', 'termine'] }), faites: num(), total: num(), score: num(), score_max: num(), details: obj({ feuille: str(), reponses: arr(obj({ q: str(), type: str(), r: str(), note: str(), aCorriger: bool })) }, [], { description: '20 Ko au plus' }) }, ['activite'], { description: 'avancement d’une feuille (progression.php) ; la Centrale garde le meilleur' }),
-    CompilationDemande: obj({ carte: str({ enum: ['uno', 'nano', 'esp32'] }), code: str({ description: 'C++ Arduino, 100 Ko au plus ; seules les bibliothèques connues peuvent être incluses' }) }, ['carte', 'code']),
-    CompilationReponse: obj({ ok: bool, journal: str(), erreur: str(), format: str({ enum: ['hex', 'bin'] }), hex: str(), images: arr(obj({ adresse: num(), donnees: str({ description: 'base64' }) })), duree: num(), cache: bool }, ['ok']),
+    CompilationDemande: obj({ carte: str({ enum: ['uno', 'nano', 'esp32', 'microbit'] }), code: str({ description: 'C++ Arduino (100 Ko au plus ; seules les bibliothèques connues peuvent être incluses) ou MicroPython pour microbit (30 Ko)' }) }, ['carte', 'code']),
+    CompilationReponse: obj({ ok: bool, journal: str(), erreur: str(), format: str({ enum: ['hex', 'bin', 'hex-microbit'] }), hex: str(), nom: str(), images: arr(obj({ adresse: num(), donnees: str({ description: 'base64' }) })), duree: num(), cache: bool, enCours: bool, travail: str() }, ['ok']),
     Package: obj({ workshops: arr({ $ref: 'Workshop' }), classes: arr(str()) }, ['workshops'], { description: 'paquet de plusieurs ateliers (.technostudio.json)' }),
   };
 
@@ -164,7 +164,7 @@
   const AUTH = {
     jeton: 'En-tête X-Jeton: <jeton> fourni par le module de la Centrale (formulaire Centrale.afficherConnexion ou jeton du portail). Les codes élèves sont gérés par la Centrale seule.',
     site: 'Origine du site autorisée dans la Centrale (Réglages → Sites autorisés), sinon 403.',
-    compilation: 'Serveur de compilation : X-Jeton de la Centrale (vérifié auprès d’elle, gardé 20 min) ou X-Cle enseignant ; OUVERT=1 sur un réseau local seulement.',
+    compilation: 'Compilation : X-Jeton d’un élève connecté (vérifié par la Centrale) ou X-Cle enseignant. Serveur Node autonome (serveur-compilation/serveur.js) : mêmes règles, OUVERT=1 sur un réseau local seulement.',
     none: 'Sans authentification.',
     local: 'Pont local (127.0.0.1:8765) : origine autorisée (localhost, réseau local, site de l’appli) ; aucun compte.',
   };
@@ -183,8 +183,9 @@
     { method: 'POST', path: C + 'progression.php', auth: 'jeton', request: '{ app } & ProgressionEnvoi', response: '{ progression }', errors: { 413: 'details > 20 Ko' } },
     { method: 'POST', path: C + 'activites.php', auth: 'jeton', request: '{ app, activites: Activite[] }' },
     { method: 'POST', path: C + 'surnom.php', auth: 'jeton', request: '{ surnom }', response: '{ identifiant, surnom }' },
-    { method: 'GET', path: '<compilation>/etat', auth: 'none', response: '{ version, arduinoCli, cartes: { uno|nano|esp32: { installee } }, auth, file }', note: 'serveur de compilation (serveur-compilation/serveur.js)' },
-    { method: 'POST', path: '<compilation>/compiler', auth: 'compilation', request: 'CompilationDemande', response: 'CompilationReponse', errors: { 400: 'code refusé (directive ou bibliothèque non autorisée)', 401: 'non connecté', 429: '12 compilations par minute au plus', 503: 'serveur occupé ou carte non installée' } },
+    { method: 'GET', path: C + 'compilation.php', auth: 'none', response: '{ version, arduinoCli, cartes: { uno|nano|esp32|microbit: { installee } }, auth }', note: 'compilation hébergée par la Centrale' },
+    { method: 'POST', path: C + 'compilation.php', auth: 'compilation', request: 'CompilationDemande', response: 'CompilationReponse (ou { enCours, travail } après 25 s)', errors: { 400: 'code refusé (directive ou bibliothèque non autorisée)', 401: 'non connecté', 429: '15 compilations par minute au plus', 503: 'compilateur non installé' } },
+    { method: 'GET', path: C + 'compilation.php?travail=<id>', auth: 'compilation', response: 'CompilationReponse ou { enCours }' },
     { method: 'GET', path: 'http://127.0.0.1:8765/status', auth: 'local', response: '{ pont, arduinoCli, mpremote, cores }', note: 'pont local d’un poste équipé (facultatif)' },
     { method: 'GET', path: 'http://127.0.0.1:8765/ports', auth: 'local', response: '{ ports: { address, label, board?, fqbn? }[] }' },
     { method: 'POST', path: 'http://127.0.0.1:8765/compile', auth: 'local', request: '{ board, fqbn, code }', response: '{ ok, log, size? }' },
