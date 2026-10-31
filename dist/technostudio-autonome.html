@@ -3398,7 +3398,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
 (function () {
   'use strict';
   const TL = (window.TL = window.TL || {});
-  TL.VERSION = '3.0.0';
+  TL.VERSION = '3.1.0';
   TL.FORMAT = 2;
 
   /* ---------- DOM ---------- */
@@ -4088,7 +4088,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
   };
 
   const AUTH = {
-    jeton: 'En-tête X-Jeton: <jeton> reçu de login.php (12 h, durée de l’onglet). Code élève du type 4C-LHA-9943-kfmz-tqpr.',
+    jeton: 'En-tête X-Jeton: <jeton> fourni par le module de la Centrale (formulaire Centrale.afficherConnexion ou jeton du portail). Les codes élèves sont gérés par la Centrale seule.',
     site: 'Origine du site autorisée dans la Centrale (Réglages → Sites autorisés), sinon 403.',
     compilation: 'Serveur de compilation : X-Jeton de la Centrale (vérifié auprès d’elle, gardé 20 min) ou X-Cle enseignant ; OUVERT=1 sur un réseau local seulement.',
     none: 'Sans authentification.',
@@ -4177,6 +4177,98 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     entities: ENTITIES, blocks: BLOCKS, common: COMMON, storage: STORAGE, sync: SYNC, auth: AUTH, endpoints: ENDPOINTS, compatibility: COMPAT,
     validate, blockSchema,
   };
+});
+
+;
+/* ---- js/passerelle.js ---- */
+/* TechnoStudio — passerelle avec la Centrale : ce que l'appli déclare et envoie.
+   Un seul endroit, utilisé à la fois par l'appli (js/centrale.js, window.TechnoStudio)
+   et par tools/centrale-json.js qui produit centrale.json (format passerelle.atelier v1) :
+   le descripteur publié et ce que l'appli envoie réellement ne peuvent pas diverger.
+   Module UMD sans DOM (navigateur et Node). */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./descriptor.js'));
+  else { root.TL = root.TL || {}; root.TL.passerelle = factory(root.TL.descriptor); }
+})(typeof self !== 'undefined' ? self : this, function (D) {
+  'use strict';
+
+  const APP = 'technostudio';
+  const VERSION = '3.1.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
+  const KIND = { feuille: 'P', ressource: 'R', synthese: 'S', evaluation: 'E', fiche: 'F' };
+
+  /** Codes des feuilles d'un atelier, comme sur le papier : P1, P2, R1, S1, E1, S·P1 (SEGPA). */
+  function codesFeuilles(w) {
+    const cnt = {};
+    return (w.steps || []).map((s) => {
+      const k = s.kind || 'feuille', cle = k + (s.segpa ? 's' : '');
+      cnt[cle] = (cnt[cle] || 0) + 1;
+      return (s.segpa ? 'S·' : '') + (KIND[k] || 'P') + (k === 'feuille' ? (s.feuille || cnt[cle]) : cnt[cle]);
+    });
+  }
+  /** Un champ compte dans l'avancement s'il est noté (descripteur) et n'est pas une démonstration. */
+  const estNote = (b) => !!(b && D.blocks[b.type] && D.blocks[b.type].graded && !b.demo);
+  /** Identifiant d'activité, stable : <id atelier>/<code feuille> (ex. charte-lampe-de-poche/P1, …/S-P1). */
+  const idActivite = (w, code) => (w.id + '/' + code).replace(/[^A-Za-z0-9_\-./]/g, '-');
+  const groupe = (w) => ((w.niveau ? w.niveau + ' · ' : '') + w.title).slice(0, 80);
+
+  /** Activités d'un atelier : une par feuille qui contient au moins un champ noté. */
+  function activitesAtelier(w) {
+    const codes = codesFeuilles(w);
+    const out = [];
+    (w.steps || []).forEach((s, i) => {
+      const notes = (s.blocks || []).filter(estNote);
+      if (notes.length) out.push({ id: idActivite(w, codes[i]), titre: (codes[i] + ' · ' + s.title).slice(0, 120), groupe: groupe(w), total: notes.length, feuille: i, champs: notes.map((b) => b.id) });
+    });
+    return out;
+  }
+  /** Liste envoyée à la Centrale (activites.php) : champs id, titre, groupe, total, dans l'ordre des ateliers. */
+  function activites(ateliers) {
+    const liste = [];
+    ateliers.slice().sort((a, b) => (a.seq || 99) - (b.seq || 99) || String(a.title).localeCompare(String(b.title), 'fr'))
+      .forEach((w) => activitesAtelier(w).forEach((a) => liste.push({ id: a.id, titre: a.titre, groupe: a.groupe, total: a.total })));
+    return liste.slice(0, 500);
+  }
+
+  const resume = (v) => {
+    if (v == null) return '';
+    if (typeof v === 'string') return v.startsWith('data:image') ? '[dessin]' : v.slice(0, 600);
+    if (typeof v !== 'object') return String(v);
+    if (v.png) return '[dessin]';
+    if (v.code) return String(v.code).slice(0, 1500);
+    if (v.text) return String(v.text).slice(0, 600);
+    try { return JSON.stringify(v, (k, x) => (typeof x === 'string' && x.startsWith('data:') ? '[fichier]' : x)).slice(0, 600); } catch (e) { return ''; }
+  };
+  /** Ce qui part à progression.php pour une feuille (null si rien n'est commencé). */
+  function progression(w, pg, act) {
+    const blocs = {};
+    (w.steps || []).forEach((s) => (s.blocks || []).forEach((b) => (blocs[b.id] = b)));
+    let faites = 0, score = 0, max = 0;
+    const reponses = [];
+    for (const id of act.champs) {
+      const b = blocs[id], r = pg && pg.answers && pg.answers[id], pts = b.bareme || 1;
+      max += pts;
+      if (r && r.done) { faites++; score += pts * (r.score || 0); }
+      if (r && r.value != null) {
+        const x = { q: String(b.question || b.prompt || b.title || b.type).replace(/<[^>]+>/g, '').slice(0, 100), type: b.type, r: resume(r.value) };
+        if (r.score != null) x.note = Math.round(r.score * 100) + ' %';
+        if (r.pendingReview) x.aCorriger = true;
+        reponses.push(x);
+      }
+    }
+    if (!faites && !reponses.length) return null;
+    const details = { feuille: w.steps[act.feuille].title, reponses };
+    while (JSON.stringify(details).length > 18000 && details.reponses.length) {
+      details.reponses = details.reponses.map((x) => Object.assign({}, x, { r: String(x.r).slice(0, Math.floor(String(x.r).length / 2)) }));
+      if (details.reponses.every((x) => x.r.length < 20)) details.reponses.pop();
+    }
+    return { titre: act.titre, faites, total: act.total, statut: faites === act.total ? 'termine' : 'commence', score: Math.round(score * 100) / 100, score_max: max, details };
+  }
+
+  /** Clés passées à Centrale.sauver / charger. */
+  const cleAtelier = (wid) => 'at/' + String(wid).replace(/[^A-Za-z0-9_\-.]/g, '-');
+  const CLE_CODE = 'code/projet';
+
+  return { APP, VERSION, codesFeuilles, estNote, idActivite, activitesAtelier, activites, progression, cleAtelier, CLE_CODE, resume };
 });
 
 ;
@@ -7865,7 +7957,16 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     } else etat('local');
   };
 
-  /** Connexion avec le code élève (5A-…). */
+  /**
+   * Formulaire de connexion de la Centrale (module centrale-client.js) : le code élève,
+   * son format et ses messages appartiennent à la Centrale, TechnoStudio ne fait que l'afficher.
+   */
+  Z.afficherConnexion = function (element, apres) {
+    if (!Z.dispo) return false;
+    window.Centrale.afficherConnexion(element, { titre: 'Mon code', onConnecte: (infos) => { apresConnexion(infos).finally(() => apres && apres(infos)); } });
+    return true;
+  };
+  /** Connexion directe avec un code (outils et essais) ; l'interface passe par afficherConnexion. */
   Z.connexion = async function (code) {
     if (!Z.dispo) { await Z.init(); if (!Z.dispo) throw new Error('Centrale injoignable. Vérifie la connexion internet.'); }
     const infos = await window.Centrale.connexion(code);
@@ -7947,7 +8048,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
   Z.ateliersRecus = () => [...TL.app.workshops.values()].filter((w) => w.source === 'centrale');
 
   /* ---------- Travail de l'élève : une donnée par atelier ---------- */
-  const cle = (wid) => 'at/' + String(wid).replace(/[^A-Za-z0-9_\-.]/g, '-');
+  const cle = (wid) => TL.passerelle.cleAtelier(wid);
   function fusion(local, distant) {
     if (!local) return distant; if (!distant) return local;
     const out = Object.assign({}, distant, local);
@@ -8015,46 +8116,17 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     TL.emit('synced');
   };
 
-  /* ---------- Avancement : une activité par feuille notée ---------- */
-  const actId = (w, code) => (w.id + '/' + code).replace(/[^A-Za-z0-9_\-./]/g, '-').replace(/·/g, '');
-  function activitesDe(w) {
-    const codes = TL.sheetCodes(w);
-    const out = [];
-    w.steps.forEach((s, i) => {
-      const notes = s.blocks.filter((b) => TL.isGraded(b));
-      if (notes.length) out.push({ id: actId(w, codes[i]), titre: (codes[i] + ' · ' + s.title).slice(0, 120), step: s, index: i, notes });
-    });
-    return out;
-  }
-  const resume = (v) => {
-    if (v == null) return '';
-    if (typeof v === 'string') return v.startsWith('data:image') ? '[dessin]' : v.slice(0, 600);
-    if (typeof v !== 'object') return String(v);
-    if (v.png) return '[dessin]';
-    if (v.code) return v.code.slice(0, 1500);
-    if (v.text) return String(v.text).slice(0, 600);
-    try { return JSON.stringify(v, (k, x) => (typeof x === 'string' && x.startsWith('data:') ? '[fichier]' : x)).slice(0, 600); } catch (e) { return ''; }
-  };
+  /* ---------- Avancement : une activité par feuille notée (js/passerelle.js) ---------- */
+  const P = TL.passerelle;
   const envoyes = {};
   Z.rapport = function (wid) {
     if (!Z.connecte()) return;
     const w = TL.app.workshops.get(wid);
     const pg = TL.app.progress.get(wid);
     if (!w || !pg) return;
-    for (const a of activitesDe(w)) {
-      let faites = 0, score = 0, max = 0;
-      const reponses = [];
-      for (const b of a.notes) {
-        const r = pg.answers[b.id];
-        const pts = b.bareme || 1;
-        max += pts;
-        if (r && r.done) { faites++; score += pts * (r.score || 0); }
-        if (r && r.value != null) reponses.push({ q: String(b.question || b.prompt || b.title || b.type).replace(/<[^>]+>/g, '').slice(0, 100), type: b.type, r: resume(r.value), note: r.score != null ? Math.round(r.score * 100) + ' %' : null, aCorriger: !!r.pendingReview || undefined });
-      }
-      if (!faites && !reponses.length) continue;
-      let details = { feuille: a.step.title, reponses };
-      while (JSON.stringify(details).length > 18000 && details.reponses.length) { details.reponses = details.reponses.map((x) => Object.assign({}, x, { r: String(x.r).slice(0, Math.floor(String(x.r).length / 2)) })); if (details.reponses.every((x) => x.r.length < 20)) details.reponses.pop(); }
-      const envoi = { titre: a.titre, faites, total: a.notes.length, score: Math.round(score * 100) / 100, score_max: max, statut: faites === a.notes.length ? 'termine' : 'commence', details };
+    for (const a of P.activitesAtelier(w)) {
+      const envoi = P.progression(w, pg, a);
+      if (!envoi) continue;
       const emp = JSON.stringify(envoi);
       if (envoyes[a.id] === emp) continue;
       envoyes[a.id] = emp;
@@ -8062,14 +8134,15 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     }
   };
 
-  /** Colonnes du tableau de suivi : les feuilles notées des ateliers reçus (sinon de tous les ateliers du poste). */
+  /** Colonnes du suivi : les ateliers intégrés (liste publiée dans centrale.json), puis ceux reçus de la Centrale. */
+  Z.activites = function () {
+    const tous = [...TL.app.workshops.values()];
+    return P.activites(tous.filter((w) => w.source === 'demo')).concat(P.activites(tous.filter((w) => w.source === 'centrale'))).slice(0, 500);
+  };
   Z.declarer = function () {
     if (!Z.connecte()) return;
-    const recus = Z.ateliersRecus();
-    const ateliers = recus.length ? recus : [...TL.app.workshops.values()];
-    const liste = [];
-    ateliers.sort((a, b) => (a.seq || 99) - (b.seq || 99)).forEach((w) => activitesDe(w).forEach((a) => liste.push({ id: a.id, titre: a.titre, groupe: (w.niveau ? w.niveau + ' · ' : '') + w.title.slice(0, 70), total: a.notes.length })));
-    if (liste.length) window.Centrale.declarerActivites(liste.slice(0, 500)).catch(() => {});
+    const liste = Z.activites();
+    if (liste.length) window.Centrale.declarerActivites(liste).catch(() => {});
   };
 
   /** Le portail peut ouvrir directement une feuille : « atelier/P1 » ou un atelier entier. */
@@ -8078,13 +8151,42 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     const w = TL.app.workshops.get(wid);
     if (!w) { TL.toast('Activité « ' + id + ' » introuvable sur ce poste.', 'bad'); return; }
     if (code) {
-      const i = activitesDe(w).find((a) => a.id === actId(w, code));
-      if (i) { const pg = await TL.app.getProgress(wid); pg.step = i.index; }
+      const i = P.activitesAtelier(w).find((a) => a.id === P.idActivite(w, code) || a.id === id);
+      if (i) { const pg = await TL.app.getProgress(wid); pg.step = i.feuille; }
     }
     TL.app.go('at-' + wid);
   }
   Z.ouvrirActivite = ouvrirActivite;
   Z.lienPortail = () => { try { return (Z.dispo && sessionStorage.getItem('centrale-retour')) || ''; } catch (e) { return ''; } };
+
+  /* ---------- Point d'accès unique : window.TechnoStudio (décrit dans centrale.json → acces_javascript) ---------- */
+  const TS = {
+    version: P.VERSION,
+    descripteur: 'centrale.json',
+    /** Liste envoyée à la Centrale : [{ id, titre, groupe, total }]. */
+    activites: () => Z.activites(),
+    /** Ateliers présents sur ce poste, avec leurs feuilles notées. */
+    catalogue: () => [...TL.app.workshops.values()].map((w) => ({ id: w.id, titre: w.title, niveau: w.niveau || '', source: w.source, version: w.version || 1, feuilles: P.activitesAtelier(w).map((a) => ({ id: a.id, titre: a.titre, total: a.total })) })),
+    /** Ce qui est (ou serait) envoyé à progression.php pour une activité, ou null. */
+    progression: (id) => {
+      const wid = String(id).split('/')[0];
+      const w = TL.app.workshops.get(wid), pg = TL.app.progress.get(wid);
+      const a = w && P.activitesAtelier(w).find((x) => x.id === id);
+      return a && pg ? P.progression(w, pg, a) : null;
+    },
+    /** Valeurs des clés enregistrées : { "at/<id>": Progress, …, "code/projet": … }. */
+    donnees: async () => {
+      const out = {};
+      for (const k of await TL.db.keys('pg:')) { const pg = await TL.db.get(k); if (pg && pg.wid) out[P.cleAtelier(pg.wid)] = pg; }
+      const code = await TL.db.get('code:projet'); if (code) out[P.CLE_CODE] = code;
+      return out;
+    },
+    /** Vérifie un atelier avec le descripteur des ateliers : { ok, errors, warnings }. */
+    valider: (atelier) => TL.descriptor.validate('Workshop', atelier),
+    estAtelier: (atelier) => TL.descriptor.validate('Workshop', atelier).ok,
+  };
+  Object.defineProperty(TS, 'app', { enumerable: true, get: () => Z.app });
+  window.TechnoStudio = TS;
 })();
 
 ;
@@ -9478,30 +9580,17 @@ Actionneurs = moteur, lampe`;
   }
 
   /* ================= Connexion à la Centrale ================= */
-  /** Fenêtre « Mon code » : le code élève distribué par le professeur (ex. 4C-LHA-9943-kfmz-tqpr). */
-  app.connexion = function () {
+  /** Fenêtre « Mon code » : formulaire fourni par la Centrale (code élève géré par elle). */
+  app.connexion = async function () {
     const Z = TL.centrale;
-    const code = h('input.field.mono', { type: 'text', placeholder: 'ex. 4C-LHA-9943-kfmz-tqpr', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Mon code' });
-    const err = h('p.form-err', { 'aria-live': 'polite' });
-    let m;
-    const go = async () => {
-      err.textContent = '';
-      if (!code.value.trim()) { err.textContent = 'Tape ton code.'; return false; }
-      const btn = m.el.querySelector('.modal-foot .btn.primary'); if (btn) { btn.disabled = true; btn.textContent = 'Connexion…'; }
-      try {
-        await Z.connexion(code.value);
-        TL.toast('Connecté : ' + Z.user.name, 'ok');
-        m.close(); route();
-      } catch (e) { err.textContent = e.message; if (btn) { btn.disabled = false; btn.textContent = 'Se connecter'; } }
-      return false;
-    };
-    code.onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    m = TL.modal('Me connecter à la Centrale', h('div.form',
+    const zone = h('div.centrale-zone', h('p.muted', 'Connexion à la Centrale…'));
+    const m = TL.modal('Me connecter à la Centrale', h('div.form',
       h('p', 'Avec ton code, tu reçois les ateliers de ton professeur, ton travail est enregistré et tu le retrouves sur n’importe quel ordinateur.'),
-      h('label', 'Mon code', code), err,
-      h('p.small.muted', 'Centrale : ' + Z.serveur.replace(/^https?:\/\//, '').replace(/\/$/, '') + ' · atelier « ' + Z.app + ' »')),
-    [{ label: 'Plus tard' }, { label: 'Se connecter', primary: true, onClick: go }]);
-    setTimeout(() => code.focus(), 50);
+      zone, h('p.small.muted', 'Centrale : ' + Z.serveur.replace(/^https?:\/\//, '').replace(/\/$/, '') + ' · atelier « ' + Z.app + ' »')),
+    [{ label: 'Plus tard' }]);
+    if (!Z.dispo) await Z.init();
+    zone.innerHTML = '';
+    if (!Z.afficherConnexion(zone, () => { m.close(); TL.toast('Connecté : ' + Z.user.name, 'ok'); route(); })) zone.append(h('p.callout.warn', 'Centrale injoignable pour le moment. Ton travail reste sur cet appareil ; réessaie plus tard.'));
   };
 
   async function viewAccount() {
@@ -9670,37 +9759,34 @@ Actionneurs = moteur, lampe`;
   function onboarding() {
     return new Promise((resolve) => {
       let res = resolve;
-      const code = h('input.field.mono', { type: 'text', placeholder: 'ex. 4C-LHA-9943-kfmz-tqpr', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Mon code élève' });
+      const Z = TL.centrale;
       const name = h('input.field', { type: 'text', placeholder: 'ex. Léa Martin', autocomplete: 'name', 'aria-label': 'Prénom et nom' });
-      const err = h('p.form-err', { 'aria-live': 'polite' });
       let role = 'eleve';
       const roles = h('div.rolepick', [['eleve', 'Élève', 'Je fais les ateliers'], ['prof', 'Enseignant', 'Je crée et je diffuse']].map(([v, t, d]) => {
         const b = h('button.rolebtn' + (v === role ? '.on' : ''), { type: 'button', 'aria-pressed': String(v === role), onclick: () => { role = v; TL.$$('.rolebtn', roles).forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); }); } }, h('strong', t), h('small', d));
         return b;
       }));
       const finir = async (profil) => { app.profile = Object.assign({ classe: '', createdAt: Date.now() }, profil); await TL.db.set('profile', app.profile); res(); };
-      const avecCode = async () => {
-        err.textContent = '';
-        if (!code.value.trim()) { err.textContent = 'Tape ton code, ou continue sans code.'; return false; }
-        app.profile = { name: 'Élève', role: 'eleve', classe: '', createdAt: Date.now() };
-        try { await TL.centrale.connexion(code.value); await TL.db.set('profile', app.profile); m.close(); res(); } catch (e) { app.profile = null; err.textContent = e.message; }
-        return false;
-      };
-      code.onkeydown = (e) => { if (e.key === 'Enter') avecCode(); };
+      const zone = h('div.centrale-zone');
+      const sans = h('details.onb-sans', h('summary', Z.dispo ? 'Continuer sans code' : 'Commencer'),
+        h('label', 'Prénom et nom', name), h('div.p-label', 'Tu es'), roles,
+        h('div.actions', h('button.btn.ghost', { type: 'button', onclick: async () => { await finir({ name: name.value.trim() || (role === 'prof' ? 'Enseignant' : 'Élève'), role }); m.close(); } }, Z.dispo ? 'Commencer sans code' : 'Commencer')));
       const m = TL.modal('Bienvenue dans TechnoStudio', h('div.form.onb',
         h('p', 'Tes ateliers de technologie, en classe ou à la maison, même sans internet.'),
-        h('div.onb-code', h('label', 'J’ai un code élève', code), err, h('button.btn.primary', { type: 'button', onclick: avecCode }, 'Me connecter')),
-        h('details.onb-sans', h('summary', 'Continuer sans code'),
-          h('label', 'Prénom et nom', name), h('div.p-label', 'Tu es'), roles,
-          h('div.actions', h('button.btn.ghost', { type: 'button', onclick: async () => { await finir({ name: name.value.trim() || (role === 'prof' ? 'Enseignant' : 'Élève'), role }); m.close(); } }, 'Commencer sans code')))),
-      []);
+        Z.dispo ? h('div.onb-code', zone) : h('p.small.muted', 'La Centrale n’est pas joignable d’ici : tout fonctionne et reste sur cet appareil.'),
+        sans), []);
+      if (!Z.dispo) sans.open = true;
+      // Formulaire « Mon code » fourni par la Centrale
+      Z.afficherConnexion(zone, async () => {
+        app.profile = app.profile || { name: Z.user ? Z.user.name : 'Élève', role: 'eleve', classe: Z.user ? Z.user.classe : '', createdAt: Date.now() };
+        await TL.db.set('profile', app.profile); m.close(); res();
+      });
       m.el.querySelector('.modal-head button').remove();
-      // Cette fenêtre ne se ferme qu'avec un des deux boutons (pas de clic à côté ni Échap)
+      // Cette fenêtre ne se ferme qu'avec la connexion ou « sans code » (pas de clic à côté ni Échap)
       const garde = (e) => { if (e.type === 'mousedown' ? e.target === m.el.parentNode : e.key === 'Escape') e.stopImmediatePropagation(); };
       m.el.parentNode.addEventListener('mousedown', garde, true);
       window.addEventListener('keydown', garde, true);
       const fin = res; res = () => { window.removeEventListener('keydown', garde, true); fin(); };
-      setTimeout(() => code.focus(), 50);
     });
   }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Génère docs/PASSERELLE.md et docs/technostudio-descripteur.json à partir de js/descriptor.js.
+/* Génère docs/descripteur-ateliers.md et docs/descripteur-ateliers.json à partir de js/descriptor.js.
    Le descripteur reste la seule source de vérité : relancer ce script après toute modification. */
 'use strict';
 const fs = require('fs');
@@ -18,7 +18,7 @@ const schemaLine = (s) => {
   if (s.minimum != null || s.maximum != null) t += ' [' + (s.minimum ?? '…') + '–' + (s.maximum ?? '…') + ']';
   return t;
 };
-p('# Descripteur de passerelle TechnoStudio', '', `\`${D.name}\` · version **${D.version}** · format d’atelier **${D.format}** (formats acceptés : ${D.formatsAccepted.join(', ')})`, '',
+p('# Descripteur des ateliers TechnoStudio', '', `\`${D.name}\` · version **${D.version}** · format d’atelier **${D.format}** (formats acceptés : ${D.formatsAccepted.join(', ')})`, '',
   '> Document généré par `node tools/descripteur-doc.js` à partir de `js/descriptor.js`. Ne pas modifier à la main.', '',
   'Le descripteur est le contrat entre l’application **centralisatrice** (la [Centrale élèves](https://github.com/grandiosian/centrale)) et l’application **cible** TechnoStudio. Il fixe la forme des ateliers que l’enseignant dépose dans la Centrale, la façon dont le travail des élèves y est rangé (clés, fusion, conflits), le compte rendu d’avancement (activités du suivi) et les points d’accès utilisés, y compris le serveur de compilation des cartes. L’appli et l’éditeur valident chaque atelier avec le même `validate()`. Version JSON : `docs/technostudio-descripteur.json`.', '',
   '## Rôles', '', `- **Centralisatrice** : ${D.roles.centralisatrice}`, `- **Cible** : ${D.roles.cible}`, '');
@@ -50,6 +50,6 @@ p('', '## Compatibilité', '', D.compatibility.header, '', ...D.compatibility.ru
   '3. **Lire le travail des élèves** : espace enseignant de la Centrale → Travail d’un élève → données `at/<id atelier>` (entité `Progress`) ; export ZIP de la classe.',
   '4. **Suivre l’avancement** : onglet Suivi de la Centrale, atelier `technostudio` : une colonne par feuille notée (`<atelier>/<code feuille>`), réponses à corriger dans les détails.',
   '5. **Compiler pour une carte** : `POST <compilation>/compiler` avec `CompilationDemande` et l’en-tête `X-Jeton` d’un élève connecté.', '');
-fs.writeFileSync(path.join(__dirname, '..', 'docs', 'PASSERELLE.md'), out.join('\n'));
-fs.writeFileSync(path.join(__dirname, '..', 'docs', 'technostudio-descripteur.json'), JSON.stringify(Object.assign({}, D, { validate: undefined, blockSchema: undefined }), null, 1));
-console.log('docs/PASSERELLE.md et docs/technostudio-descripteur.json générés (' + Object.keys(D.blocks).length + ' types de blocs, ' + D.endpoints.length + ' points d’accès).');
+fs.writeFileSync(path.join(__dirname, '..', 'docs', 'descripteur-ateliers.md'), out.join('\n'));
+fs.writeFileSync(path.join(__dirname, '..', 'docs', 'descripteur-ateliers.json'), JSON.stringify(Object.assign({}, D, { validate: undefined, blockSchema: undefined }), null, 1));
+console.log('docs/descripteur-ateliers.md et .json générés (' + Object.keys(D.blocks).length + ' types de blocs, ' + D.endpoints.length + ' points d’accès).');

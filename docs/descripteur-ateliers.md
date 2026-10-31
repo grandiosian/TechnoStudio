@@ -1,4 +1,4 @@
-# Descripteur de passerelle TechnoStudio
+# Descripteur des ateliers TechnoStudio
 
 `technostudio-passerelle` · version **3.0.0** · format d’atelier **2** (formats acceptés : 1, 2)
 
@@ -286,7 +286,7 @@ L’appli garde la main hors ligne. Connecté, chaque modification est envoyée 
 
 | mode | règle |
 |---|---|
-| `jeton` | En-tête X-Jeton: <jeton> reçu de login.php (12 h, durée de l’onglet). Code élève du type 4C-LHA-9943-kfmz-tqpr. |
+| `jeton` | En-tête X-Jeton: <jeton> fourni par le module de la Centrale (formulaire Centrale.afficherConnexion ou jeton du portail). Les codes élèves sont gérés par la Centrale seule. |
 | `site` | Origine du site autorisée dans la Centrale (Réglages → Sites autorisés), sinon 403. |
 | `compilation` | Serveur de compilation : X-Jeton de la Centrale (vérifié auprès d’elle, gardé 20 min) ou X-Cle enseignant ; OUVERT=1 sur un réseau local seulement. |
 | `none` | Sans authentification. |

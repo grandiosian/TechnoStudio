@@ -1,0 +1,1025 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://grandiosian.github.io/TechnoStudio/centrale.json",
+ "format": "passerelle.atelier",
+ "version": 1,
+ "atelier": {
+  "app": "technostudio",
+  "nom": "TechnoStudio",
+  "version": "3.1.0",
+  "description": "Ateliers de technologie au format de la charte (feuilles, ressources, synthèse, évaluation, SEGPA), simulateur de circuits, maquettes programmables et programmation Blockly de cartes Arduino, ESP32 et micro:bit.",
+  "url": "https://grandiosian.github.io/TechnoStudio/",
+  "urls_secours": [],
+  "icone": "🛠️",
+  "depot": "https://github.com/grandiosian/TechnoStudio",
+  "langue": "fr",
+  "classes": [
+   "5e",
+   "4e",
+   "3e",
+   "STI2D",
+   "SNT",
+   "Pro"
+  ],
+  "parametres": {
+   "app": "Autre identifiant d’atelier Centrale ouvrant TechnoStudio (ex. ?app=technostudio-5e) : ressources, données et suivi lui sont propres.",
+   "centrale": "Autre adresse de Centrale (ex. ?centrale=https://…/).",
+   "compilateur": "Autre serveur de compilation pour les cartes (ex. ?compilateur=https://…/compilation/)."
+  },
+  "_correspondance": "Champs de la table ateliers de la Centrale : app, nom, description, url, icone, urls_secours."
+ },
+ "centrale": {
+  "module": "js/centrale-client.js",
+  "serveur_par_defaut": "https://technoversailles.alwaysdata.net/",
+  "changer_de_serveur": "?centrale=https://…/ dans l’adresse, window.CENTRALE_URL, ou Compte → Réglages de connexion.",
+  "sites_a_autoriser": [
+   "https://grandiosian.github.io"
+  ],
+  "chargement": "Le module est chargé au démarrage, en parallèle de l’affichage. S’il est injoignable, TechnoStudio fonctionne seul (IndexedDB).",
+  "connexion": {
+   "bouton": "« Mon code » dans la barre du haut (et à l’accueil) : formulaire Centrale.afficherConnexion ; une fois connecté, l’identifiant de l’élève s’affiche.",
+   "depuis_le_portail": "Jeton dans l’adresse (#centrale=…) : connexion automatique, sans écran d’accueil.",
+   "activite_directe": "Centrale.activiteDemandee() : « <atelier>/<feuille> » ouvre la feuille, « <atelier> » ouvre l’atelier.",
+   "retour": "Bouton « ← Mes ateliers » dans la barre de menus de TechnoStudio (boutonRetour: false)."
+  },
+  "fonctions_utilisees": [
+   "init",
+   "afficherConnexion",
+   "connecte",
+   "session",
+   "deconnexion",
+   "charger",
+   "sauver",
+   "listeDonnees",
+   "progression",
+   "declarerActivites",
+   "activiteDemandee",
+   "listeRessources",
+   "chargerRessource",
+   "afficherIdentifiant",
+   "retour"
+  ],
+  "fonctions_non_utilisees": [
+   "envoyerFichier",
+   "listeFichiers",
+   "chargerFichier",
+   "mesProgressions",
+   "etape",
+   "projet.*",
+   "parcours",
+   "ateliers",
+   "lien",
+   "ouvrir"
+  ]
+ },
+ "activites": {
+  "declaration": "Centrale.declarerActivites(TechnoStudio.activites()) après chaque connexion : la liste ci-dessous (ateliers intégrés), suivie des activités des ateliers reçus en ressources.",
+  "champs_envoyes": [
+   "id",
+   "titre",
+   "groupe",
+   "total"
+  ],
+  "identifiants_stables": true,
+  "regle": "Une activité par feuille contenant au moins un champ noté : id = <id atelier>/<code feuille> (P1, R1, S1, E1, S-P1 pour la version SEGPA) ; total = nombre de champs notés.",
+  "dynamiques": {
+   "motif": "^[A-Za-z0-9-]+/(S-)?[PRSE][0-9]+$",
+   "description": "Ateliers déposés par l’enseignant dans Ressources des ateliers : mêmes règles, déclarés à la connexion après les ateliers intégrés."
+  },
+  "liste": [
+   {
+    "id": "charte-lampe-de-poche/P1",
+    "titre": "P1 · Séance 1 - Feuille 1",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 6
+   },
+   {
+    "id": "charte-lampe-de-poche/P2",
+    "titre": "P2 · Séance 2 - Feuille 2",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 5
+   },
+   {
+    "id": "charte-lampe-de-poche/S1",
+    "titre": "S1 · Synthèse",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 3
+   },
+   {
+    "id": "charte-lampe-de-poche/E1",
+    "titre": "E1 · Évaluation (recto)",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 4
+   },
+   {
+    "id": "charte-lampe-de-poche/E2",
+    "titre": "E2 · Évaluation (verso)",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 4
+   },
+   {
+    "id": "charte-lampe-de-poche/S-P1",
+    "titre": "S·P1 · SEGPA - Feuille 1",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 6
+   },
+   {
+    "id": "charte-parking-connecte/P1",
+    "titre": "P1 · Séance 3 - Feuille 1",
+    "groupe": "4e · Le parking connecté",
+    "total": 6
+   },
+   {
+    "id": "demo-circuits-serie-derivation/P1",
+    "titre": "P1 · Découvrir",
+    "groupe": "5e · Circuits électriques : série et dérivation",
+    "total": 1
+   },
+   {
+    "id": "demo-circuits-serie-derivation/P2",
+    "titre": "P2 · Mon premier circuit",
+    "groupe": "5e · Circuits électriques : série et dérivation",
+    "total": 1
+   },
+   {
+    "id": "demo-circuits-serie-derivation/P3",
+    "titre": "P3 · Série ou dérivation ?",
+    "groupe": "5e · Circuits électriques : série et dérivation",
+    "total": 2
+   },
+   {
+    "id": "demo-circuits-serie-derivation/P4",
+    "titre": "P4 · Protéger une DEL",
+    "groupe": "5e · Circuits électriques : série et dérivation",
+    "total": 2
+   },
+   {
+    "id": "demo-circuits-serie-derivation/P5",
+    "titre": "P5 · Bilan",
+    "groupe": "5e · Circuits électriques : série et dérivation",
+    "total": 2
+   },
+   {
+    "id": "demo-pro-consignation-mesures/P1",
+    "titre": "P1 · La consignation",
+    "groupe": "Pro · Consignation et mesures électriques",
+    "total": 2
+   },
+   {
+    "id": "demo-pro-consignation-mesures/P2",
+    "titre": "P2 · Mesures et loi d’Ohm",
+    "groupe": "Pro · Consignation et mesures électriques",
+    "total": 3
+   },
+   {
+    "id": "demo-eclairage-premier-programme/P1",
+    "titre": "P1 · Capteurs et actionneurs",
+    "groupe": "5e · Éclairage automatique : mon premier programme",
+    "total": 1
+   },
+   {
+    "id": "demo-eclairage-premier-programme/P2",
+    "titre": "P2 · Allumer quand quelqu’un passe",
+    "groupe": "5e · Éclairage automatique : mon premier programme",
+    "total": 2
+   },
+   {
+    "id": "demo-eclairage-premier-programme/P3",
+    "titre": "P3 · Économiser l’énergie",
+    "groupe": "5e · Éclairage automatique : mon premier programme",
+    "total": 2
+   },
+   {
+    "id": "demo-eclairage-premier-programme/P4",
+    "titre": "P4 · Défi : le feu tricolore",
+    "groupe": "5e · Éclairage automatique : mon premier programme",
+    "total": 1
+   },
+   {
+    "id": "demo-portail-automatique/P1",
+    "titre": "P1 · Observer le système",
+    "groupe": "4e · Le portail automatique",
+    "total": 1
+   },
+   {
+    "id": "demo-portail-automatique/P2",
+    "titre": "P2 · Les chaînes du système",
+    "groupe": "4e · Le portail automatique",
+    "total": 2
+   },
+   {
+    "id": "demo-portail-automatique/P3",
+    "titre": "P3 · Programmer le portail",
+    "groupe": "4e · Le portail automatique",
+    "total": 2
+   },
+   {
+    "id": "demo-portail-automatique/P4",
+    "titre": "P4 · Compte rendu",
+    "groupe": "4e · Le portail automatique",
+    "total": 1
+   },
+   {
+    "id": "demo-snt-parking-connecte/P1",
+    "titre": "P1 · Système embarqué",
+    "groupe": "2nde · Parking connecté : variables et compteur",
+    "total": 1
+   },
+   {
+    "id": "demo-snt-parking-connecte/P2",
+    "titre": "P2 · Compter les places",
+    "groupe": "2nde · Parking connecté : variables et compteur",
+    "total": 1
+   },
+   {
+    "id": "demo-snt-parking-connecte/P3",
+    "titre": "P3 · Vers Python",
+    "groupe": "2nde · Parking connecté : variables et compteur",
+    "total": 2
+   },
+   {
+    "id": "demo-sti2d-serre-regulation/P1",
+    "titre": "P1 · Analyse fonctionnelle",
+    "groupe": "1re · Serre automatisée : régulation tout ou rien",
+    "total": 1
+   },
+   {
+    "id": "demo-sti2d-serre-regulation/P2",
+    "titre": "P2 · Bilan énergétique",
+    "groupe": "1re · Serre automatisée : régulation tout ou rien",
+    "total": 3
+   },
+   {
+    "id": "demo-sti2d-serre-regulation/P3",
+    "titre": "P3 · Régulation à hystérésis",
+    "groupe": "1re · Serre automatisée : régulation tout ou rien",
+    "total": 2
+   }
+  ]
+ },
+ "progression": {
+  "envoi": "Centrale.progression(id, TechnoStudio.progression(id)), 4 s après la dernière réponse, seulement si la valeur a changé.",
+  "quand": [
+   "réponse vérifiée ou rendue dans une feuille notée",
+   "connexion (le travail fait hors ligne est renvoyé)"
+  ],
+  "champs": {
+   "titre": "« P1 · titre de la feuille »",
+   "faites": "champs notés terminés dans la feuille",
+   "total": "champs notés de la feuille",
+   "statut": "termine quand tous les champs notés sont faits, sinon commence",
+   "score": "points obtenus (barème de chaque champ, 1 par défaut) × réussite",
+   "score_max": "somme des barèmes de la feuille",
+   "details": "{ feuille, reponses: [{ q, type, r, note, aCorriger }] } : réponses ouvertes à lire ou corriger (20 Ko au plus)"
+  },
+  "champs_non_utilises": [],
+  "a_la_connexion": "Le travail (donnees at/…) est fusionné réponse par réponse ; la progression est recalculée à partir de lui, pas relue avec mesProgressions().",
+  "format": {
+   "$ref": "#/$defs/Progression"
+  }
+ },
+ "donnees": {
+  "at/{atelier}": {
+   "description": "Travail de l’élève dans un atelier : réponses par champ, feuille en cours, feuilles vues.",
+   "motif": "^at/[A-Za-z0-9_.-]+$",
+   "sauvegarde": "À chaque réponse ; la Centrale regroupe les envois (3 s au plus).",
+   "chargement": "À la connexion : chaque clé est fusionnée avec la copie du poste (réponse la plus récente par champ, champ at) ; sur conflit 409, relecture puis fusion.",
+   "taille_typique": "1 à 50 Ko ; jusqu’à 1 Mo avec des dessins (limite : 2 Mo par clé).",
+   "format": {
+    "$ref": "#/$defs/TravailAtelier"
+   }
+  },
+  "code/projet": {
+   "description": "Programme libre de l’atelier Code (blocs et carte choisie).",
+   "sauvegarde": "À chaque modification des blocs.",
+   "chargement": "À l’ouverture de l’atelier Code : la copie la plus récente (champ at) gagne.",
+   "taille_typique": "2 à 30 Ko.",
+   "format": {
+    "$ref": "#/$defs/ProjetCode"
+   }
+  }
+ },
+ "fichiers": {
+  "utilises": true,
+  "dossier_projet": false,
+  "ressources": [
+   {
+    "nom": "*.technostudio.json",
+    "type": "application/json",
+    "description": "Atelier (ou liste d’ateliers) créé avec l’éditeur de TechnoStudio : Mes ateliers → Pour la Centrale.",
+    "format": {
+     "$ref": "#/$defs/Atelier"
+    }
+   },
+   {
+    "nom": "*.gift",
+    "type": "text/plain",
+    "description": "Questions au format GIFT de Moodle, converties en atelier à la réception."
+   }
+  ],
+  "recoit": [],
+  "produit": [],
+  "note": "TechnoStudio lit les ressources de l’atelier ; il n’envoie pas de fichiers et n’utilise pas encore le dossier de projet. Piste : produit programme.ino / main.py dans un atelier transversal."
+ },
+ "stockage_local": {
+  "description": "Copies dans le navigateur de l’élève (IndexedDB « technostudio », magasin kv), utilisées sans connexion.",
+  "cles": {
+   "pg:<atelier>": {
+    "contenu": "travail de l’atelier (même valeur que at/<atelier>)",
+    "format": {
+     "$ref": "#/$defs/TravailAtelier"
+    }
+   },
+   "ws:<atelier>": {
+    "contenu": "atelier modifié, importé ou reçu de la Centrale",
+    "format": {
+     "$ref": "#/$defs/Atelier"
+    }
+   },
+   "code:projet": {
+    "contenu": "programme libre de l’atelier Code",
+    "format": {
+     "$ref": "#/$defs/ProjetCode"
+    }
+   },
+   "profile": {
+    "contenu": "profil local (nom affiché, rôle) ; jamais envoyé à la Centrale"
+   },
+   "ui:panels": {
+    "contenu": "disposition des panneaux ; jamais envoyée"
+   },
+   "localStorage ts-centrale, ts-app, ts-compilateur": {
+    "contenu": "réglages de connexion du poste"
+   }
+  }
+ },
+ "acces_javascript": {
+  "objet": "window.TechnoStudio",
+  "membres": {
+   "app": "Identifiant de l’atelier en cours (« technostudio » ou la valeur de ?app=).",
+   "version": "Version de TechnoStudio (identique à atelier.version).",
+   "descripteur": "Chemin de ce fichier : \"centrale.json\".",
+   "activites()": "Liste envoyée à la Centrale : [{id, titre, groupe, total}].",
+   "catalogue()": "Ateliers du poste avec leurs feuilles notées.",
+   "progression(id)": "{titre, faites, total, statut, score, score_max, details} ou null.",
+   "donnees()": "Promesse : { \"at/<atelier>\": travail, \"code/projet\": programme }.",
+   "valider(atelier)": "Vérifie un atelier : { ok, errors, warnings }.",
+   "estAtelier(objet)": "true si l’objet est un atelier valide."
+  }
+ },
+ "compilation": {
+  "description": "Programmes C++ des cartes Arduino et ESP32 : compilés par serveur-compilation/serveur.js, puis écrits dans la carte par le navigateur (Web Serial).",
+  "serveur_par_defaut": "https://technoversailles.alwaysdata.net/compilation/",
+  "acces": "En-tête X-Jeton de la Centrale (vérifié par GET progression.php?app=technostudio) ou clé enseignant X-Cle.",
+  "points_acces": {
+   "GET etat": "{ version, cartes, auth, file }",
+   "POST compiler": "{ carte, code } → { ok, journal, format: hex|bin, hex | images }"
+  },
+  "demande": {
+   "$ref": "#/$defs/CompilationDemande"
+  },
+  "reponse": {
+   "$ref": "#/$defs/CompilationReponse"
+  }
+ },
+ "enums": {
+  "niveaux": [
+   {
+    "id": "college",
+    "titre": "Collège"
+   },
+   {
+    "id": "sti2d",
+    "titre": "STI2D / SI"
+   },
+   {
+    "id": "snt",
+    "titre": "SNT / NSI"
+   },
+   {
+    "id": "pro",
+    "titre": "Pro / BTS"
+   }
+  ],
+  "types_feuilles": {
+   "feuille": "P",
+   "ressource": "R",
+   "synthese": "S",
+   "evaluation": "E"
+  },
+  "types_champs": {
+   "text": "contenu",
+   "image": "contenu",
+   "svg": "contenu",
+   "scan": "contenu",
+   "link": "contenu",
+   "ressource": "contenu",
+   "mots": "contenu",
+   "objectif": "structure",
+   "retenir": "structure",
+   "decoupe": "structure",
+   "filet": "structure",
+   "qcm": "exercice, noté",
+   "vraifaux": "exercice, noté",
+   "cloze": "exercice, noté",
+   "numeric": "exercice, noté",
+   "match": "exercice, noté",
+   "order": "exercice, noté",
+   "sort": "exercice, noté",
+   "table": "exercice, noté",
+   "boxes": "exercice, noté",
+   "chain": "exercice, noté",
+   "label": "exercice, noté",
+   "bits": "exercice, noté",
+   "graph": "exercice, noté",
+   "draw": "exercice, noté, à corriger",
+   "mindmap": "exercice, noté",
+   "procedure": "exercice, noté",
+   "questions": "exercice, noté, à corriger",
+   "report": "exercice, noté, à corriger",
+   "autoeval": "exercice",
+   "circuit": "simulation, noté",
+   "blocks": "simulation, noté",
+   "code": "simulation, noté, à corriger"
+  },
+  "cartes": [
+   "uno",
+   "nano",
+   "esp32",
+   "esp32-mpy",
+   "microbit"
+  ]
+ },
+ "$defs": {
+  "Atelier": {
+   "type": "object",
+   "properties": {
+    "format": {
+     "type": "number",
+     "enum": [
+      1,
+      2
+     ]
+    },
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9-]+$"
+    },
+    "version": {
+     "type": "number",
+     "minimum": 1
+    },
+    "title": {
+     "type": "string"
+    },
+    "level": {
+     "type": "string",
+     "enum": [
+      "college",
+      "sti2d",
+      "snt",
+      "pro"
+     ]
+    },
+    "niveau": {
+     "type": "string",
+     "description": "5e, 4e, 3e… (couleur de pastille)"
+    },
+    "cycle": {
+     "type": "number"
+    },
+    "seq": {
+     "type": "number",
+     "description": "numéro « AT SEQ »"
+    },
+    "duration": {
+     "type": "number"
+    },
+    "author": {
+     "type": "string"
+    },
+    "summary": {
+     "type": "string"
+    },
+    "problematique": {
+     "type": "string"
+    },
+    "objet": {
+     "type": "string"
+    },
+    "position": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 9
+    },
+    "competences": {
+     "type": "array",
+     "items": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "object",
+        "properties": {
+         "code": {
+          "type": "string",
+          "pattern": "^T\\d"
+         },
+         "label": {
+          "type": "string"
+         },
+         "color": {
+          "type": "string"
+         },
+         "co": {
+          "type": "string"
+         },
+         "sub": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "code": {
+             "type": "string"
+            },
+            "label": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "code",
+            "label"
+           ]
+          }
+         }
+        },
+        "required": [
+         "label"
+        ]
+       }
+      ]
+     }
+    },
+    "presentation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "synthese": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "evaluation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "differenciation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "materiel": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "deroulement": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "seance": {
+        "type": "string"
+       },
+       "objectif": {
+        "type": "string"
+       },
+       "activites": {
+        "type": "string"
+       },
+       "ressources": {
+        "type": "string"
+       }
+      }
+     }
+    },
+    "prof": {
+     "type": "object",
+     "properties": {
+      "organisation": {
+       "type": "string",
+       "format": "markdown"
+      },
+      "materiel": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "seance": {
+          "type": "string"
+         },
+         "contenu": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     },
+     "description": "fiche professeur, jamais transmise aux élèves"
+    },
+    "steps": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Feuille"
+     }
+    },
+    "updatedAt": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "id",
+    "title",
+    "steps"
+   ]
+  },
+  "Feuille": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string"
+    },
+    "kind": {
+     "type": "string",
+     "enum": [
+      "feuille",
+      "ressource",
+      "synthese",
+      "evaluation"
+     ],
+     "description": "Type de feuille de la charte : P, R, S, E."
+    },
+    "seance": {
+     "type": "number",
+     "minimum": 1
+    },
+    "feuille": {
+     "type": "number",
+     "minimum": 1
+    },
+    "segpa": {
+     "type": "boolean"
+    },
+    "verso": {
+     "type": "boolean"
+    },
+    "big": {
+     "type": "boolean"
+    },
+    "resume": {
+     "type": "string"
+    },
+    "objectif": {
+     "type": "string"
+    },
+    "consignes": {
+     "type": "string"
+    },
+    "numStart": {
+     "type": "number"
+    },
+    "blocks": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Champ"
+     }
+    }
+   },
+   "required": [
+    "title",
+    "blocks"
+   ]
+  },
+  "Reponse": {
+   "type": "object",
+   "properties": {
+    "value": {},
+    "done": {
+     "type": "boolean"
+    },
+    "correct": {
+     "type": "boolean"
+    },
+    "score": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 1
+    },
+    "attempts": {
+     "type": "number",
+     "minimum": 0
+    },
+    "revealed": {
+     "type": "boolean"
+    },
+    "at": {
+     "type": "number",
+     "description": "horodatage ms (règle de fusion)"
+    },
+    "pendingReview": {
+     "type": "boolean"
+    },
+    "teacher": {
+     "type": "object",
+     "properties": {
+      "grade": {
+       "type": "string"
+      },
+      "comment": {
+       "type": "string"
+      },
+      "by": {
+       "type": "string"
+      },
+      "at": {
+       "type": "number"
+      }
+     }
+    }
+   }
+  },
+  "TravailAtelier": {
+   "type": "object",
+   "properties": {
+    "wid": {
+     "type": "string"
+    },
+    "step": {
+     "type": "number"
+    },
+    "answers": {
+     "type": "object",
+     "properties": {},
+     "additionalProperties": {
+      "$ref": "#/$defs/Reponse"
+     }
+    },
+    "seen": {
+     "type": "object",
+     "properties": {}
+    },
+    "startedAt": {
+     "type": "number"
+    },
+    "updatedAt": {
+     "type": "number"
+    },
+    "completedAt": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "wid",
+    "answers"
+   ]
+  },
+  "PaquetAteliers": {
+   "type": "object",
+   "properties": {
+    "workshops": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/Atelier"
+     }
+    },
+    "classes": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "workshops"
+   ],
+   "description": "paquet de plusieurs ateliers (.technostudio.json)"
+  },
+  "CompilationDemande": {
+   "type": "object",
+   "properties": {
+    "carte": {
+     "type": "string",
+     "enum": [
+      "uno",
+      "nano",
+      "esp32"
+     ]
+    },
+    "code": {
+     "type": "string",
+     "description": "C++ Arduino, 100 Ko au plus ; seules les bibliothèques connues peuvent être incluses"
+    }
+   },
+   "required": [
+    "carte",
+    "code"
+   ]
+  },
+  "CompilationReponse": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "journal": {
+     "type": "string"
+    },
+    "erreur": {
+     "type": "string"
+    },
+    "format": {
+     "type": "string",
+     "enum": [
+      "hex",
+      "bin"
+     ]
+    },
+    "hex": {
+     "type": "string"
+    },
+    "images": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "adresse": {
+        "type": "number"
+       },
+       "donnees": {
+        "type": "string",
+        "description": "base64"
+       }
+      }
+     }
+    },
+    "duree": {
+     "type": "number"
+    },
+    "cache": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "ok"
+   ]
+  },
+  "Champ": {
+   "type": "object",
+   "required": [
+    "type"
+   ],
+   "properties": {
+    "type": {
+     "enum": [
+      "text",
+      "image",
+      "svg",
+      "scan",
+      "link",
+      "ressource",
+      "mots",
+      "objectif",
+      "retenir",
+      "decoupe",
+      "filet",
+      "qcm",
+      "vraifaux",
+      "cloze",
+      "numeric",
+      "match",
+      "order",
+      "sort",
+      "table",
+      "boxes",
+      "chain",
+      "label",
+      "bits",
+      "graph",
+      "draw",
+      "mindmap",
+      "procedure",
+      "questions",
+      "report",
+      "autoeval",
+      "circuit",
+      "blocks",
+      "code"
+     ]
+    },
+    "id": {
+     "type": "string"
+    }
+   },
+   "description": "Champ d’une feuille ; propriétés détaillées par type dans docs/descripteur-ateliers.md."
+  },
+  "Progression": {
+   "type": "object",
+   "required": [
+    "faites",
+    "total",
+    "statut"
+   ],
+   "properties": {
+    "titre": {
+     "type": "string",
+     "maxLength": 120
+    },
+    "faites": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "total": {
+     "type": "integer",
+     "minimum": 1
+    },
+    "statut": {
+     "enum": [
+      "commence",
+      "termine"
+     ]
+    },
+    "score": {
+     "type": "number",
+     "minimum": 0
+    },
+    "score_max": {
+     "type": "number",
+     "minimum": 0
+    },
+    "details": {
+     "type": "object",
+     "properties": {
+      "feuille": {
+       "type": "string"
+      },
+      "reponses": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "q",
+         "type",
+         "r"
+        ],
+        "properties": {
+         "q": {
+          "type": "string"
+         },
+         "type": {
+          "type": "string"
+         },
+         "r": {
+          "type": "string"
+         },
+         "note": {
+          "type": "string"
+         },
+         "aCorriger": {
+          "type": "boolean"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "ProjetCode": {
+   "type": "object",
+   "required": [
+    "board",
+    "ws"
+   ],
+   "properties": {
+    "board": {
+     "enum": [
+      "uno",
+      "nano",
+      "esp32",
+      "esp32-mpy",
+      "microbit"
+     ]
+    },
+    "ws": {
+     "type": "object",
+     "description": "Espace Blockly (Blockly.serialization.workspaces.save)"
+    },
+    "at": {
+     "type": "number",
+     "description": "horodatage ms : la copie la plus récente gagne"
+    }
+   }
+  }
+ }
+}

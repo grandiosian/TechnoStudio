@@ -15,8 +15,8 @@ const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if (!c) process.e
   // 1. Premier poste : bienvenue → code élève
   const c1 = await b.newContext({ viewport: { width: 1300, height: 850 } });
   const p = await c1.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push('console: ' + m.text()); });
-  await p.goto(url); await p.waitForSelector('.onb-code input', { timeout: 15000 });
-  await p.fill('.onb-code input', codes[0]); await p.click('.onb-code .btn.primary');
+  await p.goto(url); await p.waitForSelector('.onb-code #centrale-code', { timeout: 15000 });
+  await p.fill('#centrale-code', codes[0]); await p.click('.centrale-form button');
   await p.waitForFunction(() => TL.centrale.connecte() && TL.app.workshops.has('test-centrale'), null, { timeout: 15000 });
   ok(true, 'connexion par code et réception de l’atelier déposé dans la Centrale');
   const badge = await p.textContent('[data-sync]'); ok(/4C-/.test(badge), 'badge : ' + badge.trim());
@@ -37,13 +37,13 @@ const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if (!c) process.e
   const prog = JSON.parse(sql('select activite, statut, faites, total, score, score_max from progression'));
   ok(prog.some((r) => r.activite === 'test-centrale/P1' && r.statut === 'termine' && r.faites == 2), 'avancement : ' + JSON.stringify(prog));
   const acts = JSON.parse(sql("select activite, titre, groupe from activites where app='technostudio'"));
-  ok(acts.length >= 1 && acts[0].activite === 'test-centrale/P1', 'colonnes du suivi déclarées : ' + acts.map((a) => a.activite).join(', '));
+  ok(acts.some((a) => a.activite === 'test-centrale/P1'), 'colonnes du suivi déclarées : ' + acts.length + ' dont test-centrale/P1');
   await p.screenshot({ path: process.env.SHOTS + '/2-feuille.png' });
   // 3. Autre poste : même code, le travail revient
   const c2 = await b.newContext({ viewport: { width: 1300, height: 850 } });
   const p2 = await c2.newPage(); p2.on('pageerror', (e) => errs.push('p2: ' + e.message));
-  await p2.goto(url); await p2.waitForSelector('.onb-code input');
-  await p2.fill('.onb-code input', codes[0]); await p2.click('.onb-code .btn.primary');
+  await p2.goto(url); await p2.waitForSelector('#centrale-code');
+  await p2.fill('#centrale-code', codes[0]); await p2.click('.centrale-form button');
   await p2.waitForFunction(() => TL.centrale.connecte(), null, { timeout: 15000 });
   await wait(1500);
   const rep = await p2.evaluate(async () => { const pg = await TL.db.get('pg:test-centrale'); return pg && Object.values(pg.answers).filter((a) => a.done).length; });
@@ -67,6 +67,20 @@ const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if (!c) process.e
   await wait(9000);
   const fin = JSON.parse(JSON.parse(sql("select valeur from donnees where cle='at/test-centrale'"))[0].valeur);
   ok(fin.answers.q1.note === 'p1' && fin.answers.q2.note === 'p2', 'conflit entre deux postes fusionné réponse par réponse');
+  // Le descripteur publié correspond à ce que l'appli envoie
+  const pub = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'centrale.json'), 'utf8'));
+  const envoye = await p.evaluate(() => ({ app: TechnoStudio.app, version: TechnoStudio.version, activites: TechnoStudio.activites() }));
+  const integres = envoye.activites.slice(0, pub.activites.liste.length);
+  ok(envoye.app === pub.atelier.app && envoye.version === pub.atelier.version && JSON.stringify(integres) === JSON.stringify(pub.activites.liste), 'TechnoStudio.activites() commence par activites.liste de centrale.json (' + pub.activites.liste.length + ')');
+  const re = new RegExp(pub.activites.dynamiques.motif);
+  ok(envoye.activites.slice(pub.activites.liste.length).every((a) => re.test(a.id)), 'activités des ateliers reçus conformes au motif dynamique');
+  const decl = JSON.parse(sql("select activite from activites where app='technostudio' order by ordre")).map((r) => r.activite);
+  ok(JSON.stringify(decl) === JSON.stringify(envoye.activites.map((a) => a.id)), 'colonnes enregistrées par la Centrale = TechnoStudio.activites() (' + decl.length + ')');
+  const memeNote = await p.evaluate(() => [...TL.app.workshops.values()].every((w) => w.steps.every((s) => s.blocks.every((b) => TL.passerelle.estNote(b) === TL.isGraded(b)))));
+  ok(memeNote, 'champs notés : descripteur et activités de l’appli concordent');
+  const cles = await p.evaluate(async () => Object.keys(await TechnoStudio.donnees()));
+  const motifAt = new RegExp(pub.donnees['at/{atelier}'].motif);
+  ok(cles.length && cles.every((k) => motifAt.test(k) || k in pub.donnees), 'clés de TechnoStudio.donnees() déclarées : ' + cles.join(', '));
   ok(!errs.length, 'aucune erreur JavaScript' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await b.close();
 })().catch((e) => { console.error(e); process.exit(1); });

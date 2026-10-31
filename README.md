@@ -3,7 +3,7 @@
 Ateliers de technologie au **format de la charte** (fiche pédagogique, feuilles P, ressources R, synthèse S, évaluation E, version SEGPA), simulations, et **programmation de cartes** Arduino, ESP32 et micro:bit avec Blockly.
 
 - **Seul** : l'application s'ouvre dans le navigateur, avec ses ateliers intégrés, et fonctionne hors ligne. Le travail est gardé dans le navigateur.
-- **Avec la [Centrale élèves](https://github.com/grandiosian/centrale)** : l'élève tape son code (ou arrive déjà connecté depuis le portail). Il reçoit alors les ateliers de son professeur et son travail est enregistré sur le serveur : il le retrouve sur n'importe quel poste. Son avancement remonte dans le tableau de suivi.
+- **Avec la [Centrale élèves](https://github.com/grandiosian/centrale)** : l'élève se connecte avec le formulaire de la Centrale (ou arrive déjà connecté depuis le portail). Il reçoit alors les ateliers de son professeur et son travail est enregistré sur le serveur : il le retrouve sur n'importe quel poste. Son avancement remonte dans le tableau de suivi.
 - **Cartes** : le programme est compilé sur un **serveur de compilation**, puis le navigateur l'écrit lui-même dans la carte branchée en USB. Rien n'est à installer sur les postes élèves.
 
 **Essayer** : https://grandiosian.github.io/TechnoStudio/
@@ -29,11 +29,14 @@ Ateliers de technologie au **format de la charte** (fiche pédagogique, feuilles
 | `index.html`, `js/`, `css/`, `vendor/`, `sw.js` | l'application (publiée telle quelle par GitHub Pages) |
 | `js/centrale.js` | connexion à la Centrale : code, portail, ateliers reçus, sauvegarde, avancement |
 | `js/flash.js` | compilation à distance et téléversement par le navigateur (STK500, esptool-js) |
-| `js/descriptor.js` | **descripteur de passerelle** : formats des ateliers et du travail, clés de la Centrale, points d'accès |
+| `centrale.json`, `PASSERELLE.md` | **descripteur d'atelier** commun aux applications de la Centrale (`passerelle.atelier` v1), produit par `tools/centrale-json.js` |
+| `js/passerelle.js` | ce que l'appli déclare et envoie à la Centrale (activités, progression, clés) : source de `centrale.json` |
+| `js/descriptor.js` | format des ateliers (33 types de champs) et de leurs réponses |
 | `serveur-compilation/` | serveur Node.js (sans dépendance) autour d'arduino-cli, et son installateur |
 | `pont/` | pont local facultatif, pour un poste équipé d'arduino-cli (salle sans internet) |
 | `dist/technostudio-autonome.html` | toute l'appli en un seul fichier (double-clic, clé USB) |
-| `docs/PASSERELLE.md` | le descripteur en clair (généré) · `docs/FORMAT-ATELIER.md` : format des ateliers et GIFT |
+| `docs/passerelle-atelier/` | spécification commune `passerelle.atelier` v1, schéma JSON, modèle vierge (à reprendre dans le dépôt de la Centrale) |
+| `docs/descripteur-ateliers.md` | format des ateliers en clair (généré) · `docs/FORMAT-ATELIER.md` : format et GIFT |
 | `tests/`, `tools/` | essais (STK500, serveur, Centrale de bout en bout) et outils (construction, documentation) |
 
 ## 1. Brancher TechnoStudio sur la Centrale
@@ -132,22 +135,26 @@ L'éditeur montre la feuille telle que l'élève la verra :
 
 Chaque atelier est vérifié avec le descripteur avant d'être diffusé ou reçu.
 
-## 4. Passerelle (descripteur)
+## 4. Passerelle avec la Centrale
 
-`js/descriptor.js` est la référence commune. Il décrit :
+TechnoStudio publie **`centrale.json`** à la racine de son site (`https://grandiosian.github.io/TechnoStudio/centrale.json`) :
 
-- les entités : `Workshop`, `Progress`, `Session`, `Ressource`, `Activite`, `ProgressionEnvoi`, `CompilationDemande` et `CompilationReponse` ;
-- les 33 types de champs ;
-- les clés de stockage dans le navigateur et dans la Centrale ;
-- la fusion du travail entre postes ;
-- les points d'accès utilisés.
+- c'est le même format que NetSim, `passerelle.atelier` v1 ;
+- la version lisible est [`PASSERELLE.md`](PASSERELLE.md) ;
+- le point d'accès JavaScript est `window.TechnoStudio`.
 
-Il est lisible dans l'appli (Centrale → Passerelle et descripteur) et dans `docs/PASSERELLE.md`.
+Le fichier est **produit par le code** (`node tools/centrale-json.js`), à partir de `js/passerelle.js`, que l'appli utilise pour ses envois, et de `js/descriptor.js`. La vérification GitHub échoue s'il n'est pas à jour ou pas conforme au schéma.
+
+La spécification commune, son schéma JSON et un modèle vierge sont dans [`docs/passerelle-atelier/`](docs/passerelle-atelier/SPECIFICATION.md), à reprendre dans le dépôt de la Centrale.
 
 ```bash
+node tools/centrale-json.js                 # régénérer centrale.json
+npm i --no-save ajv@8 && node tools/valider-centrale-json.js centrale.json ../NetSim/centrale.json
 node tools/verifier-ateliers.js mon-atelier.technostudio.json   # vérifier des ateliers produits ailleurs
-node tools/descripteur-doc.js                                    # régénérer docs/PASSERELLE.md
+node tools/descripteur-doc.js               # régénérer docs/descripteur-ateliers.md
 ```
+
+**Codes élèves** : ils sont gérés uniquement par la Centrale. TechnoStudio affiche le formulaire de son module (`Centrale.afficherConnexion`) ou reçoit le jeton du portail. Il ne lit, ne contrôle et ne garde aucun code.
 
 ## 5. Développer
 
@@ -155,7 +162,7 @@ Le JavaScript s'exécute sans compilation : modifier `js/`, puis recharger. Les 
 
 ```bash
 python3 -m http.server 8000                 # http://localhost:8000/?centrale=http://localhost:8081/
-node tools/build.js                         # régénère dist/technostudio-autonome.html (à faire avant chaque envoi)
+node tools/build.js && node tools/centrale-json.js   # à faire avant chaque envoi
 node tests/stk500.test.js                   # téléversement Arduino contre un faux bootloader
 node tests/serveur-regles.test.js           # règles du serveur de compilation
 node tests/compilation.test.js <centrale> <code>  # serveur de compilation (faux arduino-cli) + Centrale

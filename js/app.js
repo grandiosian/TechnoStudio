@@ -418,30 +418,17 @@
   }
 
   /* ================= Connexion à la Centrale ================= */
-  /** Fenêtre « Mon code » : le code élève distribué par le professeur (ex. 4C-LHA-9943-kfmz-tqpr). */
-  app.connexion = function () {
+  /** Fenêtre « Mon code » : formulaire fourni par la Centrale (code élève géré par elle). */
+  app.connexion = async function () {
     const Z = TL.centrale;
-    const code = h('input.field.mono', { type: 'text', placeholder: 'ex. 4C-LHA-9943-kfmz-tqpr', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Mon code' });
-    const err = h('p.form-err', { 'aria-live': 'polite' });
-    let m;
-    const go = async () => {
-      err.textContent = '';
-      if (!code.value.trim()) { err.textContent = 'Tape ton code.'; return false; }
-      const btn = m.el.querySelector('.modal-foot .btn.primary'); if (btn) { btn.disabled = true; btn.textContent = 'Connexion…'; }
-      try {
-        await Z.connexion(code.value);
-        TL.toast('Connecté : ' + Z.user.name, 'ok');
-        m.close(); route();
-      } catch (e) { err.textContent = e.message; if (btn) { btn.disabled = false; btn.textContent = 'Se connecter'; } }
-      return false;
-    };
-    code.onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    m = TL.modal('Me connecter à la Centrale', h('div.form',
+    const zone = h('div.centrale-zone', h('p.muted', 'Connexion à la Centrale…'));
+    const m = TL.modal('Me connecter à la Centrale', h('div.form',
       h('p', 'Avec ton code, tu reçois les ateliers de ton professeur, ton travail est enregistré et tu le retrouves sur n’importe quel ordinateur.'),
-      h('label', 'Mon code', code), err,
-      h('p.small.muted', 'Centrale : ' + Z.serveur.replace(/^https?:\/\//, '').replace(/\/$/, '') + ' · atelier « ' + Z.app + ' »')),
-    [{ label: 'Plus tard' }, { label: 'Se connecter', primary: true, onClick: go }]);
-    setTimeout(() => code.focus(), 50);
+      zone, h('p.small.muted', 'Centrale : ' + Z.serveur.replace(/^https?:\/\//, '').replace(/\/$/, '') + ' · atelier « ' + Z.app + ' »')),
+    [{ label: 'Plus tard' }]);
+    if (!Z.dispo) await Z.init();
+    zone.innerHTML = '';
+    if (!Z.afficherConnexion(zone, () => { m.close(); TL.toast('Connecté : ' + Z.user.name, 'ok'); route(); })) zone.append(h('p.callout.warn', 'Centrale injoignable pour le moment. Ton travail reste sur cet appareil ; réessaie plus tard.'));
   };
 
   async function viewAccount() {
@@ -610,37 +597,34 @@
   function onboarding() {
     return new Promise((resolve) => {
       let res = resolve;
-      const code = h('input.field.mono', { type: 'text', placeholder: 'ex. 4C-LHA-9943-kfmz-tqpr', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Mon code élève' });
+      const Z = TL.centrale;
       const name = h('input.field', { type: 'text', placeholder: 'ex. Léa Martin', autocomplete: 'name', 'aria-label': 'Prénom et nom' });
-      const err = h('p.form-err', { 'aria-live': 'polite' });
       let role = 'eleve';
       const roles = h('div.rolepick', [['eleve', 'Élève', 'Je fais les ateliers'], ['prof', 'Enseignant', 'Je crée et je diffuse']].map(([v, t, d]) => {
         const b = h('button.rolebtn' + (v === role ? '.on' : ''), { type: 'button', 'aria-pressed': String(v === role), onclick: () => { role = v; TL.$$('.rolebtn', roles).forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); }); } }, h('strong', t), h('small', d));
         return b;
       }));
       const finir = async (profil) => { app.profile = Object.assign({ classe: '', createdAt: Date.now() }, profil); await TL.db.set('profile', app.profile); res(); };
-      const avecCode = async () => {
-        err.textContent = '';
-        if (!code.value.trim()) { err.textContent = 'Tape ton code, ou continue sans code.'; return false; }
-        app.profile = { name: 'Élève', role: 'eleve', classe: '', createdAt: Date.now() };
-        try { await TL.centrale.connexion(code.value); await TL.db.set('profile', app.profile); m.close(); res(); } catch (e) { app.profile = null; err.textContent = e.message; }
-        return false;
-      };
-      code.onkeydown = (e) => { if (e.key === 'Enter') avecCode(); };
+      const zone = h('div.centrale-zone');
+      const sans = h('details.onb-sans', h('summary', Z.dispo ? 'Continuer sans code' : 'Commencer'),
+        h('label', 'Prénom et nom', name), h('div.p-label', 'Tu es'), roles,
+        h('div.actions', h('button.btn.ghost', { type: 'button', onclick: async () => { await finir({ name: name.value.trim() || (role === 'prof' ? 'Enseignant' : 'Élève'), role }); m.close(); } }, Z.dispo ? 'Commencer sans code' : 'Commencer')));
       const m = TL.modal('Bienvenue dans TechnoStudio', h('div.form.onb',
         h('p', 'Tes ateliers de technologie, en classe ou à la maison, même sans internet.'),
-        h('div.onb-code', h('label', 'J’ai un code élève', code), err, h('button.btn.primary', { type: 'button', onclick: avecCode }, 'Me connecter')),
-        h('details.onb-sans', h('summary', 'Continuer sans code'),
-          h('label', 'Prénom et nom', name), h('div.p-label', 'Tu es'), roles,
-          h('div.actions', h('button.btn.ghost', { type: 'button', onclick: async () => { await finir({ name: name.value.trim() || (role === 'prof' ? 'Enseignant' : 'Élève'), role }); m.close(); } }, 'Commencer sans code')))),
-      []);
+        Z.dispo ? h('div.onb-code', zone) : h('p.small.muted', 'La Centrale n’est pas joignable d’ici : tout fonctionne et reste sur cet appareil.'),
+        sans), []);
+      if (!Z.dispo) sans.open = true;
+      // Formulaire « Mon code » fourni par la Centrale
+      Z.afficherConnexion(zone, async () => {
+        app.profile = app.profile || { name: Z.user ? Z.user.name : 'Élève', role: 'eleve', classe: Z.user ? Z.user.classe : '', createdAt: Date.now() };
+        await TL.db.set('profile', app.profile); m.close(); res();
+      });
       m.el.querySelector('.modal-head button').remove();
-      // Cette fenêtre ne se ferme qu'avec un des deux boutons (pas de clic à côté ni Échap)
+      // Cette fenêtre ne se ferme qu'avec la connexion ou « sans code » (pas de clic à côté ni Échap)
       const garde = (e) => { if (e.type === 'mousedown' ? e.target === m.el.parentNode : e.key === 'Escape') e.stopImmediatePropagation(); };
       m.el.parentNode.addEventListener('mousedown', garde, true);
       window.addEventListener('keydown', garde, true);
       const fin = res; res = () => { window.removeEventListener('keydown', garde, true); fin(); };
-      setTimeout(() => code.focus(), 50);
     });
   }
 

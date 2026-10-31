@@ -162,7 +162,7 @@
   };
 
   const AUTH = {
-    jeton: 'En-tête X-Jeton: <jeton> reçu de login.php (12 h, durée de l’onglet). Code élève du type 4C-LHA-9943-kfmz-tqpr.',
+    jeton: 'En-tête X-Jeton: <jeton> fourni par le module de la Centrale (formulaire Centrale.afficherConnexion ou jeton du portail). Les codes élèves sont gérés par la Centrale seule.',
     site: 'Origine du site autorisée dans la Centrale (Réglages → Sites autorisés), sinon 403.',
     compilation: 'Serveur de compilation : X-Jeton de la Centrale (vérifié auprès d’elle, gardé 20 min) ou X-Cle enseignant ; OUVERT=1 sur un réseau local seulement.',
     none: 'Sans authentification.',

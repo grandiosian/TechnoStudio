@@ -94,7 +94,16 @@
     } else etat('local');
   };
 
-  /** Connexion avec le code élève (5A-…). */
+  /**
+   * Formulaire de connexion de la Centrale (module centrale-client.js) : le code élève,
+   * son format et ses messages appartiennent à la Centrale, TechnoStudio ne fait que l'afficher.
+   */
+  Z.afficherConnexion = function (element, apres) {
+    if (!Z.dispo) return false;
+    window.Centrale.afficherConnexion(element, { titre: 'Mon code', onConnecte: (infos) => { apresConnexion(infos).finally(() => apres && apres(infos)); } });
+    return true;
+  };
+  /** Connexion directe avec un code (outils et essais) ; l'interface passe par afficherConnexion. */
   Z.connexion = async function (code) {
     if (!Z.dispo) { await Z.init(); if (!Z.dispo) throw new Error('Centrale injoignable. Vérifie la connexion internet.'); }
     const infos = await window.Centrale.connexion(code);
@@ -176,7 +185,7 @@
   Z.ateliersRecus = () => [...TL.app.workshops.values()].filter((w) => w.source === 'centrale');
 
   /* ---------- Travail de l'élève : une donnée par atelier ---------- */
-  const cle = (wid) => 'at/' + String(wid).replace(/[^A-Za-z0-9_\-.]/g, '-');
+  const cle = (wid) => TL.passerelle.cleAtelier(wid);
   function fusion(local, distant) {
     if (!local) return distant; if (!distant) return local;
     const out = Object.assign({}, distant, local);
@@ -244,46 +253,17 @@
     TL.emit('synced');
   };
 
-  /* ---------- Avancement : une activité par feuille notée ---------- */
-  const actId = (w, code) => (w.id + '/' + code).replace(/[^A-Za-z0-9_\-./]/g, '-').replace(/·/g, '');
-  function activitesDe(w) {
-    const codes = TL.sheetCodes(w);
-    const out = [];
-    w.steps.forEach((s, i) => {
-      const notes = s.blocks.filter((b) => TL.isGraded(b));
-      if (notes.length) out.push({ id: actId(w, codes[i]), titre: (codes[i] + ' · ' + s.title).slice(0, 120), step: s, index: i, notes });
-    });
-    return out;
-  }
-  const resume = (v) => {
-    if (v == null) return '';
-    if (typeof v === 'string') return v.startsWith('data:image') ? '[dessin]' : v.slice(0, 600);
-    if (typeof v !== 'object') return String(v);
-    if (v.png) return '[dessin]';
-    if (v.code) return v.code.slice(0, 1500);
-    if (v.text) return String(v.text).slice(0, 600);
-    try { return JSON.stringify(v, (k, x) => (typeof x === 'string' && x.startsWith('data:') ? '[fichier]' : x)).slice(0, 600); } catch (e) { return ''; }
-  };
+  /* ---------- Avancement : une activité par feuille notée (js/passerelle.js) ---------- */
+  const P = TL.passerelle;
   const envoyes = {};
   Z.rapport = function (wid) {
     if (!Z.connecte()) return;
     const w = TL.app.workshops.get(wid);
     const pg = TL.app.progress.get(wid);
     if (!w || !pg) return;
-    for (const a of activitesDe(w)) {
-      let faites = 0, score = 0, max = 0;
-      const reponses = [];
-      for (const b of a.notes) {
-        const r = pg.answers[b.id];
-        const pts = b.bareme || 1;
-        max += pts;
-        if (r && r.done) { faites++; score += pts * (r.score || 0); }
-        if (r && r.value != null) reponses.push({ q: String(b.question || b.prompt || b.title || b.type).replace(/<[^>]+>/g, '').slice(0, 100), type: b.type, r: resume(r.value), note: r.score != null ? Math.round(r.score * 100) + ' %' : null, aCorriger: !!r.pendingReview || undefined });
-      }
-      if (!faites && !reponses.length) continue;
-      let details = { feuille: a.step.title, reponses };
-      while (JSON.stringify(details).length > 18000 && details.reponses.length) { details.reponses = details.reponses.map((x) => Object.assign({}, x, { r: String(x.r).slice(0, Math.floor(String(x.r).length / 2)) })); if (details.reponses.every((x) => x.r.length < 20)) details.reponses.pop(); }
-      const envoi = { titre: a.titre, faites, total: a.notes.length, score: Math.round(score * 100) / 100, score_max: max, statut: faites === a.notes.length ? 'termine' : 'commence', details };
+    for (const a of P.activitesAtelier(w)) {
+      const envoi = P.progression(w, pg, a);
+      if (!envoi) continue;
       const emp = JSON.stringify(envoi);
       if (envoyes[a.id] === emp) continue;
       envoyes[a.id] = emp;
@@ -291,14 +271,15 @@
     }
   };
 
-  /** Colonnes du tableau de suivi : les feuilles notées des ateliers reçus (sinon de tous les ateliers du poste). */
+  /** Colonnes du suivi : les ateliers intégrés (liste publiée dans centrale.json), puis ceux reçus de la Centrale. */
+  Z.activites = function () {
+    const tous = [...TL.app.workshops.values()];
+    return P.activites(tous.filter((w) => w.source === 'demo')).concat(P.activites(tous.filter((w) => w.source === 'centrale'))).slice(0, 500);
+  };
   Z.declarer = function () {
     if (!Z.connecte()) return;
-    const recus = Z.ateliersRecus();
-    const ateliers = recus.length ? recus : [...TL.app.workshops.values()];
-    const liste = [];
-    ateliers.sort((a, b) => (a.seq || 99) - (b.seq || 99)).forEach((w) => activitesDe(w).forEach((a) => liste.push({ id: a.id, titre: a.titre, groupe: (w.niveau ? w.niveau + ' · ' : '') + w.title.slice(0, 70), total: a.notes.length })));
-    if (liste.length) window.Centrale.declarerActivites(liste.slice(0, 500)).catch(() => {});
+    const liste = Z.activites();
+    if (liste.length) window.Centrale.declarerActivites(liste).catch(() => {});
   };
 
   /** Le portail peut ouvrir directement une feuille : « atelier/P1 » ou un atelier entier. */
@@ -307,11 +288,40 @@
     const w = TL.app.workshops.get(wid);
     if (!w) { TL.toast('Activité « ' + id + ' » introuvable sur ce poste.', 'bad'); return; }
     if (code) {
-      const i = activitesDe(w).find((a) => a.id === actId(w, code));
-      if (i) { const pg = await TL.app.getProgress(wid); pg.step = i.index; }
+      const i = P.activitesAtelier(w).find((a) => a.id === P.idActivite(w, code) || a.id === id);
+      if (i) { const pg = await TL.app.getProgress(wid); pg.step = i.feuille; }
     }
     TL.app.go('at-' + wid);
   }
   Z.ouvrirActivite = ouvrirActivite;
   Z.lienPortail = () => { try { return (Z.dispo && sessionStorage.getItem('centrale-retour')) || ''; } catch (e) { return ''; } };
+
+  /* ---------- Point d'accès unique : window.TechnoStudio (décrit dans centrale.json → acces_javascript) ---------- */
+  const TS = {
+    version: P.VERSION,
+    descripteur: 'centrale.json',
+    /** Liste envoyée à la Centrale : [{ id, titre, groupe, total }]. */
+    activites: () => Z.activites(),
+    /** Ateliers présents sur ce poste, avec leurs feuilles notées. */
+    catalogue: () => [...TL.app.workshops.values()].map((w) => ({ id: w.id, titre: w.title, niveau: w.niveau || '', source: w.source, version: w.version || 1, feuilles: P.activitesAtelier(w).map((a) => ({ id: a.id, titre: a.titre, total: a.total })) })),
+    /** Ce qui est (ou serait) envoyé à progression.php pour une activité, ou null. */
+    progression: (id) => {
+      const wid = String(id).split('/')[0];
+      const w = TL.app.workshops.get(wid), pg = TL.app.progress.get(wid);
+      const a = w && P.activitesAtelier(w).find((x) => x.id === id);
+      return a && pg ? P.progression(w, pg, a) : null;
+    },
+    /** Valeurs des clés enregistrées : { "at/<id>": Progress, …, "code/projet": … }. */
+    donnees: async () => {
+      const out = {};
+      for (const k of await TL.db.keys('pg:')) { const pg = await TL.db.get(k); if (pg && pg.wid) out[P.cleAtelier(pg.wid)] = pg; }
+      const code = await TL.db.get('code:projet'); if (code) out[P.CLE_CODE] = code;
+      return out;
+    },
+    /** Vérifie un atelier avec le descripteur des ateliers : { ok, errors, warnings }. */
+    valider: (atelier) => TL.descriptor.validate('Workshop', atelier),
+    estAtelier: (atelier) => TL.descriptor.validate('Workshop', atelier).ok,
+  };
+  Object.defineProperty(TS, 'app', { enumerable: true, get: () => Z.app });
+  window.TechnoStudio = TS;
 })();

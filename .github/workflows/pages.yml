@@ -27,7 +27,7 @@ jobs:
       - name: Préparer le site (l'appli seule, sans serveurs ni tests)
         run: |
           mkdir -p _site
-          cp -r index.html manifest.webmanifest sw.js .nojekyll css js vendor icons dist docs _site/
+          cp -r index.html manifest.webmanifest sw.js .nojekyll centrale.json PASSERELLE.md css js vendor icons dist docs _site/
           rm -f _site/dist/artifact.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

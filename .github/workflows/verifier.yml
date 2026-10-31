@@ -1,4 +1,4 @@
-# Vérifie TechnoStudio à chaque envoi : syntaxe, ateliers conformes au descripteur,
+# Vérifie TechnoStudio à chaque envoi : syntaxe, ateliers conformes au descripteur, centrale.json,
 # téléversement Arduino (STK500) contre un faux bootloader, règles du serveur de compilation,
 # et que le fichier unique dist/technostudio-autonome.html est à jour.
 name: Vérifier
@@ -24,6 +24,12 @@ jobs:
         run: node tests/stk500.test.js
       - name: Règles du serveur de compilation
         run: node tests/serveur-regles.test.js
+      - name: Descripteur centrale.json à jour et conforme (passerelle.atelier v1)
+        run: |
+          node tools/centrale-json.js
+          git diff --quiet -- centrale.json || { echo "::error::centrale.json n'est pas à jour : lancez node tools/centrale-json.js"; exit 1; }
+          npm i --no-save --silent ajv@8.17.1
+          node tools/valider-centrale-json.js centrale.json docs/passerelle-atelier/modele-centrale.json
       - name: Fichier unique à jour
         run: |
           node tools/build.js
