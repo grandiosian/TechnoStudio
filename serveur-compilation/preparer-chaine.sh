@@ -3,7 +3,8 @@
 # (GitHub Actions, Linux x86_64), pour la copier ensuite telle quelle sur un hébergement qui
 # limite la mémoire (alwaysdata : arduino-cli y est tué pendant l'installation des cœurs).
 #
-#   bash preparer-chaine.sh <dossier de sortie>
+#   bash preparer-chaine.sh <dossier de sortie>            Uno, Nano et ESP32 (≈ 900 Mo)
+#   ESP32=non bash preparer-chaine.sh <dossier de sortie>  Uno et Nano seulement (≈ 200 Mo)
 #
 # Produit, dans <sortie> :
 #   bin/arduino-cli                 version fixée
@@ -27,12 +28,13 @@ mkdir -p "$SORTIE/bin"
 "$CLI" version
 "$CLI" core update-index
 "$CLI" core install arduino:avr
-"$CLI" core install "esp32:esp32@$ESP32_VERSION"
+[ "${ESP32:-oui}" = non ] || "$CLI" core install "esp32:esp32@$ESP32_VERSION"
 "$CLI" lib update-index
-"$CLI" lib install Servo ESP32Servo
+"$CLI" lib install Servo
+[ "${ESP32:-oui}" = non ] || "$CLI" lib install ESP32Servo
 
 # Outils propres aux autres puces ESP (S2, S3, C3…) : inutiles pour l'ESP32 classique
-du -sh "$SORTIE/arduino15/packages/esp32/tools"/* | sort -h || true
+du -sh "$SORTIE/arduino15/packages/esp32/tools"/* 2>/dev/null | sort -h || true
 for t in xtensa-esp32s2-elf-gcc xtensa-esp32s3-elf-gcc riscv32-esp-elf-gcc riscv32-esp-elf-gdb xtensa-esp-elf-gdb openocd-esp32; do
   rm -rf "$SORTIE/arduino15/packages/esp32/tools/$t"
 done
@@ -51,6 +53,8 @@ T=$(mktemp -d); mkdir -p "$T/essai"
 printf '#include <Servo.h>\nServo s;\nvoid setup(){pinMode(13,OUTPUT);s.attach(9);}\nvoid loop(){digitalWrite(13,!digitalRead(13));delay(500);}\n' > "$T/essai/essai.ino"
 "$CLI" compile --fqbn arduino:avr:uno "$T/essai"
 printf '#include <ESP32Servo.h>\nServo s;\nvoid setup(){pinMode(2,OUTPUT);s.attach(13);}\nvoid loop(){digitalWrite(2,!digitalRead(2));delay(500);}\n' > "$T/essai/essai.ino"
-"$CLI" compile --fqbn esp32:esp32:esp32 "$T/essai"
+[ "${ESP32:-oui}" = non ] || "$CLI" compile --fqbn esp32:esp32:esp32 "$T/essai"
 rm -rf "$T"
+# arduino-cli recrée parfois l'index des bibliothèques : inutile sur le serveur
+rm -rf "$SORTIE/arduino15/library_index.json"* "$SORTIE/arduino15/staging" "$SORTIE/arduino15/"*.sig "$SORTIE/telechargements"
 du -sh "$SORTIE"/* "$SORTIE/arduino15/packages"/* "$SORTIE"/arduino15/packages/esp32/hardware/esp32/*/tools/sdk/* 2>/dev/null
