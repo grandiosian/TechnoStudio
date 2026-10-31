@@ -6,10 +6,12 @@
  "atelier": {
   "app": "technostudio",
   "nom": "TechnoStudio",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Ateliers de technologie au format de la charte (feuilles, ressources, synthèse, évaluation, SEGPA), simulateur de circuits, maquettes programmables et programmation Blockly de cartes Arduino, ESP32 et micro:bit.",
   "url": "https://grandiosian.github.io/TechnoStudio/",
-  "urls_secours": [],
+  "urls_secours": [
+   "https://technoversailles.alwaysdata.net/miroir/technostudio/"
+  ],
   "icone": "🛠️",
   "depot": "https://github.com/grandiosian/TechnoStudio",
   "langue": "fr",

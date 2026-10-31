@@ -45,7 +45,7 @@ const desc = {
   atelier: {
     app: P.APP, nom: 'TechnoStudio', version: P.VERSION,
     description: 'Ateliers de technologie au format de la charte (feuilles, ressources, synthèse, évaluation, SEGPA), simulateur de circuits, maquettes programmables et programmation Blockly de cartes Arduino, ESP32 et micro:bit.',
-    url: URL_APP, urls_secours: [], icone: '🛠️', depot: 'https://github.com/grandiosian/TechnoStudio', langue: 'fr',
+    url: URL_APP, urls_secours: ['https://technoversailles.alwaysdata.net/miroir/technostudio/'], icone: '🛠️', depot: 'https://github.com/grandiosian/TechnoStudio', langue: 'fr',
     classes: ['5e', '4e', '3e', 'STI2D', 'SNT', 'Pro'],
     parametres: {
       app: 'Autre identifiant d’atelier Centrale ouvrant TechnoStudio (ex. ?app=technostudio-5e) : ressources, données et suivi lui sont propres.',
