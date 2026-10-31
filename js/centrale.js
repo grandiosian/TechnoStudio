@@ -28,7 +28,9 @@
      (un par niveau, avec leurs classes et leurs ressources) qui ouvrent tous TechnoStudio. */
   Z.lireConfig = function () {
     const q = new URLSearchParams(location.search);
-    const srv = q.get('centrale') || window.CENTRALE_URL || lireReglage('ts-centrale') || DEFAUT;
+    // Copie servie par une Centrale (…/miroir/technostudio/) : on parle à cette Centrale-là (ex. Centrale locale)
+    const miroir = /^https?:$/.test(location.protocol) && location.pathname.match(/^(.*?\/)miroir\/[^/]+\//);
+    const srv = q.get('centrale') || window.CENTRALE_URL || (miroir ? location.origin + miroir[1] : '') || lireReglage('ts-centrale') || DEFAUT;
     Z.serveur = String(srv).trim().replace(/\/?$/, '/').replace(/api\/$/, '');
     const app = propre(q.get('app')) || propre(lireReglage('ts-app')) || 'technostudio';
     Z.app = app;
