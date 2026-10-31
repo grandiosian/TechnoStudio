@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TechnoStudio</title>
+<meta name="description" content="Ateliers de technologie au format de la charte : feuilles, ressources, synthèse, évaluation ; simulations et programmation de cartes. Hors ligne, ou connecté à la Centrale élèves avec le code élève.">
+<meta name="theme-color" content="#2F57A1">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Arimo:ital,wght@0,400;0,700;1,400;1,700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<!--APP-->
+<header class="menubar" role="menubar">
+  <nav id="menus" aria-label="Menus"></nav>
+  <div class="mb-right"><div class="sync" data-sync role="button" tabindex="0"></div></div>
+</header>
+<div id="workspace">
+  <div id="stage" class="stage"></div>
+  <div id="dock" role="toolbar" aria-label="Panneaux" hidden></div>
+</div>
+<noscript><p style="padding:2rem">TechnoStudio a besoin de JavaScript pour fonctionner.</p></noscript>
+<!--/APP-->
+<!--SCRIPTS-->
+<script src="js/core.js"></script>
+<script src="js/gift.js"></script>
+<script src="js/descriptor.js"></script>
+<script src="js/activities.js"></script>
+<script src="js/circuit.js"></script>
+<script src="js/blocks.js"></script>
+<script src="js/sheet.js"></script>
+<script src="js/code.js"></script>
+<script src="js/demos.js"></script>
+<script src="js/demos2.js"></script>
+<script src="js/flash.js"></script>
+<script src="js/centrale.js"></script>
+<script src="js/panels.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/editor2.js"></script>
+<script src="js/app.js"></script>
+<!--/SCRIPTS-->
+<script>TL.app.start();</script>
+</body>
+</html>

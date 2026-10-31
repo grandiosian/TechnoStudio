@@ -1,0 +1,60 @@
+# Envoie le serveur de compilation sur alwaysdata à chaque modification du dossier serveur-compilation/.
+#
+# À configurer une seule fois dans GitHub : Settings → Secrets and variables → Actions
+#   Secrets :
+#     ALWAYSDATA_COMPTE     nom du compte alwaysdata (ex. technoversailles)
+#     ALWAYSDATA_SSH_KEY    clé SSH PRIVÉE dont la clé publique est dans ~/.ssh/authorized_keys sur alwaysdata
+#     ALWAYSDATA_API_TOKEN  (facultatif) jeton d'API alwaysdata, pour redémarrer le site après l'envoi
+#   Variables (facultatives) :
+#     ALWAYSDATA_SITE_ID    numéro du site Node.js « compilation » (Web → Sites, dans l'adresse de sa page)
+#     DOSSIER_COMPILATION   dossier distant (par défaut : technostudio/serveur-compilation)
+# Sans ces secrets, le workflow ne fait rien (et ne signale pas d'erreur).
+
+name: Déployer le serveur de compilation
+
+on:
+  push:
+    branches: [main]
+    paths: ['serveur-compilation/**']
+  workflow_dispatch:
+
+jobs:
+  deployer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier la syntaxe
+        run: node --check serveur-compilation/serveur.js && node tests/serveur-regles.test.js
+
+      - name: Secrets configurés ?
+        id: config
+        env:
+          COMPTE: ${{ secrets.ALWAYSDATA_COMPTE }}
+          CLE: ${{ secrets.ALWAYSDATA_SSH_KEY }}
+        run: |
+          if [ -n "$COMPTE" ] && [ -n "$CLE" ]; then echo "pret=true" >> "$GITHUB_OUTPUT"
+          else echo "pret=false" >> "$GITHUB_OUTPUT"; echo "::notice::Déploiement ignoré : ajoutez les secrets ALWAYSDATA_COMPTE et ALWAYSDATA_SSH_KEY."; fi
+
+      - name: Envoyer les fichiers
+        if: steps.config.outputs.pret == 'true'
+        env:
+          COMPTE: ${{ secrets.ALWAYSDATA_COMPTE }}
+          CLE: ${{ secrets.ALWAYSDATA_SSH_KEY }}
+          DOSSIER: ${{ vars.DOSSIER_COMPILATION || 'technostudio/serveur-compilation' }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$CLE" > ~/.ssh/id_deploiement && chmod 600 ~/.ssh/id_deploiement
+          ssh-keyscan -H "ssh-$COMPTE.alwaysdata.net" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_deploiement "$COMPTE@ssh-$COMPTE.alwaysdata.net" "mkdir -p $DOSSIER"
+          rsync -az --delete -e "ssh -i ~/.ssh/id_deploiement" serveur-compilation/ "$COMPTE@ssh-$COMPTE.alwaysdata.net:$DOSSIER/"
+
+      - name: Redémarrer le site
+        if: steps.config.outputs.pret == 'true'
+        env:
+          COMPTE: ${{ secrets.ALWAYSDATA_COMPTE }}
+          JETON: ${{ secrets.ALWAYSDATA_API_TOKEN }}
+          SITE: ${{ vars.ALWAYSDATA_SITE_ID }}
+        run: |
+          if [ -z "$JETON" ] || [ -z "$SITE" ]; then echo "::notice::Pensez à redémarrer le site dans l'administration alwaysdata (ou ajoutez ALWAYSDATA_API_TOKEN et ALWAYSDATA_SITE_ID)."; exit 0; fi
+          curl -fsS -X POST --basic --user "$JETON account=$COMPTE:" "https://api.alwaysdata.com/v1/site/$SITE/restart/"

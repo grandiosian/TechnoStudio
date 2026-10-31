@@ -1,0 +1,3856 @@
+{
+ "name": "technostudio-passerelle",
+ "version": "3.0.0",
+ "format": 2,
+ "formatsAccepted": [
+  1,
+  2
+ ],
+ "roles": {
+  "centralisatrice": "la Centrale élèves : codes, portail, ressources (ateliers), sauvegarde, progression et suivi",
+  "cible": "TechnoStudio (et tout outil qui produit des ateliers pour lui) : lecture des ateliers, travail des élèves, compte rendu d’avancement"
+ },
+ "entities": {
+  "Workshop": {
+   "type": "object",
+   "properties": {
+    "format": {
+     "type": "number",
+     "enum": [
+      1,
+      2
+     ]
+    },
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9-]+$"
+    },
+    "version": {
+     "type": "number",
+     "minimum": 1
+    },
+    "title": {
+     "type": "string"
+    },
+    "level": {
+     "type": "string",
+     "enum": [
+      "college",
+      "sti2d",
+      "snt",
+      "pro"
+     ]
+    },
+    "niveau": {
+     "type": "string",
+     "description": "5e, 4e, 3e… (couleur de pastille)"
+    },
+    "cycle": {
+     "type": "number"
+    },
+    "seq": {
+     "type": "number",
+     "description": "numéro « AT SEQ »"
+    },
+    "duration": {
+     "type": "number"
+    },
+    "author": {
+     "type": "string"
+    },
+    "summary": {
+     "type": "string"
+    },
+    "problematique": {
+     "type": "string"
+    },
+    "objet": {
+     "type": "string"
+    },
+    "position": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 9
+    },
+    "competences": {
+     "type": "array",
+     "items": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "object",
+        "properties": {
+         "code": {
+          "type": "string",
+          "pattern": "^T\\d"
+         },
+         "label": {
+          "type": "string"
+         },
+         "color": {
+          "type": "string"
+         },
+         "co": {
+          "type": "string"
+         },
+         "sub": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "code": {
+             "type": "string"
+            },
+            "label": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "code",
+            "label"
+           ]
+          }
+         }
+        },
+        "required": [
+         "label"
+        ]
+       }
+      ]
+     }
+    },
+    "presentation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "synthese": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "evaluation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "differenciation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "materiel": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "deroulement": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "seance": {
+        "type": "string"
+       },
+       "objectif": {
+        "type": "string"
+       },
+       "activites": {
+        "type": "string"
+       },
+       "ressources": {
+        "type": "string"
+       }
+      },
+      "required": []
+     }
+    },
+    "prof": {
+     "type": "object",
+     "properties": {
+      "organisation": {
+       "type": "string",
+       "format": "markdown"
+      },
+      "materiel": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "seance": {
+          "type": "string"
+         },
+         "contenu": {
+          "type": "string"
+         }
+        },
+        "required": []
+       }
+      }
+     },
+     "required": [],
+     "description": "fiche professeur, jamais transmise aux élèves"
+    },
+    "steps": {
+     "type": "array",
+     "items": {
+      "$ref": "Step"
+     }
+    },
+    "updatedAt": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "id",
+    "title",
+    "steps"
+   ]
+  },
+  "Step": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string"
+    },
+    "kind": {
+     "type": "string",
+     "enum": [
+      "feuille",
+      "ressource",
+      "synthese",
+      "evaluation"
+     ],
+     "description": "Type de feuille de la charte : P, R, S, E."
+    },
+    "seance": {
+     "type": "number",
+     "minimum": 1
+    },
+    "feuille": {
+     "type": "number",
+     "minimum": 1
+    },
+    "segpa": {
+     "type": "boolean"
+    },
+    "verso": {
+     "type": "boolean"
+    },
+    "big": {
+     "type": "boolean"
+    },
+    "resume": {
+     "type": "string"
+    },
+    "objectif": {
+     "type": "string"
+    },
+    "consignes": {
+     "type": "string"
+    },
+    "numStart": {
+     "type": "number"
+    },
+    "blocks": {
+     "type": "array",
+     "items": {
+      "$ref": "Block"
+     }
+    }
+   },
+   "required": [
+    "title",
+    "blocks"
+   ]
+  },
+  "Answer": {
+   "type": "object",
+   "properties": {
+    "value": {},
+    "done": {
+     "type": "boolean"
+    },
+    "correct": {
+     "type": "boolean"
+    },
+    "score": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 1
+    },
+    "attempts": {
+     "type": "number",
+     "minimum": 0
+    },
+    "revealed": {
+     "type": "boolean"
+    },
+    "at": {
+     "type": "number",
+     "description": "horodatage ms (règle de fusion)"
+    },
+    "pendingReview": {
+     "type": "boolean"
+    },
+    "teacher": {
+     "type": "object",
+     "properties": {
+      "grade": {
+       "type": "string"
+      },
+      "comment": {
+       "type": "string"
+      },
+      "by": {
+       "type": "string"
+      },
+      "at": {
+       "type": "number"
+      }
+     },
+     "required": []
+    }
+   },
+   "required": []
+  },
+  "Progress": {
+   "type": "object",
+   "properties": {
+    "wid": {
+     "type": "string"
+    },
+    "step": {
+     "type": "number"
+    },
+    "answers": {
+     "type": "object",
+     "properties": {},
+     "required": [],
+     "additionalProperties": {
+      "$ref": "Answer"
+     }
+    },
+    "seen": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    },
+    "startedAt": {
+     "type": "number"
+    },
+    "updatedAt": {
+     "type": "number"
+    },
+    "completedAt": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "wid",
+    "answers"
+   ]
+  },
+  "State": {
+   "type": "object",
+   "properties": {
+    "progress": {
+     "type": "object",
+     "properties": {},
+     "required": [],
+     "additionalProperties": {
+      "$ref": "Progress"
+     }
+    },
+    "profile": {
+     "type": "object",
+     "properties": {
+      "name": {
+       "type": "string"
+      }
+     },
+     "required": []
+    }
+   },
+   "required": [
+    "progress"
+   ]
+  },
+  "Session": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "classe": {
+     "type": "string"
+    },
+    "eleve": {
+     "type": "string",
+     "description": "numéro dans la classe, ex. « 07 » (aucun nom sur le serveur)"
+    },
+    "identifiant": {
+     "type": "string",
+     "description": "ex. 4C-LHA-LoutreAgile"
+    },
+    "jeton": {
+     "type": "string"
+    },
+    "expire": {
+     "type": "number"
+    },
+    "espace": {
+     "type": "object",
+     "properties": {
+      "utilise": {
+       "type": "number"
+      },
+      "quota": {
+       "type": "number"
+      }
+     },
+     "required": []
+    }
+   },
+   "required": [
+    "classe",
+    "eleve",
+    "jeton"
+   ],
+   "description": "réponse de login.php / session.php"
+  },
+  "Ressource": {
+   "type": "object",
+   "properties": {
+    "nom": {
+     "type": "string",
+     "description": "<atelier>.technostudio.json (ou .gift / .txt GIFT)"
+    },
+    "taille": {
+     "type": "number"
+    },
+    "type": {
+     "type": "string"
+    },
+    "maj": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "nom",
+    "maj"
+   ],
+   "description": "fichier déposé par l’enseignant (ressources.php) : un Workshop, un Workshop[] ou un Package"
+  },
+  "Activite": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_./-]+$",
+     "description": "<atelier>/<code feuille>, ex. charte-lampe-de-poche/P1"
+    },
+    "titre": {
+     "type": "string"
+    },
+    "groupe": {
+     "type": "string"
+    },
+    "total": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "id"
+   ],
+   "description": "colonne du tableau de suivi (activites.php)"
+  },
+  "ProgressionEnvoi": {
+   "type": "object",
+   "properties": {
+    "activite": {
+     "type": "string"
+    },
+    "titre": {
+     "type": "string"
+    },
+    "statut": {
+     "type": "string",
+     "enum": [
+      "commence",
+      "termine"
+     ]
+    },
+    "faites": {
+     "type": "number"
+    },
+    "total": {
+     "type": "number"
+    },
+    "score": {
+     "type": "number"
+    },
+    "score_max": {
+     "type": "number"
+    },
+    "details": {
+     "type": "object",
+     "properties": {
+      "feuille": {
+       "type": "string"
+      },
+      "reponses": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "q": {
+          "type": "string"
+         },
+         "type": {
+          "type": "string"
+         },
+         "r": {
+          "type": "string"
+         },
+         "note": {
+          "type": "string"
+         },
+         "aCorriger": {
+          "type": "boolean"
+         }
+        },
+        "required": []
+       }
+      }
+     },
+     "required": [],
+     "description": "20 Ko au plus"
+    }
+   },
+   "required": [
+    "activite"
+   ],
+   "description": "avancement d’une feuille (progression.php) ; la Centrale garde le meilleur"
+  },
+  "CompilationDemande": {
+   "type": "object",
+   "properties": {
+    "carte": {
+     "type": "string",
+     "enum": [
+      "uno",
+      "nano",
+      "esp32"
+     ]
+    },
+    "code": {
+     "type": "string",
+     "description": "C++ Arduino, 100 Ko au plus ; seules les bibliothèques connues peuvent être incluses"
+    }
+   },
+   "required": [
+    "carte",
+    "code"
+   ]
+  },
+  "CompilationReponse": {
+   "type": "object",
+   "properties": {
+    "ok": {
+     "type": "boolean"
+    },
+    "journal": {
+     "type": "string"
+    },
+    "erreur": {
+     "type": "string"
+    },
+    "format": {
+     "type": "string",
+     "enum": [
+      "hex",
+      "bin"
+     ]
+    },
+    "hex": {
+     "type": "string"
+    },
+    "images": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "adresse": {
+        "type": "number"
+       },
+       "donnees": {
+        "type": "string",
+        "description": "base64"
+       }
+      },
+      "required": []
+     }
+    },
+    "duree": {
+     "type": "number"
+    },
+    "cache": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "ok"
+   ]
+  },
+  "Package": {
+   "type": "object",
+   "properties": {
+    "workshops": {
+     "type": "array",
+     "items": {
+      "$ref": "Workshop"
+     }
+    },
+    "classes": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "workshops"
+   ],
+   "description": "paquet de plusieurs ateliers (.technostudio.json)"
+  }
+ },
+ "blocks": {
+  "text": {
+   "family": "contenu",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "md": {
+     "type": "string",
+     "format": "markdown"
+    }
+   },
+   "required": [
+    "md"
+   ]
+  },
+  "image": {
+   "family": "contenu",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "src": {
+     "type": "string",
+     "format": "uri-or-data"
+    },
+    "caption": {
+     "type": "string"
+    },
+    "alt": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "src"
+   ]
+  },
+  "svg": {
+   "family": "contenu",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "svg": {
+     "type": "string"
+    },
+    "caption": {
+     "type": "string"
+    }
+   }
+  },
+  "scan": {
+   "family": "contenu",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "title": {
+     "type": "string"
+    },
+    "pages": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "format": "uri-or-data"
+     }
+    },
+    "open": {
+     "type": "boolean"
+    }
+   }
+  },
+  "link": {
+   "family": "contenu",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "url": {
+     "type": "string",
+     "format": "uri"
+    },
+    "title": {
+     "type": "string"
+    },
+    "text": {
+     "type": "string"
+    },
+    "kind": {
+     "type": "string",
+     "enum": [
+      "link",
+      "video"
+     ]
+    }
+   },
+   "required": [
+    "url"
+   ]
+  },
+  "ressource": {
+   "family": "contenu",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string"
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "title": {
+     "type": "string"
+    },
+    "md": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "src": {
+     "type": "string"
+    },
+    "svg": {
+     "type": "string"
+    },
+    "caption": {
+     "type": "string"
+    },
+    "qr": {
+     "type": "string"
+    },
+    "qrLabel": {
+     "type": "string"
+    }
+   }
+  },
+  "mots": {
+   "family": "contenu",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "title": {
+     "type": "string"
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "mot": {
+        "type": "string"
+       },
+       "def": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "mot"
+      ]
+     }
+    }
+   }
+  },
+  "objectif": {
+   "family": "structure",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "label": {
+     "type": "string"
+    },
+    "md": {
+     "type": "string",
+     "format": "markdown"
+    }
+   }
+  },
+  "retenir": {
+   "family": "structure",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "title": {
+     "type": "string"
+    },
+    "md": {
+     "type": "string",
+     "format": "markdown"
+    }
+   }
+  },
+  "decoupe": {
+   "family": "structure",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    }
+   }
+  },
+  "filet": {
+   "family": "structure",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    }
+   }
+  },
+  "qcm": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "options": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "correct": {
+        "type": "boolean"
+       },
+       "feedback": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "text"
+      ]
+     },
+     "minItems": 2
+    },
+    "multiple": {
+     "type": "boolean"
+    },
+    "shuffle": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "options"
+   ],
+   "answer": {
+    "type": "array",
+    "items": {
+     "type": "number"
+    },
+    "description": "indices des options cochées"
+   }
+  },
+  "vraifaux": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "v": {
+        "type": "boolean"
+       }
+      },
+      "required": [
+       "text",
+       "v"
+      ]
+     }
+    },
+    "labels": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "items"
+   ],
+   "answer": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "description": "{ indice: \"v\" | \"f\" }"
+   }
+  },
+  "cloze": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "text": {
+     "type": "string",
+     "description": "[[réponse]] · [[a|b]] · [[!bonne|leurre]]"
+    },
+    "bank": {},
+    "bankExtra": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "text"
+   ],
+   "answer": {
+    "type": "array",
+    "items": {
+     "type": "string"
+    }
+   }
+  },
+  "numeric": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "answer": {
+     "type": "number"
+    },
+    "tolerance": {
+     "type": "number"
+    },
+    "tolerancePct": {
+     "type": "number"
+    },
+    "unit": {
+     "type": "string"
+    },
+    "formula": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "answer"
+   ],
+   "answer": {
+    "type": "string"
+   }
+  },
+  "match": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "pairs": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "minItems": 2,
+      "maxItems": 2
+     }
+    },
+    "distractors": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "pairs"
+   ],
+   "answer": {
+    "type": "array",
+    "items": {
+     "type": "string"
+    },
+    "description": "élément de droite relié à chaque élément de gauche"
+   }
+  },
+  "order": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "minItems": 2
+    }
+   },
+   "required": [
+    "items"
+   ],
+   "answer": {
+    "type": "array",
+    "items": {
+     "type": "number"
+    }
+   }
+  },
+  "sort": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "categories": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string"
+       },
+       "items": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      },
+      "required": [
+       "name",
+       "items"
+      ]
+     }
+    }
+   },
+   "required": [
+    "categories"
+   ],
+   "answer": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "description": "{ idEtiquette: idZone }"
+   }
+  },
+  "table": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "headers": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "rows": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        },
+        {
+         "type": "object",
+         "properties": {
+          "a": {
+           "type": "string",
+           "description": "Réponse attendue ; variantes acceptées séparées par « | » (comparaison sans accents ni casse)."
+          },
+          "choices": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          },
+          "check": {
+           "type": "boolean"
+          }
+         },
+         "required": []
+        }
+       ]
+      }
+     }
+    },
+    "bank": {},
+    "firstRowHead": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "rows"
+   ],
+   "answer": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "description": "{ \"ligne-colonne\": valeur }"
+   }
+  },
+  "boxes": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "top": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "object",
+          "properties": {
+           "a": {
+            "type": "string",
+            "description": "Réponse attendue ; variantes acceptées séparées par « | » (comparaison sans accents ni casse)."
+           },
+           "choices": {
+            "type": "array",
+            "items": {
+             "type": "string"
+            }
+           },
+           "check": {
+            "type": "boolean"
+           }
+          },
+          "required": []
+         }
+        ]
+       },
+       "bottom": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "object",
+          "properties": {
+           "a": {
+            "type": "string",
+            "description": "Réponse attendue ; variantes acceptées séparées par « | » (comparaison sans accents ni casse)."
+           },
+           "choices": {
+            "type": "array",
+            "items": {
+             "type": "string"
+            }
+           },
+           "check": {
+            "type": "boolean"
+           }
+          },
+          "required": []
+         }
+        ]
+       }
+      },
+      "required": []
+     }
+    },
+    "topLabel": {
+     "type": "string"
+    },
+    "bottomLabel": {
+     "type": "string"
+    },
+    "bank": {}
+   },
+   "required": [
+    "items"
+   ],
+   "answer": {
+    "type": "object",
+    "properties": {},
+    "required": []
+   }
+  },
+  "chain": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "slot": {
+        "type": "string",
+        "enum": [
+         "acquerir",
+         "traiter",
+         "communiquer",
+         "alimenter",
+         "distribuer",
+         "convertir",
+         "transmettre"
+        ]
+       }
+      },
+      "required": [
+       "text",
+       "slot"
+      ]
+     }
+    },
+    "infoIn": {
+     "type": "string"
+    },
+    "infoOut": {
+     "type": "string"
+    },
+    "energyIn": {
+     "type": "string"
+    },
+    "action": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "items"
+   ],
+   "answer": {
+    "type": "object",
+    "properties": {},
+    "required": []
+   }
+  },
+  "label": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "src": {
+     "type": "string"
+    },
+    "svg": {
+     "type": "string"
+    },
+    "mode": {
+     "type": "string",
+     "enum": [
+      "liste",
+      "saisie"
+     ]
+    },
+    "points": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "x": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+       },
+       "y": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+       },
+       "answer": {
+        "type": "string",
+        "description": "Réponse attendue ; variantes acceptées séparées par « | » (comparaison sans accents ni casse)."
+       }
+      },
+      "required": [
+       "x",
+       "y",
+       "answer"
+      ]
+     }
+    },
+    "distractors": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "bank": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "points"
+   ],
+   "answer": {
+    "type": "array",
+    "items": {
+     "type": "string"
+    }
+   }
+  },
+  "bits": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "weights": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "rows": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "label": {
+        "type": "string"
+       },
+       "bits": {
+        "type": "string",
+        "pattern": "^[01]+$"
+       }
+      },
+      "required": [
+       "label",
+       "bits"
+      ]
+     }
+    },
+    "decimal": {
+     "type": "boolean"
+    },
+    "showCard": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "rows"
+   ],
+   "answer": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "bits": {
+       "type": "string"
+      },
+      "dec": {
+       "type": "string"
+      }
+     },
+     "required": []
+    }
+   }
+  },
+  "graph": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "xmax": {
+     "type": "number"
+    },
+    "ymax": {
+     "type": "number"
+    },
+    "step": {
+     "type": "number"
+    },
+    "unit": {
+     "type": "string"
+    },
+    "tolerance": {
+     "type": "number"
+    },
+    "connect": {
+     "type": "boolean"
+    },
+    "showTable": {
+     "type": "boolean"
+    },
+    "points": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string"
+       },
+       "x": {
+        "type": "number"
+       },
+       "y": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "name",
+       "x",
+       "y"
+      ]
+     }
+    }
+   },
+   "required": [
+    "points"
+   ],
+   "answer": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "x": {
+       "type": "number"
+      },
+      "y": {
+       "type": "number"
+      }
+     },
+     "required": []
+    }
+   }
+  },
+  "draw": {
+   "family": "exercice",
+   "graded": true,
+   "review": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "bg": {
+     "type": "string"
+    },
+    "ratio": {
+     "type": "number"
+    },
+    "colors": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "straight": {
+     "type": "boolean"
+    },
+    "grid": {
+     "type": "boolean"
+    }
+   },
+   "answer": {
+    "type": "object",
+    "properties": {
+     "strokes": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "c": {
+         "type": "string"
+        },
+        "w": {
+         "type": "number"
+        },
+        "p": {
+         "type": "array",
+         "items": {
+          "type": "array",
+          "items": {
+           "type": "number"
+          }
+         }
+        }
+       },
+       "required": []
+      }
+     },
+     "png": {
+      "type": "string"
+     }
+    },
+    "required": []
+   }
+  },
+  "mindmap": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "center": {
+     "type": "string"
+    },
+    "branches": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "label": {
+        "type": "string"
+       },
+       "n": {
+        "type": "number"
+       },
+       "answers": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      },
+      "required": [
+       "label"
+      ]
+     }
+    }
+   },
+   "required": [
+    "branches"
+   ],
+   "answer": {
+    "type": "object",
+    "properties": {},
+    "required": []
+   }
+  },
+  "procedure": {
+   "family": "exercice",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "detail": {
+        "type": "string",
+        "format": "markdown"
+       },
+       "image": {
+        "type": "string"
+       },
+       "warn": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "text"
+      ]
+     }
+    }
+   },
+   "required": [
+    "items"
+   ],
+   "answer": {
+    "type": "object",
+    "properties": {},
+    "required": []
+   }
+  },
+  "questions": {
+   "family": "exercice",
+   "graded": true,
+   "review": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "title": {
+     "type": "string"
+    },
+    "mode": {
+     "type": "string",
+     "enum": [
+      "saisie",
+      "cahier"
+     ]
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "object",
+        "properties": {
+         "q": {
+          "type": "string"
+         },
+         "corr": {
+          "type": "string"
+         },
+         "n": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "q"
+        ]
+       }
+      ]
+     }
+    }
+   },
+   "required": [
+    "items"
+   ],
+   "answer": {
+    "type": "object",
+    "properties": {},
+    "required": []
+   }
+  },
+  "report": {
+   "family": "exercice",
+   "graded": true,
+   "review": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "placeholder": {
+     "type": "string"
+    },
+    "photo": {
+     "type": "boolean"
+    },
+    "rows": {
+     "type": "number"
+    }
+   },
+   "answer": {
+    "type": "object",
+    "properties": {
+     "text": {
+      "type": "string"
+     },
+     "photos": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    },
+    "required": []
+   }
+  },
+  "autoeval": {
+   "family": "exercice",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "scale": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "items"
+   ],
+   "answer": {
+    "type": "object",
+    "properties": {},
+    "required": []
+   }
+  },
+  "circuit": {
+   "family": "simulation",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "cols": {
+     "type": "number"
+    },
+    "rows": {
+     "type": "number"
+    },
+    "battery": {
+     "type": "number"
+    },
+    "palette": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    },
+    "initial": {
+     "type": "object",
+     "properties": {},
+     "required": [],
+     "description": "{ \"h-L-C\" | \"v-L-C\": composant }"
+    },
+    "goals": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "enum": [
+         "switchControls",
+         "noShort",
+         "lit",
+         "parallel",
+         "series",
+         "eachSwitch",
+         "ledSafe",
+         "motorDir",
+         "darkOn",
+         "count"
+        ]
+       }
+      },
+      "required": [
+       "type"
+      ]
+     }
+    }
+   },
+   "answer": {
+    "type": "object",
+    "properties": {
+     "comps": {
+      "type": "object",
+      "properties": {},
+      "required": []
+     }
+    },
+    "required": []
+   }
+  },
+  "blocks": {
+   "family": "simulation",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "scene": {
+     "type": "string",
+     "enum": [
+      "eclairage",
+      "portail",
+      "serre",
+      "parking",
+      "feux"
+     ]
+    },
+    "toolbox": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "vars": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "start": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "op": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "op"
+      ]
+     }
+    },
+    "tests": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string"
+       },
+       "init": {
+        "type": "object",
+        "properties": {},
+        "required": []
+       },
+       "steps": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "set": {
+           "type": "object",
+           "properties": {},
+           "required": []
+          },
+          "run": {
+           "type": "number"
+          },
+          "expect": {
+           "type": "object",
+           "properties": {},
+           "required": []
+          }
+         },
+         "required": []
+        }
+       }
+      },
+      "required": [
+       "name"
+      ]
+     }
+    }
+   },
+   "required": [
+    "scene"
+   ],
+   "answer": {
+    "type": "object",
+    "properties": {
+     "program": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {},
+       "required": []
+      }
+     }
+    },
+    "required": []
+   }
+  },
+  "code": {
+   "family": "simulation",
+   "graded": true,
+   "review": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^T\\d"
+     },
+     "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "board": {
+     "type": "string",
+     "enum": [
+      "uno",
+      "nano",
+      "esp32",
+      "esp32-mpy",
+      "microbit"
+     ]
+    },
+    "start": {
+     "type": "object",
+     "properties": {},
+     "required": [],
+     "description": "espace de travail Blockly sérialisé (JSON)"
+    },
+    "toolbox": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "expect": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "description": "fragment attendu dans le code généré"
+     }
+    }
+   },
+   "required": [
+    "board"
+   ],
+   "answer": {
+    "type": "object",
+    "properties": {
+     "workspace": {
+      "type": "object",
+      "properties": {},
+      "required": []
+     },
+     "code": {
+      "type": "string"
+     },
+     "uploaded": {
+      "type": "boolean"
+     }
+    },
+    "required": []
+   }
+  }
+ },
+ "common": {
+  "id": {
+   "type": "string",
+   "pattern": "^[A-Za-z0-9_-]+$",
+   "description": "Stable : la progression y est rattachée. Généré si absent."
+  },
+  "type": {
+   "type": "string"
+  },
+  "question": {
+   "type": "string",
+   "format": "markdown"
+  },
+  "tag": {
+   "type": "string",
+   "enum": [
+    "papier",
+    "ordi",
+    "none"
+   ],
+   "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+  },
+  "num": {
+   "type": "string",
+   "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+  },
+  "comp": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern": "^T\\d"
+   },
+   "description": "Pastilles de compétences (calque _Comp), ex. T2C11."
+  },
+  "bareme": {
+   "type": "number",
+   "minimum": 0,
+   "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+  },
+  "hint": {
+   "type": "string"
+  },
+  "explanation": {
+   "type": "string",
+   "format": "markdown"
+  },
+  "corr": {
+   "type": "string",
+   "format": "markdown"
+  },
+  "demo": {
+   "type": "boolean"
+  }
+ },
+ "storage": {
+  "app": {
+   "engine": "IndexedDB « technostudio », magasin « kv » (repli en mémoire si indisponible)",
+   "keys": {
+    "profile": "profil local { name, role: \"eleve\"|\"prof\", classe } — le nom ne quitte jamais l’appareil",
+    "ws:<id>": "Workshop modifié, importé ou reçu de la Centrale (source « centrale ») ; les démos intégrées ne sont pas stockées",
+    "pg:<id>": "Progress de l’élève pour l’atelier <id> (copie de travail, même hors ligne)",
+    "centrale:ressources:<serveur><app>": "{ <nom de ressource>: { maj, ids[] } } : ressources déjà reçues",
+    "code:projet": "projet libre de l’atelier Code { board, ws, at }",
+    "ui:panels": "disposition des panneaux flottants (par mode)"
+   },
+   "rules": [
+    "Chaque réponse est écrite immédiatement dans IndexedDB, puis envoyée à la Centrale si l’élève est connecté.",
+    "Un atelier de démonstration modifié devient une copie locale avec un nouvel id.",
+    "Les champs inconnus d’un atelier reçu sont conservés tels quels à la réexportation.",
+    "Réglages du navigateur (localStorage) : ts-centrale (adresse), ts-app (atelier), ts-compilateur (serveur de compilation)."
+   ]
+  },
+  "centrale": {
+   "engine": "Centrale élèves (PHP + SQLite, alwaysdata) : données JSON par élève, par atelier (app) et par clé ; 2 Mo par clé ; 10 versions d’historique",
+   "keys": {
+    "app": "identifiant de l’atelier dans la Centrale : « technostudio » par défaut, ou la valeur de ?app= (ex. technostudio-5e)",
+    "donnees at/<id atelier>": "Progress de l’élève pour cet atelier (fusionné réponse par réponse)",
+    "donnees code/projet": "projet libre de l’atelier Code",
+    "ressources (*.technostudio.json, *.gift)": "ateliers déposés par l’enseignant pour cet app, reçus à la connexion",
+    "progression <id atelier>/<code feuille>": "ProgressionEnvoi : faites/total, score/score_max, statut, réponses à corriger dans details",
+    "activites": "Activite[] : une colonne par feuille notée des ateliers reçus (sinon des ateliers du poste)"
+   }
+  }
+ },
+ "sync": {
+  "summary": "L’appli garde la main hors ligne. Connecté, chaque modification est envoyée par le module centrale-client.js (regroupée toutes les 3 s), avec la date de la version lue : la Centrale refuse d’écraser un travail plus récent (409).",
+  "steps": [
+   "Connexion : code élève (login.php) ou jeton transmis par le portail (#centrale=…, session.php).",
+   "Réception : ressources.php → chaque fichier nouveau ou modifié (maj) est lu, validé avec ce descripteur, puis enregistré (ws:<id>, source « centrale ») ; les ressources retirées font disparaître leurs ateliers.",
+   "Chargement : donnees.php (liste) → pour chaque clé at/<id>, la copie du serveur est fusionnée avec celle du poste ; le résultat est renvoyé s’il diffère.",
+   "Fusion : réponse par réponse, celle dont « at » est le plus récent gagne ; « seen » est uni ; « step » suit la copie la plus récente.",
+   "À chaque réponse : sauver(at/<id>, Progress) puis, 4 s plus tard, progression.php pour chaque feuille notée modifiée.",
+   "Conflit (409, travail modifié sur un autre poste) : relire, fusionner, renvoyer."
+  ],
+  "triggers": [
+   "après chaque réponse (regroupé 3 s)",
+   "au retour du réseau (le module renvoie la copie de secours)",
+   "à la fermeture de l’onglet (dernier envoi)",
+   "menu Centrale → Enregistrer et recharger"
+  ],
+  "conflicts": "Deux postes qui répondent au même bloc : la réponse la plus récente gagne, l’autre est perdue pour ce bloc seulement. L’enseignant peut restaurer une version (historique de la Centrale)."
+ },
+ "auth": {
+  "jeton": "En-tête X-Jeton: <jeton> reçu de login.php (12 h, durée de l’onglet). Code élève du type 4C-LHA-9943-kfmz-tqpr.",
+  "site": "Origine du site autorisée dans la Centrale (Réglages → Sites autorisés), sinon 403.",
+  "compilation": "Serveur de compilation : X-Jeton de la Centrale (vérifié auprès d’elle, gardé 20 min) ou X-Cle enseignant ; OUVERT=1 sur un réseau local seulement.",
+  "none": "Sans authentification.",
+  "local": "Pont local (127.0.0.1:8765) : origine autorisée (localhost, réseau local, site de l’appli) ; aucun compte."
+ },
+ "endpoints": [
+  {
+   "method": "GET",
+   "path": "<Centrale>/api/",
+   "auth": "none",
+   "response": "{ ok, service: \"centrale-eleves\", version }"
+  },
+  {
+   "method": "POST",
+   "path": "<Centrale>/api/login.php",
+   "auth": "site",
+   "request": "{ code, app }",
+   "response": "Session",
+   "errors": {
+    "401": "code inconnu",
+    "403": "site non autorisé",
+    "429": "trop d’essais"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "<Centrale>/api/session.php?app=",
+   "auth": "jeton",
+   "response": "Session (passage depuis le portail)"
+  },
+  {
+   "method": "POST",
+   "path": "<Centrale>/api/deconnexion.php",
+   "auth": "jeton"
+  },
+  {
+   "method": "GET",
+   "path": "<Centrale>/api/ressources.php?app=",
+   "auth": "jeton",
+   "response": "{ ressources: Ressource[] }"
+  },
+  {
+   "method": "GET",
+   "path": "<Centrale>/api/ressources.php?app=&nom=",
+   "auth": "jeton",
+   "response": "le fichier (atelier JSON ou GIFT)"
+  },
+  {
+   "method": "GET",
+   "path": "<Centrale>/api/donnees.php?app=",
+   "auth": "jeton",
+   "response": "{ cles: [{ cle, taille, maj }] }"
+  },
+  {
+   "method": "GET",
+   "path": "<Centrale>/api/donnees.php?app=&cle=at/<id>",
+   "auth": "jeton",
+   "response": "{ existe, valeur: Progress, maj }"
+  },
+  {
+   "method": "POST",
+   "path": "<Centrale>/api/donnees.php",
+   "auth": "jeton",
+   "request": "{ app, cle: \"at/<id>\", valeur: Progress, base }",
+   "response": "{ maj, espace }",
+   "errors": {
+    "409": "plus récent sur le serveur : relire et fusionner",
+    "413": "2 Mo au plus",
+    "507": "espace plein"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "<Centrale>/api/progression.php",
+   "auth": "jeton",
+   "request": "{ app } & ProgressionEnvoi",
+   "response": "{ progression }",
+   "errors": {
+    "413": "details > 20 Ko"
+   }
+  },
+  {
+   "method": "POST",
+   "path": "<Centrale>/api/activites.php",
+   "auth": "jeton",
+   "request": "{ app, activites: Activite[] }"
+  },
+  {
+   "method": "POST",
+   "path": "<Centrale>/api/surnom.php",
+   "auth": "jeton",
+   "request": "{ surnom }",
+   "response": "{ identifiant, surnom }"
+  },
+  {
+   "method": "GET",
+   "path": "<compilation>/etat",
+   "auth": "none",
+   "response": "{ version, arduinoCli, cartes: { uno|nano|esp32: { installee } }, auth, file }",
+   "note": "serveur de compilation (serveur-compilation/serveur.js)"
+  },
+  {
+   "method": "POST",
+   "path": "<compilation>/compiler",
+   "auth": "compilation",
+   "request": "CompilationDemande",
+   "response": "CompilationReponse",
+   "errors": {
+    "400": "code refusé (directive ou bibliothèque non autorisée)",
+    "401": "non connecté",
+    "429": "12 compilations par minute au plus",
+    "503": "serveur occupé ou carte non installée"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "http://127.0.0.1:8765/status",
+   "auth": "local",
+   "response": "{ pont, arduinoCli, mpremote, cores }",
+   "note": "pont local d’un poste équipé (facultatif)"
+  },
+  {
+   "method": "GET",
+   "path": "http://127.0.0.1:8765/ports",
+   "auth": "local",
+   "response": "{ ports: { address, label, board?, fqbn? }[] }"
+  },
+  {
+   "method": "POST",
+   "path": "http://127.0.0.1:8765/compile",
+   "auth": "local",
+   "request": "{ board, fqbn, code }",
+   "response": "{ ok, log, size? }"
+  },
+  {
+   "method": "POST",
+   "path": "http://127.0.0.1:8765/upload",
+   "auth": "local",
+   "request": "{ board, fqbn, code, port, lang }",
+   "response": "{ ok, log }"
+  }
+ ],
+ "compatibility": {
+  "header": "Chaque atelier porte son numéro de format (champ « format ») ; l’appli lit les formats 1 et 2.",
+  "rules": [
+   "Même format majeur : échange normal. Champs inconnus : conservés, jamais supprimés.",
+   "Type de bloc inconnu côté cible : affiché comme « champ inconnu », la réponse est conservée, il ne compte pas dans le score.",
+   "Atelier de format supérieur : accepté en lecture si validate() ne signale pas d’erreur bloquante, sinon ignoré avec la liste des écarts.",
+   "Les identifiants (atelier, feuille, bloc) ne changent jamais d’une version à l’autre : sinon la progression des élèves est perdue.",
+   "Les clés de la Centrale (at/<id>, code/projet) et les identifiants d’activité (<atelier>/<code feuille>) sont stables : les renommer ferait perdre le travail ou le suivi."
+  ]
+ }
+}

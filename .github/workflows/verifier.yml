@@ -1,0 +1,30 @@
+# Vérifie TechnoStudio à chaque envoi : syntaxe, ateliers conformes au descripteur,
+# téléversement Arduino (STK500) contre un faux bootloader, règles du serveur de compilation,
+# et que le fichier unique dist/technostudio-autonome.html est à jour.
+name: Vérifier
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Syntaxe JavaScript
+        run: for f in js/*.js sw.js serveur-compilation/serveur.js pont/pont.js tools/*.js tests/*.js; do node --check "$f"; done
+      - name: Ateliers intégrés conformes au descripteur
+        run: node tools/verifier-ateliers.js
+      - name: Téléversement Arduino (STK500, faux bootloader)
+        run: node tests/stk500.test.js
+      - name: Règles du serveur de compilation
+        run: node tests/serveur-regles.test.js
+      - name: Fichier unique à jour
+        run: |
+          node tools/build.js
+          git diff --quiet -- dist/technostudio-autonome.html || { echo "::error::dist/technostudio-autonome.html n'est pas à jour : lancez node tools/build.js"; exit 1; }
