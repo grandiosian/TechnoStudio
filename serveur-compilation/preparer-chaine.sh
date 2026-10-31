@@ -36,6 +36,10 @@ du -sh "$SORTIE/arduino15/packages/esp32/tools"/* | sort -h || true
 for t in xtensa-esp32s2-elf-gcc xtensa-esp32s3-elf-gcc riscv32-esp-elf-gcc riscv32-esp-elf-gdb xtensa-esp-elf-gdb openocd-esp32; do
   rm -rf "$SORTIE/arduino15/packages/esp32/tools/$t"
 done
+# Bibliothèques précompilées des autres puces dans le cœur ESP32 (plusieurs centaines de Mo)
+for sdk in "$SORTIE"/arduino15/packages/esp32/hardware/esp32/*/tools/sdk/*; do
+  case "$(basename "$sdk")" in esp32) ;; *) rm -rf "$sdk" ;; esac
+done
 rm -rf "$ARDUINO_DIRECTORIES_DOWNLOADS" "$SORTIE/arduino15/staging"
 
 # Index réduits : seules les versions installées (arduino-cli les charge en mémoire à chaque appel)
@@ -49,4 +53,4 @@ printf '#include <Servo.h>\nServo s;\nvoid setup(){pinMode(13,OUTPUT);s.attach(9
 printf '#include <ESP32Servo.h>\nServo s;\nvoid setup(){pinMode(2,OUTPUT);s.attach(13);}\nvoid loop(){digitalWrite(2,!digitalRead(2));delay(500);}\n' > "$T/essai/essai.ino"
 "$CLI" compile --fqbn esp32:esp32:esp32 "$T/essai"
 rm -rf "$T"
-du -sh "$SORTIE"/* "$SORTIE/arduino15/packages"/*
+du -sh "$SORTIE"/* "$SORTIE/arduino15/packages"/* "$SORTIE"/arduino15/packages/esp32/hardware/esp32/*/tools/sdk/* 2>/dev/null
