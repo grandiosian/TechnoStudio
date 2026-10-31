@@ -6705,7 +6705,8 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     F.tl_digital_read = (b) => { const p = b.getFieldValue('PIN'); g.setups['pinin' + p] = `pinMode(${p}, INPUT);`; return [`(digitalRead(${p}) == HIGH)`, O.EQ]; };
     F.tl_analog_read = (b) => [B().adcMax === 4095 ? `(analogRead(${b.getFieldValue('PIN')}) / 4)` : `analogRead(${b.getFieldValue('PIN')})`, O.ATOMIC];
     F.tl_pwm_write = (b) => { const p = b.getFieldValue('PIN'); g.setups['pin' + p] = `pinMode(${p}, OUTPUT);`; return `analogWrite(${p}, ${val(b, 'VALUE', O.NONE)});\n`; };
-    F.tl_led_builtin = (b) => { g.setups.led = 'pinMode(LED_BUILTIN, OUTPUT);'; return `digitalWrite(LED_BUILTIN, ${b.getFieldValue('STATE') === '1' ? 'HIGH' : 'LOW'});\n`; };
+    // DEL de la carte : broche explicite (LED_BUILTIN n'existe pas sur toutes les cartes ESP32)
+    F.tl_led_builtin = (b) => { const p = B().led || '13'; g.setups['pin' + p] = `pinMode(${p}, OUTPUT);`; return `digitalWrite(${p}, ${b.getFieldValue('STATE') === '1' ? 'HIGH' : 'LOW'});\n`; };
     F.tl_delay = (b) => `delay(${val(b, 'MS', O.NONE, '1000')});\n`;
     F.tl_millis = () => ['millis()', O.ATOMIC];
     F.tl_serial_print = (b) => { g.setups.serial = 'Serial.begin(115200);'; return `Serial.println(${val(b, 'TEXT', O.NONE, '""')});\n`; };

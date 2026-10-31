@@ -169,8 +169,9 @@ async function compilerArduino(R, carte, code) {
   fs.mkdirSync(sortie, { recursive: true });
   fs.writeFileSync(path.join(croquis, 'sketch.ino'), code);
   try {
-    const r = await avecVerrou(R, 'arduino', () => lancer(R.cli, ['compile', '--fqbn', c.fqbn, '--output-dir', sortie, '--build-cache-path', path.join(R.dossier, 'build-cache', carte), croquis], { timeout: 300000 }));
-    const journal = r.out.split(racine).join('').split(R.dossier).join('').split(os.homedir()).join('~').slice(-12000);
+    const r = await avecVerrou(R, 'arduino', () => lancer(R.cli, ['compile', '--fqbn', c.fqbn, '--output-dir', sortie, '--build-path', path.join(R.dossier, 'build', carte), croquis], { timeout: 300000 }));
+    // eslint-disable-next-line no-control-regex
+    const journal = r.out.replace(/\x1b\[[0-9;]*m/g, '').split(racine).join('').split(path.join(R.dossier, 'build', carte)).join('build').split(R.dossier).join('').split(os.homedir()).join('~').slice(-12000);
     if (r.code !== 0) return { ok: false, journal, erreur: /not installed|platform not/i.test(r.out) ? 'La carte ' + c.nom + ' n’est pas installée sur le serveur.' : 'Erreur de compilation.' };
     if (c.format === 'hex') {
       const f = path.join(sortie, 'sketch.ino.hex');

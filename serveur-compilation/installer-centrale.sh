@@ -28,7 +28,9 @@ NODE="$(readlink -f "$NODE")"
 etape "arduino-cli"
 if [ ! -x "$CLI" ]; then
   ARCH=$(uname -m); case "$ARCH" in x86_64) F=Linux_64bit;; aarch64|arm64) F=Linux_ARM64;; *) echo "Architecture $ARCH non prévue"; exit 1;; esac
-  curl -fsSL "https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_${F}.tar.gz" | tar xz -C "$HOME/bin" arduino-cli
+  # version fixée (la « latest » peut être une préversion), repli sur la dernière si elle n'existe plus
+  curl -fsSL "https://downloads.arduino.cc/arduino-cli/arduino-cli_${ARDUINO_CLI_VERSION:-1.1.1}_${F}.tar.gz" | tar xz -C "$HOME/bin" arduino-cli \
+    || curl -fsSL "https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_${F}.tar.gz" | tar xz -C "$HOME/bin" arduino-cli
 fi
 "$CLI" version
 [ -f "$HOME/.arduino15/arduino-cli.yaml" ] || "$CLI" config init >/dev/null

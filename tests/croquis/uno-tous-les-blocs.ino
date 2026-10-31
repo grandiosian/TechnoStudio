@@ -6,7 +6,7 @@ Servo servo_3;
 void setup() {
   pinMode(0, OUTPUT);
   pinMode(3, OUTPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(13, OUTPUT);
   Serial.begin(115200);
   servo_3.attach(3);
 }
@@ -14,7 +14,7 @@ void setup() {
 void loop() {
   digitalWrite(0, HIGH);
   analogWrite(3, 0);
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(13, HIGH);
   delay(1000);
   Serial.println("");
   servo_3.write(90);
