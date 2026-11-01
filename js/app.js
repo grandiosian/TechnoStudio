@@ -375,7 +375,7 @@
         const carteOk = fe && fe.cartes && fe.cartes[cs] && fe.cartes[cs].installee;
         detail = h('div.p-col',
           h('div.p-state' + (carteOk ? '.ok' : fe ? '.warn' : '.bad'), fe ? (carteOk ? 'Serveur de compilation prêt' : 'Serveur joint, mais la carte ' + C.BOARDS[C.board].name + ' n’y est pas installée') : 'Serveur de compilation injoignable'),
-          fe && !carteOk && C.board === 'esp32' ? h('p.small', 'L’ESP32 en C++ n’est pas encore installé sur la Centrale (place disque). En attendant : carte « ESP32 (MicroPython) » par USB direct, ou le pont local.') : null,
+          fe && !carteOk && C.board === 'esp32' ? h('p.small', 'L’ESP32 en C++ n’est pas installé sur ce serveur de compilation. En attendant : carte « ESP32 (MicroPython) » par USB direct, ou le pont local.') : null,
           h('small.muted.mono', TL.flash.adresse().replace(/^https?:\/\//, '')),
           !TL.centrale.connecte() && fe && fe.auth !== 'ouvert' ? h('p.small', 'Connecte-toi avec ton code élève (menu Centrale) pour compiler sur le serveur.') : null,
           C.board === 'microbit' ? null : !TL.flash.supporte ? h('p.small.callout.warn', 'Téléversement USB : utilise Chrome ou Edge sur ordinateur.') : h('p.small.muted', 'Au premier envoi, choisis le port USB de la carte.'),
