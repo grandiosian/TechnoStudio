@@ -355,7 +355,17 @@
   async function viewCode() {
     const st = stage(); st.classList.add('full');
     const C = TL.code;
-    const out = (s) => { app.codeLog = ((app.codeLog || '') + s).slice(-20000); const el = TL.$('.code-console'); if (el) { el.textContent = app.codeLog; el.scrollTop = 1e9; } };
+    // Ajout en fin de console sans tout réécrire : une sélection en cours reste en place, et la console
+    // ne défile que si l'on était déjà en bas (on peut remonter lire ou copier pendant que la carte écrit).
+    const out = (s) => {
+      app.codeLog = ((app.codeLog || '') + s).slice(-20000);
+      const el = TL.$('.code-console'); if (!el) return;
+      const enBas = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+      const sel = getSelection(), selectionIci = sel && !sel.isCollapsed && el.contains(sel.anchorNode);
+      if (el.textContent.length + s.length > 24000 && !selectionIci) el.textContent = app.codeLog;
+      else el.append(s);
+      if (enBas && !selectionIci) el.scrollTop = 1e9;
+    };
     const log = (s) => out(String(s || '').replace(/\s+$/, '') + '\n');
     C.serial.onData = out;
     let ports = [], via = C.viaDefaut(C.board), port = '';
@@ -412,7 +422,8 @@
       send.onkeydown = async (e) => { if (e.key === 'Enter' && C.serial.writer) { await C.serial.write(send.value + '\r\n'); send.value = ''; } };
       body.append(h('pre.code-console.mono', app.codeLog || 'Les messages de compilation et le moniteur série s’affichent ici.\n'),
         h('div.p-row2', C.serial.supported ? h('button.btn.small.ghost', { type: 'button', onclick: async () => { try { if (C.serial.writer) { await C.serial.close(); log('Port série fermé.'); } else { await C.serial.open(+baud.value); log('Port série ouvert.'); } TL.panels.refresh('console'); } catch (e) { log('✗ ' + e.message); } } }, C.serial.writer ? 'Fermer le port' : 'Ouvrir le port USB') : h('small.muted', 'Moniteur USB : Chrome ou Edge'), baud),
-        send, h('button.btn.small.ghost', { type: 'button', onclick: () => { app.codeLog = ''; TL.panels.refresh('console'); } }, 'Effacer'));
+        send, h('div.p-row2', h('button.btn.small.ghost', { type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(app.codeLog || ''); TL.toast('Console copiée.', 'ok'); } catch (e) { TL.toast('Copie impossible ici : sélectionne le texte puis Ctrl+C.'); } } }, 'Copier'),
+          h('button.btn.small.ghost', { type: 'button', onclick: () => { app.codeLog = ''; TL.panels.refresh('console'); } }, 'Effacer')));
     } });
     async function setupCores() {
       log('Installation des cœurs (plusieurs minutes, internet nécessaire)…');

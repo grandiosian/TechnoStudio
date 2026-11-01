@@ -668,7 +668,7 @@ svg.graph { width: 100%; max-width: 520px; height: auto; display: block; cursor:
 .blk-else { font-weight: 700; font-size: .85rem; padding: 2px 8px; }
 .blk-foot { height: 6px; } .blk-empty { margin: 8px; }
 .blk-py, .codegen, .code-console, .code-log { margin: 0; padding: 10px 12px; background: #141821; color: #e6ebf5; border-radius: 8px; font: 12px/1.5 var(--f-mono); overflow: auto; white-space: pre; }
-.codegen { max-height: 60vh; } .code-console { min-height: 140px; max-height: 40vh; white-space: pre-wrap; } .code-log { max-height: 180px; white-space: pre-wrap; }
+.codegen { max-height: 60vh; } .code-console { min-height: 140px; max-height: 40vh; white-space: pre-wrap; user-select: text; -webkit-user-select: text; cursor: text; } .code-log { max-height: 180px; white-space: pre-wrap; }
 .scene-panel { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--surface-2); min-width: 0; }
 .scene-view svg { width: 100%; height: auto; display: block; border-radius: 6px; }
 .scene-outs { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -7747,7 +7747,24 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     if (cle) headers['X-Cle'] = cle;
     return headers;
   };
-  const lire = async (r) => { let j = {}; try { j = await r.json(); } catch (e) { /* non JSON */ } if (!r.ok && !j.journal) throw new Error(j.erreur || 'Erreur du serveur de compilation (' + r.status + ').'); return j; };
+  const hote = (u) => { try { return new URL(u, location.href).host; } catch (e) { return ''; } };
+  /** 401 : le serveur de compilation ne reconnaît pas l'élève (jeton d'une autre Centrale, session close, code renouvelé). */
+  function sessionRefusee(j) {
+    const Z = TL.centrale;
+    if (!Z || !Z.jeton()) return new Error('Connecte-toi d’abord avec ton code (menu Centrale → Me connecter avec mon code…), puis téléverse à nouveau.');
+    const centrale = hote(Z.serveur), compil = hote(F.adresse());
+    if (centrale && compil && centrale !== compil) {
+      return new Error('Tu es connecté à la Centrale ' + centrale + ', mais la compilation se fait sur ' + compil + ', qui ne connaît pas ce code. Ouvre TechnoStudio depuis ' + compil + ' (ou règle le serveur de compilation), puis reconnecte-toi.');
+    }
+    Z.deconnexion(); // session refusée par la Centrale elle-même : on repart d'un état propre
+    return new Error('Ta session n’est plus valable (expirée, ou code renouvelé par le professeur) : reconnecte-toi (menu Centrale → Me connecter avec mon code…), puis téléverse à nouveau.');
+  }
+  const lire = async (r) => {
+    let j = {}; try { j = await r.json(); } catch (e) { /* non JSON */ }
+    if (r.status === 401 && j.session) throw sessionRefusee(j);
+    if (!r.ok && !j.journal) throw new Error(j.erreur || 'Erreur du serveur de compilation (' + r.status + ').');
+    return j;
+  };
   /** Compile ; une compilation longue (ESP32 à froid) est suivie jusqu'au bout. attendre(s) : message d'attente. */
   F.compiler = async function (carte, code, attendre) {
     let j;
@@ -8015,7 +8032,9 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
      (un par niveau, avec leurs classes et leurs ressources) qui ouvrent tous TechnoStudio. */
   Z.lireConfig = function () {
     const q = new URLSearchParams(location.search);
-    const srv = q.get('centrale') || window.CENTRALE_URL || lireReglage('ts-centrale') || DEFAUT;
+    // Copie servie par une Centrale (…/miroir/technostudio/) : on parle à cette Centrale-là (ex. Centrale locale)
+    const miroir = /^https?:$/.test(location.protocol) && location.pathname.match(/^(.*?\/)miroir\/[^/]+\//);
+    const srv = q.get('centrale') || window.CENTRALE_URL || (miroir ? location.origin + miroir[1] : '') || lireReglage('ts-centrale') || DEFAUT;
     Z.serveur = String(srv).trim().replace(/\/?$/, '/').replace(/api\/$/, '');
     const app = propre(q.get('app')) || propre(lireReglage('ts-app')) || 'technostudio';
     Z.app = app;
@@ -9658,7 +9677,17 @@ Actionneurs = moteur, lampe`;
   async function viewCode() {
     const st = stage(); st.classList.add('full');
     const C = TL.code;
-    const out = (s) => { app.codeLog = ((app.codeLog || '') + s).slice(-20000); const el = TL.$('.code-console'); if (el) { el.textContent = app.codeLog; el.scrollTop = 1e9; } };
+    // Ajout en fin de console sans tout réécrire : une sélection en cours reste en place, et la console
+    // ne défile que si l'on était déjà en bas (on peut remonter lire ou copier pendant que la carte écrit).
+    const out = (s) => {
+      app.codeLog = ((app.codeLog || '') + s).slice(-20000);
+      const el = TL.$('.code-console'); if (!el) return;
+      const enBas = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+      const sel = getSelection(), selectionIci = sel && !sel.isCollapsed && el.contains(sel.anchorNode);
+      if (el.textContent.length + s.length > 24000 && !selectionIci) el.textContent = app.codeLog;
+      else el.append(s);
+      if (enBas && !selectionIci) el.scrollTop = 1e9;
+    };
     const log = (s) => out(String(s || '').replace(/\s+$/, '') + '\n');
     C.serial.onData = out;
     let ports = [], via = C.viaDefaut(C.board), port = '';
@@ -9715,7 +9744,8 @@ Actionneurs = moteur, lampe`;
       send.onkeydown = async (e) => { if (e.key === 'Enter' && C.serial.writer) { await C.serial.write(send.value + '\r\n'); send.value = ''; } };
       body.append(h('pre.code-console.mono', app.codeLog || 'Les messages de compilation et le moniteur série s’affichent ici.\n'),
         h('div.p-row2', C.serial.supported ? h('button.btn.small.ghost', { type: 'button', onclick: async () => { try { if (C.serial.writer) { await C.serial.close(); log('Port série fermé.'); } else { await C.serial.open(+baud.value); log('Port série ouvert.'); } TL.panels.refresh('console'); } catch (e) { log('✗ ' + e.message); } } }, C.serial.writer ? 'Fermer le port' : 'Ouvrir le port USB') : h('small.muted', 'Moniteur USB : Chrome ou Edge'), baud),
-        send, h('button.btn.small.ghost', { type: 'button', onclick: () => { app.codeLog = ''; TL.panels.refresh('console'); } }, 'Effacer'));
+        send, h('div.p-row2', h('button.btn.small.ghost', { type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(app.codeLog || ''); TL.toast('Console copiée.', 'ok'); } catch (e) { TL.toast('Copie impossible ici : sélectionne le texte puis Ctrl+C.'); } } }, 'Copier'),
+          h('button.btn.small.ghost', { type: 'button', onclick: () => { app.codeLog = ''; TL.panels.refresh('console'); } }, 'Effacer')));
     } });
     async function setupCores() {
       log('Installation des cœurs (plusieurs minutes, internet nécessaire)…');

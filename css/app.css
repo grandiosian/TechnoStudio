@@ -658,7 +658,7 @@ svg.graph { width: 100%; max-width: 520px; height: auto; display: block; cursor:
 .blk-else { font-weight: 700; font-size: .85rem; padding: 2px 8px; }
 .blk-foot { height: 6px; } .blk-empty { margin: 8px; }
 .blk-py, .codegen, .code-console, .code-log { margin: 0; padding: 10px 12px; background: #141821; color: #e6ebf5; border-radius: 8px; font: 12px/1.5 var(--f-mono); overflow: auto; white-space: pre; }
-.codegen { max-height: 60vh; } .code-console { min-height: 140px; max-height: 40vh; white-space: pre-wrap; } .code-log { max-height: 180px; white-space: pre-wrap; }
+.codegen { max-height: 60vh; } .code-console { min-height: 140px; max-height: 40vh; white-space: pre-wrap; user-select: text; -webkit-user-select: text; cursor: text; } .code-log { max-height: 180px; white-space: pre-wrap; }
 .scene-panel { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--surface-2); min-width: 0; }
 .scene-view svg { width: 100%; height: auto; display: block; border-radius: 6px; }
 .scene-outs { display: flex; flex-wrap: wrap; gap: 5px; }

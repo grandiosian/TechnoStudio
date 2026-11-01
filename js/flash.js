@@ -44,7 +44,24 @@
     if (cle) headers['X-Cle'] = cle;
     return headers;
   };
-  const lire = async (r) => { let j = {}; try { j = await r.json(); } catch (e) { /* non JSON */ } if (!r.ok && !j.journal) throw new Error(j.erreur || 'Erreur du serveur de compilation (' + r.status + ').'); return j; };
+  const hote = (u) => { try { return new URL(u, location.href).host; } catch (e) { return ''; } };
+  /** 401 : le serveur de compilation ne reconnaît pas l'élève (jeton d'une autre Centrale, session close, code renouvelé). */
+  function sessionRefusee(j) {
+    const Z = TL.centrale;
+    if (!Z || !Z.jeton()) return new Error('Connecte-toi d’abord avec ton code (menu Centrale → Me connecter avec mon code…), puis téléverse à nouveau.');
+    const centrale = hote(Z.serveur), compil = hote(F.adresse());
+    if (centrale && compil && centrale !== compil) {
+      return new Error('Tu es connecté à la Centrale ' + centrale + ', mais la compilation se fait sur ' + compil + ', qui ne connaît pas ce code. Ouvre TechnoStudio depuis ' + compil + ' (ou règle le serveur de compilation), puis reconnecte-toi.');
+    }
+    Z.deconnexion(); // session refusée par la Centrale elle-même : on repart d'un état propre
+    return new Error('Ta session n’est plus valable (expirée, ou code renouvelé par le professeur) : reconnecte-toi (menu Centrale → Me connecter avec mon code…), puis téléverse à nouveau.');
+  }
+  const lire = async (r) => {
+    let j = {}; try { j = await r.json(); } catch (e) { /* non JSON */ }
+    if (r.status === 401 && j.session) throw sessionRefusee(j);
+    if (!r.ok && !j.journal) throw new Error(j.erreur || 'Erreur du serveur de compilation (' + r.status + ').');
+    return j;
+  };
   /** Compile ; une compilation longue (ESP32 à froid) est suivie jusqu'au bout. attendre(s) : message d'attente. */
   F.compiler = async function (carte, code, attendre) {
     let j;
