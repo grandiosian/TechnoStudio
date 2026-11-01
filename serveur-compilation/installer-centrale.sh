@@ -64,6 +64,11 @@ fi
 
 fi
 
+# esptool.py importe pyserial, absent du Python de l'hébergement : embarqué à côté du script
+for d in "$HOME"/.arduino15/packages/esp32/tools/esptool_py/*/; do
+  [ -d "$d/serial" ] || PIP_USER=0 python3 -m pip install -q --no-compile --no-user --target "$d" pyserial || true
+done
+
 etape "MicroPython micro:bit"
 mkdir -p "$CODE/microbit"
 for u in https://github.com/bbcmicrobit/micropython/releases/download/v1.1.1/micropython-microbit-v1.1.1.hex \

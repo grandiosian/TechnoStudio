@@ -44,6 +44,14 @@ for sdk in "$SORTIE"/arduino15/packages/esp32/hardware/esp32/*/tools/sdk/*; do
 done
 rm -rf "$ARDUINO_DIRECTORIES_DOWNLOADS" "$SORTIE/arduino15/staging"
 
+# esptool.py (Linux) importe pyserial, absent du Python de l'hébergement : embarqué à côté du script
+for d in "$SORTIE"/arduino15/packages/esp32/tools/esptool_py/*/; do
+  [ -d "$d" ] || continue
+  python3 -m pip install -q --no-compile --no-user --target "$d" pyserial \
+    || python3 -m pip install -q --no-compile --no-user --break-system-packages --target "$d" pyserial
+  [ -d "$d/serial" ] || { echo "pyserial non embarqué dans $d"; exit 1; }
+done
+
 # Index réduits : seules les versions installées (arduino-cli les charge en mémoire à chaque appel)
 node "$ICI/filtrer-index.js" "$SORTIE/arduino15"
 rm -f "$SORTIE/arduino15/library_index.json"* "$SORTIE/arduino15/"*.sig
