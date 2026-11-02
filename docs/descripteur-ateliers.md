@@ -236,6 +236,7 @@ Champs communs à tous les blocs :
 | `autoeval` | exercice | non | **items**, scale | object |
 | `circuit` | simulation | oui | cols, rows, battery, palette, initial, goals | object |
 | `blocks` | simulation | oui | **scene**, toolbox, vars, start, tests | object |
+| `mblock` | simulation | oui | mode, decor, init, toolbox, start, tests | object |
 | `code` | simulation | oui + correction enseignant | **board**, start, toolbox, expect | object |
 
 ## Stockage et gestion

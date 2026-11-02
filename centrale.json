@@ -93,6 +93,127 @@
   },
   "liste": [
    {
+    "id": "anticollision-robot-mbot/P1",
+    "titre": "P1 · Séance 1 - Feuille 1",
+    "groupe": "5e · Anticollision robot mBot",
+    "total": 6,
+    "competences": [
+     "SFC14.5.1",
+     "SFC31.5.1",
+     "SFC31.5.2",
+     "SFC31.5.3",
+     "CCRI31.5.1",
+     "CCRI31.5.2"
+    ]
+   },
+   {
+    "id": "anticollision-robot-mbot/P2",
+    "titre": "P2 · Séance 2 - Feuille 2",
+    "groupe": "5e · Anticollision robot mBot",
+    "total": 9,
+    "competences": [
+     "CCRI31.5.1",
+     "CCRI31.5.2",
+     "SFC14.5.1",
+     "SFC31.5.1",
+     "SFC31.5.2",
+     "SFC31.5.3"
+    ]
+   },
+   {
+    "id": "anticollision-robot-mbot/P3",
+    "titre": "P3 · Séance 2 - Feuille 3",
+    "groupe": "5e · Anticollision robot mBot",
+    "total": 6,
+    "competences": [
+     "CCRI31.5.1",
+     "CCRI31.5.2",
+     "SFC14.5.1",
+     "SFC31.5.1",
+     "SFC31.5.2",
+     "SFC31.5.3",
+     "SFC21.5.1"
+    ]
+   },
+   {
+    "id": "anticollision-robot-mbot/P4",
+    "titre": "P4 · Séance 3 - Feuille 4",
+    "groupe": "5e · Anticollision robot mBot",
+    "total": 5,
+    "competences": [
+     "SFC31.5.1",
+     "SFC31.5.2",
+     "SFC31.5.3",
+     "CCRI31.5.1",
+     "CCRI31.5.2",
+     "SFC14.5.1",
+     "SFC13.5.1"
+    ]
+   },
+   {
+    "id": "anticollision-robot-mbot/P5",
+    "titre": "P5 · Séance 4 - Feuille 5",
+    "groupe": "5e · Anticollision robot mBot",
+    "total": 6,
+    "competences": [
+     "SFC13.5.1",
+     "SFC31.5.1",
+     "SFC31.5.2",
+     "SFC31.5.3",
+     "SFC14.5.1",
+     "SFC21.5.1"
+    ]
+   },
+   {
+    "id": "anticollision-robot-mbot/P6",
+    "titre": "P6 · Séance 4 - Feuille 6",
+    "groupe": "5e · Anticollision robot mBot",
+    "total": 6,
+    "competences": [
+     "SFC11.5.2",
+     "SFC11.5.3",
+     "SFC13.5.1",
+     "SFC21.5.1"
+    ]
+   },
+   {
+    "id": "anticollision-robot-mbot/S1",
+    "titre": "S1 · Synthèse",
+    "groupe": "5e · Anticollision robot mBot",
+    "total": 5,
+    "competences": []
+   },
+   {
+    "id": "anticollision-robot-mbot/E1",
+    "titre": "E1 · Évaluation (recto)",
+    "groupe": "5e · Anticollision robot mBot",
+    "total": 5,
+    "competences": [
+     "SFC31.5.1",
+     "SFC31.5.2",
+     "SFC31.5.3",
+     "SFC14.5.1",
+     "CCRI31.5.1",
+     "CCRI31.5.2"
+    ]
+   },
+   {
+    "id": "anticollision-robot-mbot/E2",
+    "titre": "E2 · Évaluation (verso)",
+    "groupe": "5e · Anticollision robot mBot",
+    "total": 8,
+    "competences": [
+     "SFC31.5.1",
+     "SFC31.5.2",
+     "SFC31.5.3",
+     "SFC14.5.1",
+     "SFC13.5.1",
+     "SFC11.5.2",
+     "SFC11.5.3",
+     "SFC21.5.1"
+    ]
+   },
+   {
     "id": "charte-lampe-de-poche/P1",
     "titre": "P1 · Séance 1 - Feuille 1",
     "groupe": "5e · Exemple : la lampe de poche",
@@ -558,6 +679,7 @@
    "autoeval": "exercice",
    "circuit": "simulation, noté",
    "blocks": "simulation, noté",
+   "mblock": "simulation, noté",
    "code": "simulation, noté, à corriger"
   },
   "cartes": [
@@ -1067,6 +1189,7 @@
       "autoeval",
       "circuit",
       "blocks",
+      "mblock",
       "code"
      ]
     },

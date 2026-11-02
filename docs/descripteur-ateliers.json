@@ -3523,6 +3523,222 @@
     "required": []
    }
   },
+  "mblock": {
+   "family": "simulation",
+   "graded": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
+     },
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "mode": {
+     "type": "string",
+     "enum": [
+      "sprite",
+      "mbot"
+     ]
+    },
+    "decor": {
+     "type": "string",
+     "enum": [
+      "libre",
+      "ligne",
+      "double",
+      "cage"
+     ]
+    },
+    "init": {
+     "type": "object",
+     "properties": {
+      "x": {
+       "type": "number"
+      },
+      "y": {
+       "type": "number"
+      },
+      "dir": {
+       "type": "number"
+      }
+     },
+     "required": []
+    },
+    "toolbox": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^mbo?t?_"
+     }
+    },
+    "start": {
+     "type": "object",
+     "properties": {},
+     "required": [],
+     "description": "espace de travail Blockly sérialisé (JSON)"
+    },
+    "tests": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string"
+       },
+       "steps": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "flag": {
+           "type": "boolean"
+          },
+          "start": {
+           "type": "boolean"
+          },
+          "key": {
+           "type": "string",
+           "enum": [
+            "up",
+            "down",
+            "left",
+            "right",
+            "space"
+           ]
+          },
+          "n": {
+           "type": "number"
+          },
+          "run": {
+           "type": "number"
+          },
+          "set": {
+           "type": "object",
+           "properties": {},
+           "required": []
+          }
+         },
+         "required": []
+        }
+       },
+       "expect": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "v": {
+           "type": "string",
+           "enum": [
+            "x",
+            "y",
+            "dir",
+            "chocs",
+            "parcours"
+           ]
+          },
+          "max": {
+           "type": "number"
+          },
+          "min": {
+           "type": "number"
+          },
+          "reachMax": {
+           "type": "number"
+          },
+          "reachMin": {
+           "type": "number"
+          },
+          "finalMax": {
+           "type": "number"
+          },
+          "why": {
+           "type": "string"
+          },
+          "whyReach": {
+           "type": "string"
+          },
+          "whyFinal": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "v"
+         ]
+        }
+       }
+      },
+      "required": [
+       "name"
+      ]
+     }
+    }
+   },
+   "answer": {
+    "type": "object",
+    "properties": {
+     "workspace": {
+      "type": "object",
+      "properties": {},
+      "required": []
+     },
+     "tests": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {},
+       "required": []
+      }
+     }
+    },
+    "required": []
+   }
+  },
   "code": {
    "family": "simulation",
    "graded": true,

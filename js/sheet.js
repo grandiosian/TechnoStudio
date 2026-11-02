@@ -139,7 +139,7 @@
     const box = h('section.sb.t-' + b.type + (exo ? '.exo' : '') + (b.demo ? '.demo' : ''), { 'data-id': b.id });
     if (b.comp && b.comp.length) box.append(h('div.sb-comp', b.comp.map((c) => h('span.comp-tag', c))));
     if (exo) {
-      const tag = b.tag || (['circuit', 'blocks', 'code'].includes(b.type) ? 'ordi' : 'papier');
+      const tag = b.tag || (['circuit', 'blocks', 'code', 'mblock'].includes(b.type) ? 'ordi' : 'papier');
       const head = h('div.sb-head',
         o.sheetKind === 'evaluation' || b.tag === 'none' ? null : h('span.tagbox.' + tag, tag === 'ordi' ? 'ORDI' : 'PAPIER'),
         h('div.bandq', o.num ? h('b.bandq-n', o.num + ' ') : null, h('span', { html: TL.inlineMd(b.question || (TL.activities[b.type] || {}).label || '') })),
