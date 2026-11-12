@@ -27,6 +27,7 @@
     mindmap: () => ({ type: 'mindmap', question: 'Complète la carte mentale.', center: 'NOTION', branches: [{ label: 'Branche 1', answers: ['', ''] }, { label: 'Branche 2', n: 2 }] }),
     autoeval: () => ({ type: 'autoeval', question: 'Je fais le point : je colorie un rond par ligne.', items: ['Je sais nommer les constituants.', 'Je sais décrire la chaîne d’énergie.'] }),
     code: () => ({ type: 'code', question: 'Programme la carte.', tag: 'ordi', board: 'uno' }),
+    robot: () => ({ type: 'robot', question: 'Programme le robot, compile puis téléverse.', tag: 'ordi', robot: 'mbot' }),
   });
 
   /* ---------- Formulaires ---------- */
@@ -48,6 +49,7 @@
     draw: [Q, { k: 'bg', kind: 'image', label: 'Image de fond (facultatif)' }, { k: 'ratio', kind: 'number', label: 'Hauteur / largeur (0,45 par défaut)' }, { k: 'straight', kind: 'check', label: 'Traits droits par défaut' }],
     mindmap: [Q, { k: 'center', kind: 'text', label: 'Centre' }, { k: 'branches', kind: 'brItems', label: 'Branches (« Titre : réponse ; réponse » ou « Titre : 2 » pour 2 cases libres)' }, HINT],
     autoeval: [Q, { k: 'items', kind: 'lines', label: 'Critères (un par ligne)', rows: 4 }, { k: 'scale', kind: 'csv', label: 'Échelle (oui, un peu, pas encore)' }],
+    robot: [Q, { k: 'robot', kind: 'select', label: 'Robot à l’ouverture', opts: [['mbot', 'mBot'], ['maqueen', 'Maqueen']] }, { k: 'expect', kind: 'lines', label: 'Blocs attendus (rb_forever, rb_if, rb_distance…, un par ligne)', rows: 3 }, { k: 'demo', kind: 'check', label: 'Démonstration (non notée)' }],
     code: [Q, { k: 'board', kind: 'select', label: 'Carte', opts: () => Object.entries(TL.code.BOARDS).map(([k, b]) => [k, b.name]) }, { k: '_ws', kind: 'codeWs', label: 'Programme de départ' }, { k: 'expect', kind: 'lines', label: 'Fragments attendus dans le code généré (un par ligne, facultatif)', rows: 3 }, { k: 'demo', kind: 'check', label: 'Démonstration (non notée)' }],
   });
   S.label = S.label.slice(); S.label.splice(1, 0, { k: 'mode', kind: 'select', label: 'Réponse', opts: [['liste', 'liste déroulante'], ['saisie', 'cases à compléter (saisie)']] }, { k: 'bank', kind: 'check', label: 'Banque de mots (mode saisie)' });
@@ -116,7 +118,7 @@
     ['Mise en page', ['objectif', 'decoupe', 'filet', 'questions', 'retenir']],
     ['Contenus', ['text', 'ressource', 'mots', 'image', 'scan', 'svg', 'link']],
     ['Comme sur papier', ['label', 'table', 'vraifaux', 'qcm', 'cloze', 'match', 'boxes', 'order', 'sort', 'numeric', 'bits', 'graph', 'draw', 'mindmap', 'procedure', 'report', 'autoeval']],
-    ['Numérique (ORDI)', ['circuit', 'blocks', 'code', 'chain']],
+    ['Numérique (ORDI)', ['circuit', 'blocks', 'code', 'robot', 'chain']],
   ];
   let ctx = null; // { w, s, sel, insert(type) }
   E.insertMenu = function () {

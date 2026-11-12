@@ -3739,6 +3739,139 @@
     "required": []
    }
   },
+  "robot": {
+   "family": "simulation",
+   "graded": true,
+   "review": true,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
+     },
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "robot": {
+     "type": "string",
+     "enum": [
+      "mbot",
+      "maqueen"
+     ],
+     "description": "robot proposé à l’ouverture"
+    },
+    "robots": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "enum": [
+       "mbot",
+       "maqueen"
+      ]
+     },
+     "description": "robots proposés (les deux par défaut)"
+    },
+    "toolbox": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^rb_"
+     }
+    },
+    "start": {
+     "type": "object",
+     "properties": {},
+     "required": [],
+     "description": "espace de travail Blockly sérialisé (JSON)"
+    },
+    "expect": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "description": "type de bloc attendu dans le programme (rb_forever, rb_if…)"
+     }
+    }
+   },
+   "answer": {
+    "type": "object",
+    "properties": {
+     "workspace": {
+      "type": "object",
+      "properties": {},
+      "required": []
+     },
+     "robot": {
+      "type": "string"
+     },
+     "code": {
+      "type": "string"
+     },
+     "uploaded": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "description": "{ robot: code téléversé }"
+     },
+     "essaye": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "description": "{ robot: code essayé en mode direct }"
+     },
+     "goals": {
+      "type": "array",
+      "items": {
+       "type": "boolean"
+      }
+     }
+    },
+    "required": []
+   }
+  },
   "code": {
    "family": "simulation",
    "graded": true,

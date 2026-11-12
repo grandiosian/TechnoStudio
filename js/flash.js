@@ -48,6 +48,7 @@
   /** 401 : le serveur de compilation ne reconnaît pas l'élève (jeton d'une autre Centrale, session close, code renouvelé). */
   function sessionRefusee(j) {
     const Z = TL.centrale;
+    if (TL.app && TL.app.seul) return new Error('Dans ce lien d’essai, la compilation demande la clé enseignant sur ce poste (sans code élève). Utilise plutôt le mode ⚡ En direct, ou appelle ton professeur.');
     if (!Z || !Z.jeton()) return new Error('Connecte-toi d’abord avec ton code (menu Centrale → Me connecter avec mon code…), puis téléverse à nouveau.');
     const centrale = hote(Z.serveur), compil = hote(F.adresse());
     if (centrale && compil && centrale !== compil) {

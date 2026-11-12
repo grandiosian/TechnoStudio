@@ -22,6 +22,10 @@ jobs:
         run: node tools/verifier-ateliers.js
       - name: Téléversement Arduino (STK500, faux bootloader)
         run: node tests/stk500.test.js
+      - name: Robots mBot et Maqueen (générateurs, croquis à jour)
+        run: |
+          node tests/robot.test.js --ecrire
+          git diff --exit-code -- tests/croquis/ || { echo "::error::tests/croquis du robot pas à jour : lancez node tests/robot.test.js --ecrire"; exit 1; }
       - name: Règles du serveur de compilation
         run: node tests/serveur-regles.test.js
       - name: Descripteur centrale.json et catalogue ateliers.json à jour et conformes

@@ -466,6 +466,7 @@
     panel();
     if (P.cur && P.cur.b === b) return;
     if (P.cur) M.close();
+    if (TL.robot && TL.robot.close) TL.robot.close();
     const inner = P.el.querySelector('.mbk-inner');
     inner.innerHTML = '';
     inner.append(h('p.mbk-loading', 'Chargement de mBlock…'));

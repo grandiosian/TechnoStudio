@@ -215,6 +215,47 @@
       "auteur": "Charte TechnoStudio"
     },
     {
+      "id": "programmer-robots-mbot-maqueen",
+      "titre": "Programmer les robots mBot et Maqueen",
+      "niveau": "5e",
+      "resume": "programmer un robot avec des blocs, lire le code produit, compiler puis téléverser dans le mBot ou le Maqueen ; le même programme passe d’un robot à l’autre.",
+      "duree": "110 min",
+      "competences": [
+        "CCRI31.5.1",
+        "CCRI31.5.2",
+        "SFC31.5.1",
+        "SFC31.5.2"
+      ],
+      "activites": [
+        {
+          "id": "programmer-robots-mbot-maqueen/P1",
+          "titre": "P1 · Séance 1 - Feuille 1",
+          "total": 3,
+          "competences": [
+            "CCRI31.5.1",
+            "CCRI31.5.2",
+            "SFC31.5.1",
+            "SFC31.5.2"
+          ]
+        },
+        {
+          "id": "programmer-robots-mbot-maqueen/P2",
+          "titre": "P2 · Séance 2 - Feuille 2",
+          "total": 2,
+          "competences": [
+            "CCRI31.5.1",
+            "CCRI31.5.2",
+            "SFC31.5.1",
+            "SFC31.5.2"
+          ]
+        }
+      ],
+      "ouvrir": "programmer-robots-mbot-maqueen",
+      "fichier": "ateliers/programmer-robots-mbot-maqueen.technostudio.json",
+      "version": 2,
+      "auteur": "Pôle des Sciences et de la Technologie"
+    },
+    {
       "id": "charte-parking-connecte",
       "titre": "Le parking connecté",
       "niveau": "4e",

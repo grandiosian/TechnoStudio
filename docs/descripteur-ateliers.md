@@ -237,6 +237,7 @@ Champs communs à tous les blocs :
 | `circuit` | simulation | oui | cols, rows, battery, palette, initial, goals | object |
 | `blocks` | simulation | oui | **scene**, toolbox, vars, start, tests | object |
 | `mblock` | simulation | oui | mode, decor, init, toolbox, start, tests | object |
+| `robot` | simulation | oui + correction enseignant | robot, robots, toolbox, start, expect | object |
 | `code` | simulation | oui + correction enseignant | **board**, start, toolbox, expect | object |
 
 ## Stockage et gestion

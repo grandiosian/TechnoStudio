@@ -9,6 +9,18 @@
   const stage = () => TL.$('#stage');
   const isProf = () => !!(app.profile && app.profile.role === 'prof');
 
+  /* Mode « atelier seul » : ?atelier=<id> (ou <id>/<feuille>, ou &feuille=P2). Pour un lien court donné en classe :
+     interface réduite au strict minimum (l'atelier et ses feuilles, pas à pas), aucune connexion à la Centrale,
+     aucun profil, et rien n'est enregistré (ni sur le poste ni sur un serveur) : un rechargement repart de zéro. */
+  app.seul = (() => {
+    try {
+      const q = new URLSearchParams(location.search), v = (q.get('atelier') || '').trim();
+      if (!v) return null;
+      const [id, f] = v.split('/');
+      return { id, feuille: (f || q.get('feuille') || '').trim() };
+    } catch (e) { return null; }
+  })();
+
   /* ================= Données ================= */
   app.loadWorkshops = async function () {
     app.workshops.clear();
@@ -54,7 +66,7 @@
   };
   app.getProgress = async function (id) {
     if (app.progress.has(id)) return app.progress.get(id);
-    const pg = (await TL.db.get('pg:' + id)) || { wid: id, step: 0, answers: {}, seen: {}, startedAt: null, updatedAt: 0 };
+    const pg = (app.seul ? null : await TL.db.get('pg:' + id)) || { wid: id, step: 0, answers: {}, seen: {}, startedAt: null, updatedAt: 0 };
     pg.answers = pg.answers || {}; pg.seen = pg.seen || {};
     app.progress.set(id, pg);
     return pg;
@@ -63,6 +75,7 @@
   app.saveProgress = function (pg) {
     pg.updatedAt = Date.now();
     if (!pg.startedAt) pg.startedAt = pg.updatedAt;
+    if (app.seul) { TL.emit('progress', pg); return; } // atelier seul : en mémoire seulement
     clearTimeout(writes[pg.wid]);
     writes[pg.wid] = setTimeout(() => TL.db.set('pg:' + pg.wid, pg), 0);
     TL.centrale.sauver(pg);
@@ -86,7 +99,9 @@
 
   /* ================= Menus ================= */
   const cur = () => { const m = location.hash.match(/^#(at|ed|fiche)-(.+)$/); return m ? app.workshops.get(m[2]) : null; };
+  const renderMenus = () => { if (!app.seul) TL.menubar.render(menus()); }; // atelier seul : barre réduite dessinée par le lecteur
   function menus() {
+    if (app.seul) return [];
     const w = cur();
     const mode = (location.hash.match(/^#([a-z]+)/) || [, 'accueil'])[1];
     const theme = document.documentElement.dataset.theme || 'auto';
@@ -121,6 +136,7 @@
         { label: 'Feuilles de l’atelier', check: mode === 'at', action: () => app.go('at-' + w.id) },
         { label: w && w.source === 'demo' ? 'Dupliquer et modifier' : 'Modifier', hidden: !isProf(), check: mode === 'ed', action: () => app.go('ed-' + w.id) },
         { sep: true },
+        { label: 'Copier le lien d’essai (atelier seul, sans enregistrement)…', hidden: !isProf(), action: () => w && lienEssai(w) },
         { label: 'Effacer ma progression…', action: clearProgress },
       ] },
       { label: 'Insertion', hidden: mode !== 'ed', items: () => TL.editor.insertMenu() },
@@ -167,6 +183,13 @@
   /* ================= Coquille ================= */
   TL.brandSvg = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 512 512'); s.setAttribute('class', 'brand-mark'); s.setAttribute('aria-hidden', 'true'); s.innerHTML = '<rect width="512" height="512" rx="112" fill="#2F57A1"/><path d="M120 176h272M256 176v208" stroke="#fff" stroke-width="28" stroke-linecap="round"/><circle cx="120" cy="176" r="30" fill="#F5C400"/><circle cx="392" cy="176" r="30" fill="#fff"/><circle cx="256" cy="384" r="34" fill="#fff"/>'; return s; };
   function drawSync() {
+    if (app.seul) {
+      TL.$$('[data-sync]').forEach((box) => {
+        const note = h('div.sync.st-local.seul-note', { title: 'Atelier en mode essai : les réponses restent dans cette page et disparaissent si on la recharge ou la ferme.' }, h('span.sync-dot'), h('span.sync-txt', 'Rien n’est enregistré'));
+        box.replaceWith(note);
+      });
+      return;
+    }
     const Z = TL.centrale, st = Z.connecte() ? Z.status : 'local';
     const txt = { local: 'Sur cet appareil', indispo: 'Sur cet appareil', online: 'Enregistré', offline: 'Hors ligne', syncing: 'Enregistrement…', error: 'À vérifier' }[st] || 'Sur cet appareil';
     TL.$$('[data-sync]').forEach((box) => {
@@ -184,8 +207,8 @@
     if (!lien) { if (b) b.remove(); return; }
     if (!b) { b = h('button.btn.small.ghost.mb-retour', { type: 'button', title: 'Revenir au portail de la Centrale (ton travail est enregistré)', onclick: () => window.Centrale.retour() }, '← Mes ateliers'); zone.prepend(b); }
   }
-  TL.on('hub', () => { drawSync(); drawRetour(); TL.menubar.render(menus()); });
-  function setTheme(k) { if (k === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = k; try { localStorage.setItem('tl-theme', k); } catch (e) { /* stockage indisponible */ } TL.menubar.render(menus()); }
+  TL.on('hub', () => { drawSync(); drawRetour(); renderMenus(); });
+  function setTheme(k) { if (k === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = k; try { localStorage.setItem('tl-theme', k); } catch (e) { /* stockage indisponible */ } renderMenus(); }
   function applyZoom() { TL.$$('.pasteboard .sheet').forEach((s) => (s.style.zoom = app.zoom)); }
 
   let rerender = () => {};
@@ -197,10 +220,11 @@
     return routing;
   }
   async function routeNow() {
+    if (app.seul && location.hash !== '#at-' + app.seul.id) history.replaceState(null, '', location.pathname + location.search + '#at-' + app.seul.id);
     const hash = (location.hash || '#accueil').slice(1);
     // #activite=<atelier> ou <atelier>/<feuille> : ouverture directe, même sans la Centrale
     if (/^activite=/.test(hash)) { let id = ''; try { id = decodeURIComponent(hash.slice(9).split('&')[0]); } catch (e) { /* adresse illisible */ } if (id) { await TL.centrale.ouvrirActivite(id); if (/^#activite=/.test(location.hash)) app.go('accueil'); return; } }
-    TL.menubar.render(menus());
+    renderMenus();
     const st = stage();
     st.innerHTML = ''; st.className = 'stage';
     rerender = () => {};
@@ -220,7 +244,7 @@
       console.error(e);
       page().append(h('div.empty', h('h2', 'Cette vue n’a pas pu s’afficher'), h('p', e.message), h('a.btn', { href: '#accueil' }, 'Bibliothèque')));
     }
-    TL.menubar.render(menus());
+    renderMenus();
   }
   app.route = route;
   app.go = (hash) => { if (location.hash === '#' + hash) route(); else location.hash = hash; };
@@ -277,8 +301,22 @@
     pg.step = TL.clamp(pg.step || 0, 0, Math.max(0, w.steps.length - 1));
     const board = h('div.pasteboard.scroll');
     stage().append(board);
+    const codes = TL.sheetCodes(w);
+    let choix = null;
+    if (app.seul) {
+      // Barre réduite : l'atelier et la feuille (liste déroulante), rien d'autre
+      choix = h('select.field.seul-feuille', { 'aria-label': 'Feuille', onchange: () => show(+choix.value) }, w.steps.map((s, i) => h('option', { value: i }, codes[i] + ' · ' + s.title)));
+      const bar = TL.$('#menus'); bar.innerHTML = '';
+      bar.append(h('span.seul-brand', TL.brandSvg()), h('span.seul-titre', TL.pastille(w), h('b', w.title)), w.steps.length > 1 ? choix : null);
+      if (!pg.startedAt && app.seul.feuille) {
+        const f = app.seul.feuille.toLowerCase(), court = (x) => x.toLowerCase().replace(/^([a-z·]+)0*/, '$1');
+        const k = w.steps.findIndex((s, i) => s.id.toLowerCase() === f || codes[i].toLowerCase() === f || court(codes[i]) === court(f));
+        if (k >= 0) pg.step = k;
+      }
+    }
     const show = (i) => {
       pg.step = TL.clamp(i, 0, w.steps.length - 1);
+      if (choix) choix.value = String(pg.step);
       const s = w.steps[pg.step];
       if (!s) { board.innerHTML = ''; board.append(h('div.desk', h('p', 'Atelier vide.'))); return; }
       pg.seen[s.id] = true; app.saveProgress(pg);
@@ -323,16 +361,34 @@
         isProf() ? h('label.p-check', h('input', { type: 'checkbox', checked: app.layers.corr, onchange: (e) => { app.layers.corr = e.target.checked; rerender(); } }), ' Correction') : null,
         isProf() ? h('div.p-col', h('a.btn.small.ghost', { href: '#ed-' + w.id }, w.source === 'demo' ? 'Dupliquer et modifier' : 'Modifier cet atelier')) : null);
     } });
-    TL.panels.setMode('atelier', ['feuilles', 'suivi'], ['feuilles', 'suivi']);
+    if (app.seul) TL.panels.setMode('seul', [], []);
+    else TL.panels.setMode('atelier', ['feuilles', 'suivi'], ['feuilles', 'suivi']);
     show(pg.step);
   }
   function finish(w, pg) {
     const st = TL.workshopStats(w, pg);
     if (!pg.completedAt && st.pct === 100) pg.completedAt = Date.now();
     app.saveProgress(pg);
+    if (app.seul) {
+      TL.modal(st.pct === 100 ? 'Atelier terminé' : 'Pas tout à fait fini', h('div.finish', h('div.finish-score', h('span.mono.big', st.score + ' %'), h('span.small.muted', 'score moyen sur ' + st.total + ' activités')),
+        h('p', st.pct === 100 ? 'Bravo, tu as fait toutes les activités.' : 'Il reste ' + (st.total - st.done) + ' activité(s) : la liste des feuilles, en haut, te permet d’y revenir.'),
+        h('p.small.muted', 'Atelier en mode essai : rien n’est enregistré.')), [{ label: 'Fermer', primary: true }]);
+      return;
+    }
     TL.modal(st.pct === 100 ? 'Atelier terminé' : 'Pas tout à fait fini', h('div.finish', h('div.finish-score', h('span.mono.big', st.score + ' %'), h('span.small.muted', 'score moyen sur ' + st.total + ' activités')),
       h('p', st.pct === 100 ? (TL.centrale.connecte() ? 'Ton travail est enregistré sur la Centrale : ton professeur voit ton avancement.' : 'Ton travail est enregistré sur cet appareil.') : 'Il reste ' + (st.total - st.done) + ' activité(s). Le panneau « Feuilles » montre celles qui sont terminées (✓).')),
     [{ label: 'Rester ici' }, { label: 'Bibliothèque', primary: true, onClick: () => app.go('accueil') }]);
+  }
+  // Lien « atelier seul » : l'élève n'a que l'atelier, rien n'est enregistré (essai en classe sans codes élèves)
+  async function lienEssai(w) {
+    const u = location.origin + location.pathname + '?atelier=' + encodeURIComponent(w.id);
+    const champ = h('input.field.mono', { type: 'text', readonly: true, value: u, onfocus: (e) => e.target.select() });
+    TL.modal('Lien d’essai pour la classe', h('div',
+      h('p', 'Ce lien ouvre seulement « ' + w.title + ' », avec le strict minimum : les feuilles, pas à pas. Pas de connexion, pas de profil, rien n’est enregistré (recharger la page repart de zéro).'),
+      champ,
+      h('p.small.muted', 'Pour ouvrir directement une feuille, ajoute « /P2 » (ou /R1…) après l’identifiant. Un raccourcisseur d’adresse peut en faire un lien court.'),
+      w.source !== 'demo' ? h('p.callout.warn', 'Cet atelier n’est que sur ce poste : publie-le avec l’application (dossier ateliers/) pour que le lien marche chez les élèves.') : null),
+    [{ label: 'Copier', primary: true, onClick: async () => { try { await navigator.clipboard.writeText(u); TL.toast('Lien copié.', 'ok'); } catch (e) { champ.select(); } } }, { label: 'Fermer' }]);
   }
   async function clearProgress() {
     const w = cur(); if (!w) return;
@@ -498,7 +554,7 @@
           h('button.btn.primary', { type: 'button', onclick: async () => { try { await Z.sync(); TL.toast('Travail à jour.', 'ok'); } catch (e) { TL.toast(e.message, 'bad'); } draw(); } }, 'Enregistrer et recharger'),
           h('button.btn.ghost', { type: 'button', onclick: () => app.refreshCatalog() }, 'Recevoir les ateliers'),
           Z.lienPortail() ? h('button.btn.ghost', { type: 'button', onclick: () => window.Centrale.retour() }, '← Mes ateliers') : null,
-          h('button.btn.ghost', { type: 'button', onclick: async () => { await Z.deconnexion(); draw(); TL.menubar.render(menus()); } }, 'Me déconnecter')));
+          h('button.btn.ghost', { type: 'button', onclick: async () => { await Z.deconnexion(); draw(); renderMenus(); } }, 'Me déconnecter')));
         try { window.Centrale.afficherIdentifiant(ident, { libelle: '', onChange: () => { app.profile.name = Z.user.name; TL.db.set('profile', app.profile); drawSync(); } }); } catch (e) { ident.textContent = s.identifiant || ''; }
       } else {
         box.append(h('p.muted', Z.dispo ? 'Tape le code personnel distribué par ton professeur pour recevoir ses ateliers et enregistrer ton travail sur la Centrale.' : 'Centrale injoignable pour le moment : tout fonctionne et reste sur cet appareil.'),
@@ -511,7 +567,7 @@
       h('section.card', h('h2', 'Mon profil sur cet appareil'),
         h('div.form.grid2', h('label', { for: 'pf-name' }, 'Nom affiché', name), h('label', { for: 'pf-role' }, 'Je suis', role)),
         h('p.small.muted', 'Le profil Enseignant donne accès à l’éditeur d’ateliers et à la correction. Le nom reste sur cet appareil : la Centrale ne connaît que l’identifiant.'),
-        h('div.actions', h('button.btn.primary', { type: 'button', onclick: async () => { Object.assign(p, { name: name.value.trim() || p.name, role: role.value }); await TL.db.set('profile', p); TL.toast('Profil enregistré.', 'ok'); drawSync(); TL.menubar.render(menus()); } }, 'Enregistrer'))));
+        h('div.actions', h('button.btn.primary', { type: 'button', onclick: async () => { Object.assign(p, { name: name.value.trim() || p.name, role: role.value }); await TL.db.set('profile', p); TL.toast('Profil enregistré.', 'ok'); drawSync(); renderMenus(); } }, 'Enregistrer'))));
 
     // Réglages avancés : utiles à l'enseignant (autre Centrale, plusieurs ateliers, serveur de compilation)
     const srv = h('input.field.mono', { type: 'url', value: Z.serveur, 'aria-label': 'Adresse de la Centrale' });
@@ -680,7 +736,7 @@
   }
   document.addEventListener('keydown', (e) => {
     if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable],.injectionDiv')) return;
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); app.go('accueil'); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o' && !app.seul) { e.preventDefault(); app.go('accueil'); }
     if (app.step && !e.ctrlKey && !e.metaKey && !e.altKey) { if (e.key === 'ArrowRight') app.step(1); if (e.key === 'ArrowLeft') app.step(-1); }
   });
 
@@ -723,6 +779,7 @@
 
   app.start = async function () {
     try { const t = localStorage.getItem('tl-theme'); if (t && t !== 'auto') document.documentElement.dataset.theme = t; } catch (e) { /* rien */ }
+    if (app.seul) return startSeul();
     const depuisPortail = /(^|[#&])centrale=/.test(location.hash) || /^#activite=/.test(location.hash);   // ou lien direct vers un atelier
     app.profile = await TL.db.get('profile');
     if (!app.profile && window.TL_DEFAULT_PROFILE) app.profile = Object.assign({ createdAt: Date.now() }, window.TL_DEFAULT_PROFILE);
@@ -733,10 +790,31 @@
     const centrale = TL.centrale.init(); // en parallèle : l'appli s'affiche sans attendre le réseau
     drawSync();
     window.addEventListener('hashchange', route);
-    TL.on('synced', () => { drawSync(); TL.menubar.render(menus()); });
+    TL.on('synced', () => { drawSync(); renderMenus(); });
     if (!app.profile) { route(); await centrale; await onboarding(); drawSync(); }
     route();
-    centrale.then(() => { drawSync(); TL.menubar.render(menus()); });
+    centrale.then(() => { drawSync(); renderMenus(); });
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/claude/.test(location.hostname) && !window.TL_NO_SW) navigator.serviceWorker.register('sw.js').catch(() => {});
   };
+  // Atelier seul : ni profil ni Centrale ; l'élève arrive directement sur la feuille demandée
+  async function startSeul() {
+    document.body.classList.add('mode-seul');
+    app.profile = { name: 'Élève', role: 'eleve', classe: '' }; // en mémoire seulement
+    app.layers.corr = false;
+    await TL.panels.load();
+    await app.loadWorkshops();
+    const w = app.workshops.get(app.seul.id);
+    drawSync();
+    if (!w) {
+      TL.$('#menus').append(h('span.seul-brand', TL.brandSvg()));
+      stage().append(h('div.pasteboard.scroll', h('div.desk', h('div.empty', h('h2', 'Atelier introuvable'), h('p', 'Le lien ne correspond à aucun atelier (« ' + app.seul.id + ' »). Vérifie l’adresse donnée par ton professeur.')))));
+      return;
+    }
+    document.title = w.title + ' · TechnoStudio';
+    window.addEventListener('hashchange', route);
+    // les réponses ne sont gardées que dans la page : on prévient avant de la quitter
+    window.addEventListener('beforeunload', (e) => { const pg = app.progress.get(w.id); if (pg && Object.keys(pg.answers).length) { e.preventDefault(); e.returnValue = ''; } });
+    route();
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/claude/.test(location.hostname) && !window.TL_NO_SW) navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
 })();

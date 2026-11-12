@@ -29,6 +29,7 @@ Ateliers de technologie au **format de la charte** (fiche pédagogique, feuilles
 | `index.html`, `js/`, `css/`, `vendor/`, `sw.js` | l'application (publiée telle quelle par GitHub Pages) |
 | `js/centrale.js` | connexion à la Centrale : code, portail, ateliers reçus, sauvegarde, avancement |
 | `js/flash.js` | compilation à distance et téléversement par le navigateur (STK500, esptool-js) |
+| `js/robot.js` | environnement **Robots** : mêmes blocs pour le **mBot** (C++ sans bibliothèque Makeblock → carte « uno ») et le **Maqueen Lite** (MicroPython → .hex micro:bit), changement de robot à tout moment, compilation et téléversement, et **mode direct** (le programme tourne dans le navigateur, le robot branché obéit en temps réel : protocole texte décrit dans le fichier ; programme à installer une fois, `R.firmware`) |
 | `ateliers/`, `ateliers.json` | ateliers des enseignants publiés avec l'appli, et catalogue des ateliers importé par la Centrale (produit par `tools/centrale-json.js`) |
 | `centrale.json`, `PASSERELLE.md` | **descripteur d'atelier** commun aux applications de la Centrale (`passerelle.atelier` v1), produit par `tools/centrale-json.js` |
 | `js/passerelle.js` | ce que l'appli déclare et envoie à la Centrale (activités, progression, clés) : source de `centrale.json` |
@@ -73,6 +74,14 @@ Données enregistrées sur la Centrale, pour l'atelier `technostudio` :
 Le serveur ne reçoit ni nom ni prénom : seulement la classe, le numéro et l'identifiant (`4C-LHA-LoutreAgile`).
 
 > Copie de secours : ajoutez `technostudio https://github.com/grandiosian/TechnoStudio` dans `miroirs.txt` de la Centrale. L'appli sera aussi servie à `https://technoversailles.alwaysdata.net/miroir/technostudio/`. Ajoutez cette adresse en adresse de secours de l'atelier.
+
+## 1 bis. Lien d'essai : un atelier seul, sans enregistrement
+
+Pour essayer un atelier en classe **sans codes élèves** : `https://grandiosian.github.io/TechnoStudio/?atelier=<id de l'atelier>` (ou `?atelier=<id>/P2` pour ouvrir une feuille). Profil Enseignant : Atelier → **Copier le lien d'essai**.
+
+- interface réduite au strict minimum : l'atelier, la liste de ses feuilles et la navigation pas à pas ; ni menus, ni panneaux, ni bibliothèque ;
+- aucune connexion à la Centrale, aucun profil, **rien n'est enregistré** (ni sur le poste, ni sur un serveur) : recharger la page repart de zéro (le navigateur prévient avant de quitter une page où l'élève a répondu) ;
+- les robots : le mode **⚡ En direct** marche sans compilation (le mode direct doit avoir été installé une fois dans chaque robot). Pour **Téléverser**, la compilation demande la **clé enseignant** sur le poste (Compte → Réglages de connexion, dans TechnoStudio ouvert normalement sur le même navigateur).
 
 ## 2. Compilation des cartes (hébergée par la Centrale)
 
@@ -183,6 +192,7 @@ python3 -m http.server 8000                 # http://localhost:8000/?centrale=ht
 node tools/build.js && node tools/centrale-json.js   # à faire avant chaque envoi
 node tests/stk500.test.js                   # téléversement Arduino contre un faux bootloader
 node tests/serveur-regles.test.js           # règles du serveur de compilation
+node tests/robot.test.js [--ecrire]         # robots mBot / Maqueen : code des deux robots (--ecrire : met à jour tests/croquis/)
 node tests/compilation.test.js <centrale> <code>  # serveur de compilation (faux arduino-cli) + Centrale
 node tests/centrale.e2e.js <appli> <centrale> <codes.json> <base.sqlite>  # Playwright, Centrale PHP locale
 ```

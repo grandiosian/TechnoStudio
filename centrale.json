@@ -273,6 +273,30 @@
     ]
    },
    {
+    "id": "programmer-robots-mbot-maqueen/P1",
+    "titre": "P1 · Séance 1 - Feuille 1",
+    "groupe": "5e · Programmer les robots mBot et Maqueen",
+    "total": 3,
+    "competences": [
+     "CCRI31.5.1",
+     "CCRI31.5.2",
+     "SFC31.5.1",
+     "SFC31.5.2"
+    ]
+   },
+   {
+    "id": "programmer-robots-mbot-maqueen/P2",
+    "titre": "P2 · Séance 2 - Feuille 2",
+    "groupe": "5e · Programmer les robots mBot et Maqueen",
+    "total": 2,
+    "competences": [
+     "CCRI31.5.1",
+     "CCRI31.5.2",
+     "SFC31.5.1",
+     "SFC31.5.2"
+    ]
+   },
+   {
     "id": "charte-parking-connecte/P1",
     "titre": "P1 · Séance 3 - Feuille 1",
     "groupe": "4e · Le parking connecté",
@@ -680,6 +704,7 @@
    "circuit": "simulation, noté",
    "blocks": "simulation, noté",
    "mblock": "simulation, noté",
+   "robot": "simulation, noté, à corriger",
    "code": "simulation, noté, à corriger"
   },
   "cartes": [
@@ -1190,6 +1215,7 @@
       "circuit",
       "blocks",
       "mblock",
+      "robot",
       "code"
      ]
     },
