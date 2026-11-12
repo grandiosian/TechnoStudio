@@ -996,3 +996,8 @@ pre.code { white-space: pre-wrap; background: var(--surface-2); padding: 10px; b
 .seul-res { white-space: nowrap; background: #2FB844; border-color: #2FB844; color: #fff; }
 .seul-res:hover { background: #27a03a; }
 .sheetnav .btn:disabled { opacity: .65; cursor: not-allowed; }
+/* Barre élève : aperçu enseignant */
+.apercu-tag { flex: none; margin-left: 6px; padding: 2px 9px; border-radius: 99px; background: #F5C400; color: #3a2d00; font-size: 12px; font-weight: 700; }
+.onb-prof { margin-left: auto; }
+.ens-secours { margin-top: 12px; border-top: 1px solid var(--ui-line, #ddd); padding-top: 8px; }
+.ens-secours summary { cursor: pointer; font-size: 13px; color: var(--ui-muted, #666); }

@@ -295,6 +295,7 @@
     const [wid, code] = String(id).split('/');
     const w = TL.app.workshops.get(wid);
     if (!w) { TL.toast('Activité « ' + id + ' » introuvable sur ce poste.', 'bad'); return; }
+    TL.app.demande = { id: wid, feuille: code || '' };
     if (code) {
       const i = P.activitesAtelier(w).find((a) => a.id === P.idActivite(w, code) || a.id === id);
       if (i) { const pg = await TL.app.getProgress(wid); pg.step = i.feuille; }

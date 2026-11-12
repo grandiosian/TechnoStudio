@@ -27,6 +27,15 @@
   const urlTravail = (id) => (estPhp() ? F.adresse() + '?travail=' + id : F.adresse() + 'travail?id=' + id);
   F.reglerAdresse = function (u) { try { if (u) localStorage.setItem('ts-compilateur', u.trim()); else localStorage.removeItem('ts-compilateur'); } catch (e) { /* rien */ } F.etat = null; };
   F.etat = null;
+  /** Clé enseignant valable ? (le serveur répond 401 à une clé inconnue, avant de regarder la demande) → true / false / null (serveur injoignable) */
+  F.verifierCle = async function (cle) {
+    try {
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
+      // demande volontairement incomplète : contrôlée après la clé, elle ne lance aucune compilation
+      const r = await fetch(urlCompiler(), { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Cle': cle }, body: JSON.stringify({ carte: '', code: '' }), cache: 'no-store', signal: ctl.signal }); clearTimeout(t);
+      return r.status !== 401;
+    } catch (e) { return null; }
+  };
   F.verifier = async function () {
     try {
       const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);

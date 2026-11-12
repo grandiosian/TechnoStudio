@@ -75,6 +75,11 @@ Le serveur ne reçoit ni nom ni prénom : seulement la classe, le numéro et l'i
 
 > Copie de secours : ajoutez `technostudio https://github.com/grandiosian/TechnoStudio` dans `miroirs.txt` de la Centrale. L'appli sera aussi servie à `https://technoversailles.alwaysdata.net/miroir/technostudio/`. Ajoutez cette adresse en adresse de secours de l'atelier.
 
+## 1 bis. Élèves et enseignant
+
+- **Mode élève** (par défaut, pour tous les élèves, connectés ou non) : barre minimale (logo, atelier, feuille, 📚 Ressources), ni menus ni panneaux ni outils. Parcours guidé : seulement la feuille en cours et celles déjà faites, questions grisées qui se débloquent une à une (réponse juste, rendue, ou deux essais), feuille suivante débloquée quand la feuille est finie ; les ressources s'ouvrent à côté de la feuille. Le travail est enregistré comme avant (appareil et Centrale) : l'élève reprend là où il en était. Un lien du portail vers une feuille (`#activite=<atelier>/P3`) l'ouvre directement.
+- **Mode enseignant** (admin) : toute l'interface (menus, panneaux, éditeur, correction, outils, options d'affichage), sans verrou. **Il s'ouvre depuis la Centrale** : espace enseignant → tableau de bord → **TechnoStudio · enseignant** (ou **TechnoStudio · élève** pour voir la présentation des élèves). TechnoStudio, copié sur le serveur de la Centrale (`/miroir/technostudio/`), demande à `api/enseignant.php` si ce navigateur est connecté à l'espace enseignant : rien à taper de plus. Se déconnecter de l'espace enseignant rend le poste aux élèves. Depuis une autre adresse (GitHub Pages, forge) ou si la Centrale est injoignable : logo → **Mode enseignant…** → « Clé de secours » (clé du serveur de compilation, `~/technostudio-compilation/config.json`). Un ancien profil « Enseignant » choisi sans clé redevient élève.
+
 ## 1 bis. Lien d'essai : un atelier seul, sans enregistrement
 
 Pour essayer un atelier en classe **sans codes élèves** : `https://grandiosian.github.io/TechnoStudio/?atelier=<id de l'atelier>` (ou `?atelier=<id>/P2` pour ouvrir une feuille). Profil Enseignant : Atelier → **Copier le lien d'essai**.
