@@ -169,6 +169,8 @@ L'éditeur montre la feuille telle que l'élève la verra :
 
 Chaque atelier est vérifié avec le descripteur avant d'être diffusé ou reçu.
 
+**Blocs de programme dans une feuille** : plutôt qu'une capture d'écran, utiliser le champ **Programme en blocs** (type `programme`, ou le champ `program` d'une ressource). TechnoStudio dessine les blocs mBlock (`mb_`, `mbot_`) ou robots (`rb_`) lui-même : mêmes couleurs que dans l'environnement de programmation, net à l'écran comme à l'impression. `tests/mblock.test.js` vérifie que chaque programme dessiné n'utilise que des blocs connus.
+
 ## 4. Passerelle avec la Centrale
 
 TechnoStudio publie **`centrale.json`** à la racine de son site (`https://grandiosian.github.io/TechnoStudio/centrale.json`) :

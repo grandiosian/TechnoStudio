@@ -1,7 +1,7 @@
 {
  "format": 2,
  "id": "programmer-robots-mbot-maqueen",
- "version": 3,
+ "version": 4,
  "title": "Programmer les robots mBot et Maqueen",
  "level": "college",
  "niveau": "5e",
@@ -92,11 +92,11 @@
        "text": "Branche le câble USB du robot et allume-le (mBot : interrupteur sur ON)."
       },
       {
-       "text": "Clique sur **Compiler** : la console doit afficher ✓."
+       "text": "Clique sur **⬆ Téléverser dans le robot** : le programme est compilé (vérifié) puis envoyé."
       },
       {
-       "text": "Clique sur **Téléverser**.",
-       "detail": "mBot : choisis le port USB proposé. Maqueen : enregistre le fichier sur le lecteur **MICROBIT**."
+       "text": "Suis le message affiché sous le bouton.",
+       "detail": "mBot : choisis le port USB proposé. Maqueen : enregistre le fichier sur le lecteur **MICROBIT**. Un message vert ✓ : c’est réussi."
       },
       {
        "text": "Débranche, pose le robot au sol et observe."

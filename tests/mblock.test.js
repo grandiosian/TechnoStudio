@@ -74,4 +74,20 @@ for (const f of fs.readdirSync(path.join(ROOT, 'ateliers')).filter((x) => /\.jso
     if (b.solution) M.runTests(b, b.solution).forEach((x) => assert.ok(x.ok, f + ' ' + b.id + ' (solution) : ' + x.name + ' — ' + x.why));
   }
 }
-console.log('✓ Simulateur mBlock : mur, variables, « dire », opérations et tests say/var conformes ; ' + nAct + ' activités des ateliers publiés exécutées.');
+// Programmes dessinés dans les feuilles (bloc « programme », champ program des ressources) : blocs connus seulement
+const CONNUS = new Set(Object.keys(M.DEFS).concat(['variables_get', 'variables_set', 'math_change', 'math_number', 'text']));
+let nProg = 0;
+const typesDe = (o, out) => { if (o && typeof o === 'object') { if (typeof o.type === 'string' && (o.fields || o.inputs || o.next || /^(mb|mbot|rb)_|^variables_|^math_|^text$/.test(o.type))) out.push(o.type); Object.values(o).forEach((v) => typesDe(v, out)); } return out; };
+for (const f of fs.readdirSync(path.join(ROOT, 'ateliers')).filter((x) => /\.json$/.test(x))) {
+  const d = JSON.parse(fs.readFileSync(path.join(ROOT, 'ateliers', f), 'utf8'));
+  for (const w of Array.isArray(d) ? d : d.workshops || [d]) for (const s of w.steps) for (const b of s.blocks) {
+    if (!b.program) continue;
+    nProg++;
+    assert.ok(b.program.blocks && Array.isArray(b.program.blocks.blocks) && b.program.blocks.blocks.length, f + ' ' + b.id + ' : programme vide');
+    const robot = /"rb_/.test(JSON.stringify(b.program));
+    if (!robot) typesDe(b.program.blocks.blocks, []).forEach((t) => assert.ok(CONNUS.has(t), f + ' ' + b.id + ' : bloc inconnu « ' + t + ' »'));
+    const ids = new Set((b.program.variables || []).map((v) => v.id));
+    JSON.stringify(b.program).replace(/"VAR":\{"id":"([^"]+)"\}/g, (m, id) => { assert.ok(ids.has(id), f + ' ' + b.id + ' : variable ' + id + ' non déclarée'); return m; });
+  }
+}
+console.log('✓ Simulateur mBlock : mur, variables, « dire », opérations et tests say/var conformes ; ' + nAct + ' activités des ateliers publiés exécutées ; ' + nProg + ' programmes dessinés vérifiés.');

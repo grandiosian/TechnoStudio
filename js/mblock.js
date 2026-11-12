@@ -20,6 +20,7 @@
     sensing: { name: 'Capteurs', colour: '#5CB1D6' },
     looks: { name: 'Apparence', colour: '#9966FF' },
     light: { name: 'Éclairage', colour: '#9966FF' },
+    sound: { name: 'Son', colour: '#CF63CF' },
     control: { name: 'Contrôle', colour: '#FFAB19' },
     ops: { name: 'Opérateurs', colour: '#59C059' },
   };
@@ -50,11 +51,15 @@
     mbot_turn_t: { cat: 'action', message0: 'tourner à %1 à %2 %% pendant %3 s', args0: [{ type: 'field_dropdown', name: 'DIR', options: DIRS }, nb('P', 50, 0, 100), nb('S', 1, 0)] },
     mbot_stop: { cat: 'action', message0: 'arrêter les moteurs' },
     mbot_dist: { cat: 'sensing', output: 'Number', message0: 'distance ultrasons %1 (cm)', args0: [{ type: 'field_dropdown', name: 'PORT', options: [['port3', '3'], ['port1', '1'], ['port2', '2'], ['port4', '4']] }] },
-    mbot_led: { cat: 'light', message0: 'allumer la LED %1 en %2', args0: [{ type: 'field_dropdown', name: 'SIDE', options: [['toutes', 'all'], ['gauche', 'left'], ['droite', 'right']] }, { type: 'field_dropdown', name: 'COLOR', options: [['rouge', '#ff3b30'], ['vert', '#30d158'], ['bleu', '#2f7bff'], ['jaune', '#ffd60a'], ['blanc', '#ffffff'], ['éteinte', '']] }] },
+    mbot_led: { cat: 'light', message0: 'allumer la LED %1 en %2', args0: [{ type: 'field_dropdown', name: 'SIDE', options: [['toutes', 'all'], ['gauche', 'left'], ['droite', 'right']] }, { type: 'field_dropdown', name: 'COLOR', options: [['rouge', '#ff3b30'], ['vert', '#30d158'], ['bleu', '#2f7bff'], ['jaune', '#ffd60a'], ['orange', '#ff9500'], ['blanc', '#ffffff'], ['éteinte', '']] }] },
+    // blocs de son du mBot (montrés dans les feuilles ; la simulation les ignore)
+    mbot_note: { cat: 'sound', message0: 'jouer la note %1 pendant %2 temps', args0: [{ type: 'field_dropdown', name: 'NOTE', options: [['C5', 'C5'], ['C4', 'C4'], ['D5', 'D5'], ['E5', 'E5'], ['G5', 'G5'], ['C6', 'C6']] }, nb('T', 0.25, 0)] },
+    mbot_play: { cat: 'sound', message0: 'jouer %1', args0: [{ type: 'field_input', name: 'SON', text: 'son continu' }] },
     mb_say: { cat: 'looks', message0: 'dire %1', args0: [val('V')] },
     mb_say_t: { cat: 'looks', message0: 'dire %1 pendant %2 secondes', args0: [val('V'), val('S', 'Number')] },
     mb_arith: { cat: 'ops', output: 'Number', message0: '%1 %2 %3', args0: [val('A', 'Number'), { type: 'field_dropdown', name: 'OP', options: [['+', '+'], ['−', '-'], ['×', '*'], ['÷', '/']] }, val('B', 'Number')] },
     mb_wait: { cat: 'control', message0: 'attendre %1 secondes', args0: [nb('N', 1, 0)] },
+    mb_wait_v: { cat: 'control', message0: 'attendre %1 secondes', args0: [val('N', 'Number')] },
     mb_forever: { cat: 'control', end: true, message0: 'répéter indéfiniment', message1: '%1', args1: [{ type: 'input_statement', name: 'DO' }] },
     mb_repeat: { cat: 'control', message0: 'répéter %1 fois', args0: [nb('N', 10, 0)], message1: '%1', args1: [{ type: 'input_statement', name: 'DO' }] },
     mb_if: { cat: 'control', message0: 'si %1 alors', args0: [val('COND', 'Boolean')], message1: '%1', args1: [{ type: 'input_statement', name: 'DO' }] },
@@ -87,8 +92,12 @@
       if (!d.output && !d.end) json.nextStatement = null;
       Bl.Blocks[type] = { init() { this.jsonInit(json); if (d.hat) this.hat = 'cap'; } };
     });
+    // libellés des blocs de variables comme dans mBlock
+    Bl.Msg.VARIABLES_SET = 'mettre %1 à %2';
+    Bl.Msg.MATH_CHANGE_TITLE = 'ajouter %2 à %1';
     Bl.Theme.defineTheme('mblock', {
       base: Bl.Themes.Classic, name: 'mblock',
+      blockStyles: { variable_blocks: { colourPrimary: '#FF8C1A', colourSecondary: '#FFA54C', colourTertiary: '#DB6E00' } },   // variables orange, comme dans mBlock
       fontStyle: { family: '"Helvetica Neue", Helvetica, Arial, sans-serif', weight: '500', size: 11 },
       componentStyles: { workspaceBackgroundColour: '#F9F9F9', toolboxBackgroundColour: '#FFFFFF', flyoutBackgroundColour: '#F2F4F8', flyoutOpacity: 1, scrollbarColour: '#CECDCE', insertionMarkerColour: '#000000', insertionMarkerOpacity: 0.2 },
     });
@@ -713,5 +722,94 @@
       card.refresh();
       return card;
     },
+  };
+
+  /* ================= Programme en blocs dans une feuille (au lieu d'une capture d'écran) =================
+     Les blocs sont dessinés par Blockly dans un espace caché, puis recopiés en image vectorielle (SVG) :
+     aucun espace de travail ne reste ouvert, le dessin est net à l'écran comme à l'impression.
+     program : espace de travail Blockly sérialisé ({ blocks: { blocks: [...] }, variables }).
+     Les piles sans position sont rangées en ligne (o.disposition 'ligne', par défaut) ou l'une sous l'autre
+     ('colonne') ; o.reperes met un repère (1, 2, A…) devant chaque pile. */
+  const NS_SVG = 'http://www.w3.org/2000/svg';
+  let hote = null;
+  function hoteWs() {
+    const Bl = window.Blockly;
+    if (hote && document.body.contains(hote.div)) return hote;
+    const div = h('div', { 'aria-hidden': 'true', style: 'position:fixed;left:-12000px;top:0;width:1400px;height:900px;visibility:hidden;pointer-events:none' });
+    document.body.append(div);
+    const ws = Bl.inject(div, { renderer: 'zelos', theme: 'mblock', readOnly: true, sounds: false, media: TL.code.media || undefined,
+      move: { scrollbars: false, drag: false, wheel: false }, zoom: { controls: false, wheel: false, startScale: 1 } });
+    return (hote = { div, ws });
+  }
+  function dessiner(box, program, o) {
+    const Bl = window.Blockly;
+    const { ws } = hoteWs();
+    Bl.Events.disable();
+    try {
+      ws.clear();
+      Bl.serialization.workspaces.load(program, ws);
+      const tops = ws.getTopBlocks(false);
+      const placees = (program.blocks && program.blocks.blocks || []).some((x) => typeof x.x === 'number');
+      const rep = o.reperes || [];
+      const gx = rep.length ? 34 : 0, gap = 22;
+      if (!placees) {
+        let x = 0, y = 0, rowH = 0;
+        const maxW = o.disposition === 'colonne' ? 0 : (o.largeur || 760);
+        tops.forEach((bl) => {
+          const r = bl.getBoundingRectangle(), w = r.right - r.left, hh = r.bottom - r.top;
+          const dy = bl.getRelativeToSurfaceXY().y - r.top;   // chapeau des blocs de départ
+          if (x > 0 && (!maxW || x + gx + w > maxW)) { x = 0; y += rowH + gap; rowH = 0; }
+          bl.moveTo(new Bl.utils.Coordinate(x + gx, y + dy));
+          x += gx + w + gap * 1.6; rowH = Math.max(rowH, hh);
+        });
+      }
+      const canvas = ws.getCanvas();
+      const g = canvas.cloneNode(true);
+      g.removeAttribute('transform');
+      if (rep.length) {
+        tops.forEach((bl, i) => {
+          if (!rep[i]) return;
+          const r = bl.getBoundingRectangle();
+          const t = document.createElementNS(NS_SVG, 'text');
+          t.setAttribute('x', r.left - 10); t.setAttribute('y', r.top + Math.min(24, (r.bottom - r.top) / 2) + 6);
+          t.setAttribute('text-anchor', 'end'); t.setAttribute('class', 'prog-repere'); t.textContent = rep[i];
+          g.append(t);
+        });
+      }
+      const bb = canvas.getBBox();
+      const x0 = bb.x - (rep.length ? gx : 0) - 4, y0 = bb.y - 4, w = bb.width + (rep.length ? gx : 0) + 8, hh = bb.height + 8;
+      const svg = document.createElementNS(NS_SVG, 'svg');
+      svg.setAttribute('class', 'blocklySvg prog-svg ' + ws.getRenderer().getClassName() + ' ' + ws.getTheme().getClassName());
+      svg.setAttribute('viewBox', `${x0} ${y0} ${w} ${hh}`);
+      const k = o.echelle || 1;
+      svg.setAttribute('width', Math.round(w * k)); svg.setAttribute('height', Math.round(hh * k));
+      svg.style.setProperty('--w', Math.round(w * k) + 'px');
+      // dessin seul : pas de surbrillance au survol, rien de cliquable
+      g.querySelectorAll('[tabindex]').forEach((n) => n.removeAttribute('tabindex'));
+      svg.append(g);
+      box.innerHTML = '';
+      box.append(svg);
+      ws.clear();
+    } finally { Bl.Events.enable(); }
+  }
+  M.vue = function (program, o) {
+    o = o || {};
+    const box = h('div.prog-vue', { role: 'img', 'aria-label': o.alt || 'Programme en blocs' }, h('span.small.muted', 'Blocs…'));
+    if (!program || !program.blocks) { box.textContent = '(programme vide)'; return box; }
+    const robot = /"rb_/.test(JSON.stringify(program));
+    const charge = robot && TL.robot && TL.robot.load ? TL.robot.load() : M.load();
+    let essais = 0;
+    const go = () => {
+      // la feuille est parfois montée après coup : on attend qu'elle soit dans la page (setTimeout : marche aussi onglet caché)
+      if (!box.isConnected) { if (++essais < 3000) setTimeout(go, essais < 20 ? 30 : 200); return; }
+      try { dessiner(box, program, o); } catch (e) { console.warn(e); box.textContent = 'Blocs indisponibles.'; }
+    };
+    charge.then(() => setTimeout(go, 0), () => { box.textContent = 'Blocs indisponibles hors connexion.'; });
+    return box;
+  };
+
+  TL.activities.programme = {
+    label: 'Programme en blocs (image)', icon: '🧩',
+    render: (b) => h('figure.figure.prog-fig', M.vue(b.program, { alt: b.alt || b.caption, reperes: b.reperes, disposition: b.disposition, echelle: b.echelle }), b.caption ? h('figcaption', b.caption) : null),
   };
 })();

@@ -207,10 +207,11 @@ Champs communs à tous les blocs :
 |---|---|---|---|---|
 | `text` | contenu | non | **md** | — |
 | `image` | contenu | non | **src**, caption, alt | — |
+| `programme` | contenu | non | **program**, caption, alt, reperes, disposition, echelle | — |
 | `svg` | contenu | non | svg, caption | — |
 | `scan` | contenu | non | title, pages, open | — |
 | `link` | contenu | non | **url**, title, text, kind | — |
-| `ressource` | contenu | non | title, md, src, svg, caption, qr, qrLabel | — |
+| `ressource` | contenu | non | title, md, src, program, reperes, disposition, echelle, svg, caption, qr, qrLabel | — |
 | `mots` | contenu | non | title, items | — |
 | `objectif` | structure | non | label, md | — |
 | `retenir` | structure | non | title, md | — |

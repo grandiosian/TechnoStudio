@@ -803,6 +803,101 @@
     "src"
    ]
   },
+  "programme": {
+   "family": "contenu",
+   "graded": false,
+   "fields": {
+    "id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "description": "Stable : la progression y est rattachée. Généré si absent."
+    },
+    "type": {
+     "type": "string"
+    },
+    "question": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "tag": {
+     "type": "string",
+     "enum": [
+      "papier",
+      "ordi",
+      "none"
+     ],
+     "description": "Étiquette PAPIER (bleue) / ORDI (verte) de la charte."
+    },
+    "num": {
+     "type": "string",
+     "description": "Numéro affiché (« 1. », « 1.6 »). Automatique si absent."
+    },
+    "comp": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^(T\\d|OST|SFC|CCRI)"
+     },
+     "description": "Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2)."
+    },
+    "bareme": {
+     "type": "number",
+     "minimum": 0,
+     "description": "Barème (feuilles d’évaluation, total ramené sur 20)."
+    },
+    "bonus": {
+     "type": "boolean"
+    },
+    "hint": {
+     "type": "string"
+    },
+    "explanation": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "corr": {
+     "type": "string",
+     "format": "markdown"
+    },
+    "demo": {
+     "type": "boolean"
+    },
+    "program": {
+     "type": "object",
+     "properties": {},
+     "required": [],
+     "description": "programme en blocs (espace de travail Blockly sérialisé, blocs mBlock mb_/mbot_ ou robots rb_), dessiné par TechnoStudio au lieu d’une capture d’écran"
+    },
+    "caption": {
+     "type": "string"
+    },
+    "alt": {
+     "type": "string"
+    },
+    "reperes": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "repère affiché devant chaque pile de blocs (1, 2, A…)"
+    },
+    "disposition": {
+     "type": "string",
+     "enum": [
+      "ligne",
+      "colonne"
+     ]
+    },
+    "echelle": {
+     "type": "number",
+     "minimum": 0.3,
+     "maximum": 3
+    }
+   },
+   "required": [
+    "program"
+   ]
+  },
   "svg": {
    "family": "contenu",
    "graded": false,
@@ -1092,6 +1187,30 @@
     },
     "src": {
      "type": "string"
+    },
+    "program": {
+     "type": "object",
+     "properties": {},
+     "required": [],
+     "description": "programme en blocs dessiné dans la ressource (voir le bloc « programme »)"
+    },
+    "reperes": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "disposition": {
+     "type": "string",
+     "enum": [
+      "ligne",
+      "colonne"
+     ]
+    },
+    "echelle": {
+     "type": "number",
+     "minimum": 0.3,
+     "maximum": 3
     },
     "svg": {
      "type": "string"

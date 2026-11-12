@@ -47,10 +47,12 @@
   const BLOCKS = {
     text: { family: 'contenu', graded: false, fields: { md }, required: ['md'] },
     image: { family: 'contenu', graded: false, fields: { src: str({ format: 'uri-or-data' }), caption: str(), alt: str() }, required: ['src'] },
+    programme: { family: 'contenu', graded: false, fields: { program: obj({}, [], { description: 'programme en blocs (espace de travail Blockly sérialisé, blocs mBlock mb_/mbot_ ou robots rb_), dessiné par TechnoStudio au lieu d’une capture d’écran' }),
+      caption: str(), alt: str(), reperes: arr(str(), { description: 'repère affiché devant chaque pile de blocs (1, 2, A…)' }), disposition: str({ enum: ['ligne', 'colonne'] }), echelle: num({ minimum: 0.3, maximum: 3 }) }, required: ['program'] },
     svg: { family: 'contenu', graded: false, fields: { svg: str(), caption: str() } },
     scan: { family: 'contenu', graded: false, fields: { title: str(), pages: arr(str({ format: 'uri-or-data' })), open: bool } },
     link: { family: 'contenu', graded: false, fields: { url: str({ format: 'uri' }), title: str(), text: str(), kind: str({ enum: ['link', 'video'] }) }, required: ['url'] },
-    ressource: { family: 'contenu', graded: false, fields: { num: str(), title: str(), md, src: str(), svg: str(), caption: str(), qr: str(), qrLabel: str() } },
+    ressource: { family: 'contenu', graded: false, fields: { num: str(), title: str(), md, src: str(), program: obj({}, [], { description: 'programme en blocs dessiné dans la ressource (voir le bloc « programme »)' }), reperes: arr(str()), disposition: str({ enum: ['ligne', 'colonne'] }), echelle: num({ minimum: 0.3, maximum: 3 }), svg: str(), caption: str(), qr: str(), qrLabel: str() } },
     mots: { family: 'contenu', graded: false, fields: { title: str(), items: arr(obj({ mot: str(), def: str() }, ['mot'])) } },
     objectif: { family: 'structure', graded: false, fields: { label: str(), md } },
     retenir: { family: 'structure', graded: false, fields: { title: str(), md } },

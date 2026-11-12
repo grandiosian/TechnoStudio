@@ -29,6 +29,8 @@
     },
   };
   R.LIST = Object.keys(R.ROBOTS);
+  // Image détourée du robot (js/robot-img.js), l'émoji sinon
+  R.img = (k, cls) => { const src = (window.TL_ROBOT_IMG || {})[k]; return src ? h('img.rbt-img' + (cls || ''), { src, alt: '', draggable: 'false' }) : h('span' + (cls || ''), R.ROBOTS[k].icon); };
 
   /* ================= Blocs ================= */
   const CATS = {
@@ -388,10 +390,11 @@
     const rb = R.ROBOTS[robot];
     cle = cle || robot;
     if (R.compiled(cle, code)) { log('✓ Déjà compilé pour le ' + rb.name + ' (le programme n’a pas changé).'); return builds[cle].r; }
-    log('Compilation pour le ' + rb.long + ' sur le serveur (' + TL.flash.adresse().replace(/^https?:\/\//, '').replace(/\?.*$/, '') + ')…');
+    log('Serveur de compilation : ' + TL.flash.adresse().replace(/^https?:\/\//, '').replace(/\?.*$/, ''), true);
+    log('Compilation pour le ' + rb.name + '…');
     const r = await TL.flash.compiler(rb.carte, code, log);
-    if (r.journal) log(r.journal.trim().split('\n').slice(-20).join('\n'));
-    if (!r.ok) { log('✗ ' + (r.erreur || 'Erreur de compilation : regarde le message ci-dessus.')); return null; }
+    if (r.journal) log(r.journal.trim().split('\n').slice(-20).join('\n'), true);
+    if (!r.ok) { log('✗ ' + (r.erreur || 'Erreur de compilation.')); return null; }
     if (r.format === 'hex') log('✓ Compilé' + (r.cache ? ' (déjà en cache)' : '') + ' : ' + TL.flash.lireHex(r.hex).length + ' octets sur 32 256.');
     else if (r.format === 'hex-microbit') log('✓ Fichier .hex prêt (' + Math.round(r.hex.length / 1024) + ' Ko, MicroPython + le programme).');
     builds[cle] = { code, r };
@@ -849,7 +852,7 @@
     robots.forEach((k) => {
       const rb = R.ROBOTS[k];
       const badge = h('span.rbt-badge');
-      const bt = h('button.rbt-sw', { type: 'button', role: 'radio', title: 'Programmer le ' + rb.long, onclick: () => setRobot(k) }, h('span.rbt-sw-ico', { 'aria-hidden': 'true' }, rb.icon), h('span', rb.name), badge);
+      const bt = h('button.rbt-sw', { type: 'button', role: 'radio', title: 'Programmer le ' + rb.long, onclick: () => setRobot(k) }, h('span.rbt-sw-ico', { 'aria-hidden': 'true' }, R.img(k)), h('span', rb.name), badge);
       bt.badge = badge; swBtns[k] = bt; sw.append(bt);
     });
     const top = h('header.mbk-top.rbt-top',
@@ -862,10 +865,21 @@
 
     /* --- Colonne de droite : cible, actions, code, console --- */
     const cible = h('div.rbt-cible');
-    const btnCompile = h('button.rbt-act', { type: 'button', title: 'Compiler sur le serveur (vérifie le programme)' }, h('span', { 'aria-hidden': 'true' }, '✓'), ' Compiler');
-    const btnUpload = h('button.rbt-act.go', { type: 'button', title: 'Compiler puis envoyer dans le robot' }, h('span', { 'aria-hidden': 'true' }, '⬆'), ' Téléverser');
-    const btnExport = h('button.rbt-act.ghost', { type: 'button', title: 'Enregistrer le code source' }, '⤓');
-    const bar = h('div.rbt-actions', btnCompile, btnUpload, btnExport);
+    const btnCompile = h('button.rbt-act.rbt-adv', { type: 'button', title: 'Compiler sur le serveur (vérifie le programme sans l’envoyer)' }, h('span', { 'aria-hidden': 'true' }, '✓'), ' Compiler');
+    const btnUpload = h('button.rbt-act.go.rbt-main-btn', { type: 'button', title: 'Compiler puis envoyer dans le robot' }, h('span', { 'aria-hidden': 'true' }, '⬆'), ' Téléverser dans le robot');
+    const btnExport = h('button.rbt-act.ghost.rbt-adv', { type: 'button', title: 'Enregistrer le code source' }, '⤓');
+    const bar = h('div.rbt-actions', btnUpload, btnCompile, btnExport);
+    // Message court pour l'élève : la dernière étape importante (le détail est dans la console, mode avancé)
+    const statut = h('div.rbt-statut', { 'aria-live': 'polite', hidden: true });
+    const AKEY = 'technostudio.robot.avance';
+    let avance = false; try { avance = localStorage.getItem(AKEY) === '1'; } catch (e) { /* rien */ }
+    const btnAvance = h('button.rbt-avance-b', { type: 'button', 'aria-pressed': 'false', title: 'Voir le code, la console, la compilation seule, les branchements' });
+    const setAvance = (v) => {
+      avance = v; try { localStorage.setItem(AKEY, v ? '1' : '0'); } catch (e) { /* rien */ }
+      inner.classList.toggle('rbt-avance', v); btnAvance.setAttribute('aria-pressed', String(v));
+      btnAvance.textContent = v ? '▾ Masquer les détails' : '▸ Avancé';
+    };
+    btnAvance.onclick = () => setAvance(!avance);
     const btnModeUp = h('button.rbt-mode-b', { type: 'button', role: 'radio', title: 'Le programme est compilé puis rangé dans le robot, qui fonctionne seul, sans câble.', onclick: () => setMode('upload') }, '⬆ Téléverser');
     const btnModeLive = h('button.rbt-mode-b', { type: 'button', role: 'radio', title: 'Le programme tourne dans l’ordinateur ; le robot, relié par le câble, obéit en temps réel.', onclick: () => setMode('live') }, '⚡ En direct');
     const modeSw = h('div.rbt-modes', { role: 'radiogroup', 'aria-label': 'Mode' }, btnModeUp, btnModeLive);
@@ -877,14 +891,26 @@
     const showTab = (which) => { tabCode.classList.toggle('on', which === 'code'); tabLog.classList.toggle('on', which === 'log'); pre.hidden = which !== 'code'; logBox.hidden = which !== 'log'; };
     tabCode.onclick = () => showTab('code'); tabLog.onclick = () => showTab('log');
     const warnBox = h('div.rbt-warn', { hidden: true });
-    const log = (s) => { if (!s) return; showTab('log'); logBox.textContent += String(s).replace(/\s+$/, '') + '\n'; logBox.scrollTop = 1e9; };
+    const log = (s, consoleSeule) => {
+      if (!s) return;
+      s = String(s).replace(/\s+$/, '');
+      logBox.textContent += s + '\n'; logBox.scrollTop = 1e9;
+      if (consoleSeule || /\n/.test(s) || /^— /.test(s)) return;
+      const pc = s.match(/^… (\d+) %$/);
+      const txt = pc ? 'Envoi dans le robot… ' + pc[1] + ' %' : s;
+      const k = /^✓/.test(txt) ? 'ok' : /^✗/.test(txt) ? 'err' : /^⚠/.test(txt) ? 'warn' : '';
+      statut.hidden = false; statut.className = 'rbt-statut' + (k ? ' ' + k : ''); statut.innerHTML = '';
+      statut.append(h('span', txt));
+      if (k === 'err' && !avance) statut.append(' ', h('button.rbt-link', { type: 'button', onclick: () => { setAvance(true); showTab('log'); } }, 'détails'));
+      if (k === 'err' && avance) showTab('log');
+    };
 
     // Objectifs (facultatifs) et rendu
     const expect = (b.expect || []).filter((t) => DEFS[t] || t === 'variables_set');
     const goals = h('ul.goals.mbk-goals');
     const goalList = () => [{ name: 'Le programme commence par « quand le robot démarre »', ok: (st) => st.start }]
       .concat(expect.map((t) => ({ name: 'Utilise le bloc « ' + (t === 'variables_set' ? 'mettre … à' : R.label(t)) + ' »', ok: (st) => st.types.has(t) })))
-      .concat([{ name: 'Le programme est compilé, ou essayé en direct, sur le robot choisi', ok: (st) => st.compiled }]);
+      .concat([{ name: 'Le programme est téléversé, ou essayé en direct, sur le robot choisi', ok: (st) => st.compiled }]);
     const drawGoals = (res) => { goals.innerHTML = ''; goalList().forEach((g, i) => goals.append(h('li' + (res ? (res[i] ? '.is-ok' : '.is-bad') : ''), h('span.goal-mark', res ? (res[i] ? '✓' : '✗') : '○'), h('span', g.name)))); };
     drawGoals(prev.goals);
     const check = !b.demo ? TL.checkBar(ctx, {
@@ -898,17 +924,18 @@
         const good = res.filter(Boolean).length;
         setTimeout(refreshCards, 0);
         return { value: Object.assign({}, valueNow(), { goals: res }), correct: good === res.length, score: good / res.length, pendingReview: true,
-          msg: good === res.length ? 'Programme rendu : ton professeur pourra le relire.' : (st.compiled ? '' : 'Clique d’abord sur « Compiler » (ou essaie ton programme en direct). ') + `${good} objectif(s) atteint(s) sur ${res.length}.` };
+          msg: good === res.length ? 'Programme rendu : ton professeur pourra le relire.' : (st.compiled ? '' : 'Clique d’abord sur « Téléverser dans le robot » (ou essaie ton programme en direct). ') + `${good} objectif(s) atteint(s) sur ${res.length}.` };
       },
     }) : null;
 
     // En haut : à gauche le robot et les actions (ou le mode direct et ses capteurs), à droite le code, la console et les objectifs ; en bas : les blocs
     const right = h('div.rbt-right',
-      h('div.rbt-colA', modeSw, cible, bar, liveBox, warnBox),
-      h('div.rbt-colB', h('div.rbt-tabs', tabCode, tabLog, h('span.mbk-sp'), h('span.small.muted.rbt-lang')), pre, logBox,
+      h('div.rbt-colA', modeSw, cible, bar, liveBox, statut, warnBox, btnAvance),
+      h('div.rbt-colB', h('div.rbt-tabs.rbt-adv', tabCode, tabLog, h('span.mbk-sp'), h('span.small.muted.rbt-lang')), h('div.rbt-adv.rbt-prebox', pre, logBox),
         !b.demo ? h('div.rbt-goals', h('div.label-up', 'Objectifs'), goals, check) : null));
     const code = h('div.mbk-code.rbt-code');
     inner.append(top, consigne, h('div.mbk-main.rbt-main', code, right));
+    setAvance(avance);
 
     /* --- Blockly --- */
     const allowed = (b.toolbox && b.toolbox.length ? b.toolbox : DEFAULT_TOOLBOX).filter((t) => DEFS[t]);
@@ -962,9 +989,9 @@
       const rb = R.ROBOTS[c.robot];
       cible.innerHTML = '';
       const port = c.mode === 'live' ? null : c.robot === 'mbot'
-        ? h('div.rbt-port', R.ports.mbot ? '🔌 Port USB du mBot retenu.' : '🔌 Le port USB sera demandé au premier téléversement.', R.ports.mbot ? h('button.rbt-link', { type: 'button', onclick: (e) => { e.preventDefault(); R.ports.mbot = null; drawCible(); } }, 'changer') : null)
-        : h('div.rbt-port', '💾 Le programme devient un fichier maqueen.hex à enregistrer sur le lecteur MICROBIT.');
-      cible.append(h('div.rbt-cible-t', h('span.rbt-cible-ico', { 'aria-hidden': 'true' }, rb.icon), h('div', h('b', rb.long), h('span.small.muted', rb.langName + ' · ' + rb.cable))), port, h('details.rbt-pins', h('summary', 'Branchements'), h('p.small', rb.brochage)));
+        ? h('div.rbt-port.rbt-adv', R.ports.mbot ? '🔌 Port USB du mBot retenu.' : '🔌 Le port USB sera demandé au premier téléversement.', R.ports.mbot ? h('button.rbt-link', { type: 'button', onclick: (e) => { e.preventDefault(); R.ports.mbot = null; drawCible(); } }, 'changer') : null)
+        : h('div.rbt-port.rbt-adv', '💾 Le programme devient un fichier maqueen.hex à enregistrer sur le lecteur MICROBIT.');
+      cible.append(h('div.rbt-cible-t', h('span.rbt-cible-ico', { 'aria-hidden': 'true' }, R.img(c.robot)), h('div', h('b', rb.name), h('span.small.muted', rb.cable), h('span.small.muted.rbt-adv', rb.long + ' · ' + rb.langName))), port, h('details.rbt-pins.rbt-adv', h('summary', 'Branchements'), h('p.small', rb.brochage)));
       inner.querySelector('.rbt-lang').textContent = rb.langName;
       btnUpload.title = c.robot === 'mbot' ? 'Compiler puis écrire le programme dans le mBot (câble USB)' : 'Compiler puis enregistrer maqueen.hex sur le lecteur MICROBIT';
       if (c.liveReady) drawLive();
@@ -976,6 +1003,7 @@
       try { localStorage.setItem(RKEY, k); } catch (e) { /* rien */ }
       regen();
       log('— Robot choisi : ' + R.ROBOTS[k].long + '. Le programme est le même, le code est régénéré en ' + R.ROBOTS[k].langName + '.');
+      statut.hidden = true;
       showTab('code');
       persist();
     }
@@ -1007,7 +1035,7 @@
       regen(); logBox.textContent = '';
       const k = c.robot, codeK = c.gen.code;
       const ok = await R.upload(k, codeK, { log });
-      if (ok) { uploaded[k] = codeK; dirty = true; persist(); }
+      if (ok) { uploaded[k] = codeK; dirty = true; persist(); if (k === 'mbot') log('✓ Le programme est dans le mBot : il démarre tout seul (débranche le câble pour le laisser rouler).'); }
       drawCible();
     });
     btnExport.onclick = () => { regen(); const rb = R.ROBOTS[c.robot]; TL.saveAs(rb.lang === 'cpp' ? 'mbot.ino' : 'main.py', c.gen.code, rb.lang === 'cpp' ? 'text/x-c++src' : 'text/x-python'); };
@@ -1023,6 +1051,7 @@
       btnModeUp.classList.toggle('on', m === 'upload'); btnModeUp.setAttribute('aria-checked', String(m === 'upload'));
       btnModeLive.classList.toggle('on', m === 'live'); btnModeLive.setAttribute('aria-checked', String(m === 'live'));
       bar.hidden = m === 'live'; liveBox.hidden = m !== 'live';
+      if (!init) statut.hidden = true;
       inner.querySelector('.rbt-main').classList.toggle('is-live', m === 'live');
       drawCible();
     }
@@ -1036,20 +1065,20 @@
       if (etat === 'ok') liveBox.append(ligne('.ok', '🟢 ' + rb.name + ' connecté en direct.', lien('déconnecter', () => { stopRun(); R.disconnect(c.robot); })));
       else if (etat === 'connexion') liveBox.append(ligne('', '⏳ Connexion au ' + rb.name + '…'));
       else if (etat === 'sans-programme') liveBox.append(ligne('.warn', '🟠 Le ' + rb.name + ' ne répond pas : il n’a pas encore le programme du mode direct (ou ce n’est pas le bon port).', lien('autre port', () => connecter(true))));
-      else liveBox.append(ligne('', '⚪ ' + rb.name + ' pas connecté. ' + rb.cable));
+      else liveBox.append(ligne('', '⚪ ' + rb.name + ' pas connecté : branche le câble puis « Connecter ».'));
       const btnCo = h('button.rbt-act', { type: 'button', disabled: c.busy || etat === 'connexion', onclick: () => connecter(false) }, '🔌 Connecter');
       const btnRun = h('button.rbt-act.go', { type: 'button', title: 'Lancer le programme sur le robot', onclick: () => lancer() }, '▶ Lancer');
       const btnStop = h('button.rbt-act.stop', { type: 'button', title: 'Tout arrêter', 'aria-label': 'Arrêter', onclick: () => stopRun() }, '■');
       btnRun.disabled = etat !== 'ok' || c.busy; btnStop.disabled = etat !== 'ok';
       if (c.run) { btnRun.textContent = '↻ Relancer'; }
       liveBox.append(h('div.rbt-actions', etat === 'ok' ? null : btnCo, btnRun, btnStop));
-      const g = h('div.rbt-sensors');
+      const g = h('div.rbt-sensors.rbt-adv');
       const cell = (k, label) => { capt[k] = h('b', '—'); g.append(h('div.rbt-sensor', h('span', label), capt[k])); };
       cell('distance', 'Distance'); cell('ligneG', 'Ligne gauche'); cell('ligneD', 'Ligne droite'); cell('lumiere', 'Lumière');
       cell('boutonA', c.robot === 'maqueen' ? 'Bouton A' : 'Bouton'); if (c.robot === 'maqueen') cell('boutonB', 'Bouton B');
       liveBox.append(g);
       const installer = h('button.rbt-link', { type: 'button', onclick: () => installerDirect() }, 'Installer le mode direct dans le ' + rb.name);
-      liveBox.append(h('p.small.muted.rbt-live-aide', etat === 'sans-programme' ? h('b', '→ ') : null, installer,
+      liveBox.append(h('p.small.muted.rbt-live-aide' + (etat === 'ok' ? '.rbt-adv' : ''), etat === 'sans-programme' ? h('b', '→ ') : null, installer,
         c.robot === 'mbot' ? ' (une fois : il remplace le programme du robot).' : ' (une fois : fichier à enregistrer sur MICROBIT).',
         ' Le programme tourne dans l’ordinateur : le robot doit rester branché.'));
       majCapteurs();
@@ -1137,8 +1166,8 @@
       const btn = h('button.btn.primary.mbk-open-btn', { type: 'button' });
       const noms = robotsOf(b).map((k) => R.ROBOTS[k].name).join(' ou ');
       const card = h('div.mbk-card.rbt-card', { dataset: { rb: b.id } },
-        h('div.mbk-card-ico.rbt-card-ico', { 'aria-hidden': 'true' }, '🤖'),
-        h('div.mbk-card-txt', h('b', 'Programmer le robot (' + noms + ')'), h('span.small.muted', 'Blocs, code, compilation et téléversement. On peut changer de robot à tout moment.'), state),
+        h('div.mbk-card-ico.rbt-card-ico', { 'aria-hidden': 'true' }, robotsOf(b).map((k) => R.img(k))),
+        h('div.mbk-card-txt', h('b', 'Programmer le robot (' + noms + ')'), h('span.small.muted', 'Programme en blocs, puis envoie-le dans le robot. On peut changer de robot à tout moment.'), state),
         btn);
       card.refresh = () => {
         const open = P.cur && P.cur.b.id === b.id;

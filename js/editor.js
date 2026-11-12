@@ -81,6 +81,7 @@
   const TEMPLATES = {
     text: () => ({ type: 'text', md: '' }),
     image: () => ({ type: 'image', src: '', caption: '' }),
+    programme: () => ({ type: 'programme', program: { blocks: { languageVersion: 0, blocks: [{ type: 'mb_flag', next: { block: { type: 'mb_move', fields: { N: 10 } } } }] } }, caption: '' }),
     scan: () => ({ type: 'scan', title: 'Fiche papier d’origine', pages: [] }),
     svg: () => ({ type: 'svg', svg: '<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="180" height="80" fill="none" stroke="currentColor"/></svg>', caption: '' }),
     link: () => ({ type: 'link', url: 'https://', title: '', kind: 'link' }),

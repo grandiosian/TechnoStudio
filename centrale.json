@@ -900,6 +900,7 @@
   "types_champs": {
    "text": "contenu",
    "image": "contenu",
+   "programme": "contenu",
    "svg": "contenu",
    "scan": "contenu",
    "link": "contenu",
@@ -1411,6 +1412,7 @@
      "enum": [
       "text",
       "image",
+      "programme",
       "svg",
       "scan",
       "link",

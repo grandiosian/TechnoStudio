@@ -39,6 +39,9 @@
     objectif: [{ k: 'label', kind: 'text', label: 'Intitulé (Objectif)' }, { k: 'md', kind: 'markdown', label: 'Texte', rows: 2 }],
     retenir: [{ k: 'title', kind: 'text', label: 'Titre (À retenir)' }, { k: 'md', kind: 'markdown', label: 'Texte', rows: 4 }],
     ressource: [{ k: 'num', kind: 'text', label: 'Numéro (1, 2, S1, A…)' }, { k: 'title', kind: 'text', label: 'Titre' }, { k: 'md', kind: 'markdown', label: 'Texte', rows: 5 }, { k: 'src', kind: 'image', label: 'Image' }, { k: 'caption', kind: 'text', label: 'Légende' }, { k: 'qr', kind: 'text', label: 'Lien vers une simulation (QR)' }],
+    programme: [{ k: 'program', kind: 'progJson', label: 'Programme en blocs (JSON Blockly)', help: 'Copie le programme depuis mBlock ou le panneau Robots (blocs mb_, mbot_ ou rb_). Il est dessiné par TechnoStudio, net à l’écran et à l’impression.' },
+      { k: 'caption', kind: 'text', label: 'Légende' }, { k: 'alt', kind: 'text', label: 'Description pour l’accessibilité' },
+      { k: 'reperes', kind: 'csv', label: 'Repères devant chaque pile (1, 2, 3…)' }, { k: 'disposition', kind: 'select', label: 'Piles de blocs', opts: [['ligne', 'en ligne'], ['colonne', 'l’une sous l’autre']] }],
     mots: [{ k: 'title', kind: 'text', label: 'Titre' }, { k: 'items', kind: 'motsItems', label: 'Mots (« mot : définition », un par ligne)' }],
     questions: [{ k: 'title', kind: 'text', label: 'Phrase d’introduction', help: 'Par défaut : « Recopie et réponds dans ton cahier, sous la partie collée : »' }, { k: 'items', kind: 'qItems', label: 'Questions (une par ligne ; « || » puis la correction)' }, { k: 'mode', kind: 'select', label: 'Réponses', opts: [['saisie', 'dans l’appli et/ou le cahier'], ['cahier', 'dans le cahier seulement']] }],
     table: [Q, { k: 'rows', kind: 'tableEd', label: 'Tableau', help: 'Case à compléter : commence par « ? » (variantes séparées par « | »). Case à cocher : [x] ou [ ]. Sinon : texte affiché.' }, { k: 'bank', kind: 'check', label: 'Afficher une banque de mots' }, HINT, EXPL],
@@ -70,6 +73,15 @@
   E.extraField = function (b, sp, changed, wrap, id) {
     const area = (value, parse, rows) => { const x = h('textarea.field', { id, rows: rows || 5 }); x.value = value; x.oninput = () => { parse(x.value); changed(); }; return wrap(x); };
     switch (sp.kind) {
+      case 'progJson': {
+        const ta = h('textarea.field.code', { id, rows: 8, spellcheck: false }); ta.value = JSON.stringify(b.program || {}, null, 1);
+        const apercu = h('div.prog-apercu'), err = h('p.form-err');
+        const voir = () => { apercu.innerHTML = ''; if (TL.mblock && b.program) apercu.append(TL.mblock.vue(b.program, { reperes: b.reperes, disposition: b.disposition })); };
+        const voirSoon = TL.debounce(voir, 400);
+        ta.oninput = () => { try { b.program = JSON.parse(ta.value); err.textContent = ''; changed(); voirSoon(); } catch (e) { err.textContent = 'JSON invalide : ' + e.message; } };
+        voir();
+        return wrap(h('div', ta, err, apercu));
+      }
       case 'motsItems': return area((b.items || []).map((i) => i.mot + ' : ' + i.def).join('\n'), (v) => (b.items = lines(v).map((l) => { const i = l.indexOf(':'); return i < 0 ? { mot: l, def: '' } : { mot: l.slice(0, i).trim(), def: l.slice(i + 1).trim() }; })));
       case 'qItems': return area((b.items || []).map((q) => (typeof q === 'string' ? q : q.q + (q.corr ? ' || ' + q.corr : ''))).join('\n'), (v) => (b.items = lines(v).map((l) => { const [q, c] = l.split('||'); return c ? { q: q.trim(), corr: c.trim() } : { q: q.trim() }; })));
       case 'vfItems': return area((b.items || []).map((i) => (i.v ? 'V' : 'F') + ' | ' + i.text).join('\n'), (v) => (b.items = lines(v).map((l) => { const m = l.match(/^([VF])\s*\|\s*(.*)$/i); return m ? { text: m[2], v: m[1].toUpperCase() === 'V' } : { text: l, v: true }; })));
@@ -116,7 +128,7 @@
   /* ---------- Insertion ---------- */
   const GROUPS = [
     ['Mise en page', ['objectif', 'decoupe', 'filet', 'questions', 'retenir']],
-    ['Contenus', ['text', 'ressource', 'mots', 'image', 'scan', 'svg', 'link']],
+    ['Contenus', ['text', 'ressource', 'mots', 'image', 'programme', 'scan', 'svg', 'link']],
     ['Comme sur papier', ['label', 'table', 'vraifaux', 'qcm', 'cloze', 'match', 'boxes', 'order', 'sort', 'numeric', 'bits', 'graph', 'draw', 'mindmap', 'procedure', 'report', 'autoeval']],
     ['Numérique (ORDI)', ['circuit', 'blocks', 'code', 'robot', 'chain']],
   ];
@@ -243,7 +255,7 @@
           formBox.append(ta, err); return;
         }
         formBox.append(...E.buildForm(b, changed));
-        if (!['decoupe', 'filet', 'objectif', 'retenir', 'ressource', 'mots', 'questions', 'text', 'image', 'svg', 'scan', 'link'].includes(b.type)) {
+        if (!['decoupe', 'filet', 'objectif', 'retenir', 'ressource', 'mots', 'questions', 'text', 'image', 'programme', 'svg', 'scan', 'link'].includes(b.type)) {
           const det = h('details.p-layout', h('summary', 'Mise en page de la charte'));
           LAYOUT.forEach((sp) => { const el = E.fieldFor(b, sp, changed); if (el) det.append(el); });
           formBox.append(det);

@@ -1001,3 +1001,32 @@ pre.code { white-space: pre-wrap; background: var(--surface-2); padding: 10px; b
 .onb-prof { margin-left: auto; }
 .ens-secours { margin-top: 12px; border-top: 1px solid var(--ui-line, #ddd); padding-top: 8px; }
 .ens-secours summary { cursor: pointer; font-size: 13px; color: var(--ui-muted, #666); }
+
+/* ===== Programme en blocs dessiné (au lieu d'une capture d'écran) ===== */
+.prog-fig { justify-items: start; }
+.prog-vue { max-width: 100%; overflow-x: auto; padding: 6px 2px; }
+.prog-vue .prog-svg.blocklySvg { position: static; display: block; max-width: 100%; width: var(--w); height: auto; overflow: visible; background: transparent; }
+.prog-vue .prog-svg .blocklyPath { cursor: default; }
+.prog-vue .prog-svg .prog-repere { font: 700 20px/1 system-ui, sans-serif; fill: #2F57A1; }
+.prog-apercu { margin-top: 8px; padding: 8px; border: 1px dashed var(--line, #ccc); border-radius: 10px; background: #fff; }
+.res-frame .prog-fig { margin: 8px 0; }
+
+/* ===== Robots : images, interface réduite, « Avancé » pour les détails ===== */
+.rbt-img { display: block; object-fit: contain; }
+.rbt-sw-ico .rbt-img { width: 30px; height: 22px; }
+.rbt-cible-ico .rbt-img { width: 92px; height: 66px; }
+.rbt-cible-t { gap: 12px; }
+.rbt-card-ico { display: flex; gap: 2px; align-items: center; justify-content: center; background: #EAF0FB; padding: 4px; width: auto; min-width: 56px; }
+.rbt-card-ico .rbt-img { width: 52px; height: 40px; }
+.rbt-inner:not(.rbt-avance) .rbt-adv { display: none !important; }
+.rbt-main-btn { flex: 1; justify-content: center; font-size: 14px; min-height: 40px; }
+.rbt-statut { font-size: 13px; line-height: 1.35; padding: 7px 10px; border-radius: 8px; background: #EEF2FA; color: #1f3f86; }
+.rbt-statut.ok { background: #E3F6E8; color: #17652d; }
+.rbt-statut.err { background: #FDE8E8; color: #9b1c1c; }
+.rbt-statut.warn { background: #FFF4DB; color: #7a4d00; }
+.rbt-statut .rbt-link { font-size: 12px; }
+.rbt-avance-b { align-self: flex-start; border: 0; background: none; padding: 2px 0; font: 600 12px "Helvetica Neue", Arial, sans-serif; color: #5a6582; cursor: pointer; }
+.rbt-avance-b:hover { color: #2F57A1; text-decoration: underline; }
+.rbt-prebox { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 110px; }
+.rbt-prebox > .rbt-pre { flex: 1 1 auto; max-height: none; }
+.rbt-inner:not(.rbt-avance) .rbt-colB { justify-content: flex-start; }

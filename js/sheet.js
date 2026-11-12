@@ -30,7 +30,7 @@
   TL.niveauColor = niveauColor; TL.niveauNum = niveauNum;
 
   // Blocs « structure » : ni numérotés ni encadrés
-  const STRUCT = new Set(['text', 'image', 'svg', 'scan', 'link', 'decoupe', 'filet', 'objectif', 'retenir', 'ressource', 'mots', 'questions']);
+  const STRUCT = new Set(['text', 'image', 'programme', 'svg', 'scan', 'link', 'decoupe', 'filet', 'objectif', 'retenir', 'ressource', 'mots', 'questions']);
   // codes des feuilles comme dans la charte : P01, P02, R01, S01, E01…
   TL.sheetCodes = function (w) {
     const cnt = {};
@@ -528,6 +528,7 @@
       return h('div.res-frame', h('span.res-label', 'Ressource ' + (b.num || '')),
         b.title ? h('h3.res-title', b.title) : null,
         b.md ? h('div.prose', { html: TL.md(b.md) }) : null,
+        b.program && TL.mblock ? h('figure.figure.prog-fig', TL.mblock.vue(b.program, { alt: b.caption || b.title, reperes: b.reperes, disposition: b.disposition, echelle: b.echelle }), b.caption && !b.src ? h('figcaption', b.caption) : null) : null,
         b.src ? h('figure.figure', h('img', { src: b.src, alt: b.caption || '', loading: 'lazy' }), b.caption ? h('figcaption', b.caption) : null) : null,
         b.svg ? h('div.svgwrap', { html: b.svg }) : null,
         b.qr ? h('a.res-qr', { href: b.qr, target: '_blank', rel: 'noopener' }, h('span', '▣'), b.qrLabel || 'Ouvrir la simulation') : null);
