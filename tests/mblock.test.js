@@ -53,6 +53,15 @@ const prog2 = { variables: [{ name: 'appuis', id: 'a' }], blocks: { languageVers
 const r2 = M.runTests({ mode: 'sprite', tests: [{ name: '7 appuis', steps: [{ key: 'right', n: 7 }], expect: [{ var: 'appuis', eq: 7 }, { v: 'say', eq: '3,5' }] }] }, prog2);
 assert.ok(r2[0].ok, r2[0].why);
 
+// Boucle exigée quand le corrigé l'utilise : premier test, avec un message qui le dit
+const rebond = { mode: 'sprite', decor: 'double', tests: [{ name: 'rebond', steps: [{ flag: true }, { run: 6 }], expect: [{ v: 'x', reachMax: 90 }] }],
+  solution: { blocks: { languageVersion: 0, blocks: [{ type: 'mb_flag', next: { block: { type: 'mb_forever', inputs: { DO: { block: { type: 'mb_move', fields: { N: 5 } } } } } } }] } } };
+const sansBoucle = M.runTests(rebond, { blocks: { languageVersion: 0, blocks: [{ type: 'mb_flag', next: { block: { type: 'mb_move', fields: { N: 5 } } } }] } });
+assert.ok(!sansBoucle[0].ok && /répéter indéfiniment/.test(sansBoucle[0].why), 'boucle manquante signalée en premier');
+assert.deepStrictEqual(Array.from(M.testNames(rebond)), [sansBoucle[0].name, 'rebond']);
+assert.ok(M.runTests(rebond, rebond.solution).every((r) => r.ok), 'corrigé : tout passe');
+assert.deepStrictEqual(Array.from(M.blocsUtiles(rebond)), ['répéter indéfiniment']);
+
 // Les activités mblock des ateliers publiés : leurs tests tournent sans erreur sur le programme de départ
 let nAct = 0;
 for (const f of fs.readdirSync(path.join(ROOT, 'ateliers')).filter((x) => /\.json$/.test(x))) {

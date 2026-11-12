@@ -79,7 +79,9 @@ Le serveur ne reçoit ni nom ni prénom : seulement la classe, le numéro et l'i
 
 Pour essayer un atelier en classe **sans codes élèves** : `https://grandiosian.github.io/TechnoStudio/?atelier=<id de l'atelier>` (ou `?atelier=<id>/P2` pour ouvrir une feuille). Profil Enseignant : Atelier → **Copier le lien d'essai**.
 
-- interface réduite au strict minimum : l'atelier, la liste de ses feuilles et la navigation pas à pas ; ni menus, ni panneaux, ni bibliothèque ;
+- interface réduite au strict minimum : l'atelier, la feuille en cours (et celles déjà faites), le bouton **📚 Ressources** ; ni menus, ni panneaux, ni bibliothèque ;
+- **pas à pas** : les questions se débloquent une à une (réponse juste, rendue, ou deux essais : la correction est alors proposée) ; la feuille suivante se débloque quand la feuille est finie ; `?atelier=<id>&segpa=1` donne le parcours SEGPA ;
+- les mentions « ressource 8 », « document A »… sont des liens : la ressource s'ouvre **à côté** de la feuille, avec « ↩ Revenir à la question » (aussi hors mode essai) ;
 - aucune connexion à la Centrale, aucun profil, **rien n'est enregistré** (ni sur le poste, ni sur un serveur) : recharger la page repart de zéro (le navigateur prévient avant de quitter une page où l'élève a répondu) ;
 - les robots : le mode **⚡ En direct** marche sans compilation (le mode direct doit avoir été installé une fois dans chaque robot). Pour **Téléverser**, la compilation demande la **clé enseignant** sur le poste (Compte → Réglages de connexion, dans TechnoStudio ouvert normalement sur le même navigateur).
 

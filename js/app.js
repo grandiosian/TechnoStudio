@@ -17,7 +17,8 @@
       const q = new URLSearchParams(location.search), v = (q.get('atelier') || '').trim();
       if (!v) return null;
       const [id, f] = v.split('/');
-      return { id, feuille: (f || q.get('feuille') || '').trim() };
+      const feuille = (f || q.get('feuille') || '').trim();
+      return { id, feuille, segpa: q.get('segpa') === '1' || /^(s·|s\.|sp)/i.test(feuille) };
     } catch (e) { return null; }
   })();
 
@@ -302,32 +303,67 @@
     const board = h('div.pasteboard.scroll');
     stage().append(board);
     const codes = TL.sheetCodes(w);
+    /* Mode élève guidé (atelier seul) : la série de l'élève (normale ou SEGPA), seulement la feuille en cours
+       et celles déjà faites ; les ressources s'ouvrent à côté ; les questions se débloquent une à une. */
+    const G = app.seul ? guide(w, pg, codes) : null;
     let choix = null;
+    const resOpts = () => ({ segpa: !!(w.steps[pg.step] && w.steps[pg.step].segpa), pg });
     if (app.seul) {
-      // Barre réduite : l'atelier et la feuille (liste déroulante), rien d'autre
-      choix = h('select.field.seul-feuille', { 'aria-label': 'Feuille', onchange: () => show(+choix.value) }, w.steps.map((s, i) => h('option', { value: i }, codes[i] + ' · ' + s.title)));
+      choix = h('select.field.seul-feuille', { 'aria-label': 'Feuille', onchange: () => show(+choix.value) });
       const bar = TL.$('#menus'); bar.innerHTML = '';
-      bar.append(h('span.seul-brand', TL.brandSvg()), h('span.seul-titre', TL.pastille(w), h('b', w.title)), w.steps.length > 1 ? choix : null);
-      if (!pg.startedAt && app.seul.feuille) {
-        const f = app.seul.feuille.toLowerCase(), court = (x) => x.toLowerCase().replace(/^([a-z·]+)0*/, '$1');
-        const k = w.steps.findIndex((s, i) => s.id.toLowerCase() === f || codes[i].toLowerCase() === f || court(codes[i]) === court(f));
-        if (k >= 0) pg.step = k;
-      }
+      const btnRes = G.hasRes ? h('button.btn.small.seul-res', { type: 'button', title: 'Ouvrir les documents ressources à côté de la feuille', onclick: () => (TL.ressources.isOpen() ? TL.ressources.close() : TL.ressources.open(w, null, null, resOpts())) }, '📚 Ressources') : null;
+      bar.append(h('span.seul-brand', TL.brandSvg()), h('span.seul-titre', TL.pastille(w), h('b', w.title)), choix, btnRes);
+      if (!G.ok(pg.step)) pg.step = G.parcours[G.base];
     }
+    const paintChoix = () => {
+      if (!choix) return;
+      choix.innerHTML = '';
+      const max = G.maxOpen();
+      G.parcours.forEach((si, k) => { if (k >= G.base && k <= max) choix.append(h('option', { value: si }, codes[si] + ' · ' + w.steps[si].title)); });
+      if (max < G.parcours.length - 1) choix.append(h('option', { value: '', disabled: true }, '🔒 La suite se débloque quand la feuille est finie'));
+      choix.value = String(pg.step);
+    };
+    let nav = null, wasDone = null;
+    const buildNav = () => {
+      let prev, next;
+      if (G) { const k = G.parcours.indexOf(pg.step); prev = k > G.base ? G.parcours[k - 1] : null; next = k >= 0 && k < G.parcours.length - 1 ? G.parcours[k + 1] : null; }
+      else { prev = pg.step > 0 ? pg.step - 1 : null; next = pg.step < w.steps.length - 1 ? pg.step + 1 : null; }
+      const bloque = G && next != null && !G.done(pg.step);
+      const el = h('nav.sheetnav',
+        prev != null ? h('button.btn.ghost', { type: 'button', onclick: () => show(prev) }, '← ' + w.steps[prev].title) : h('span'),
+        h('span.mono.small.muted', G ? 'Feuille ' + (G.parcours.indexOf(pg.step) - G.base + 1) + ' / ' + (G.parcours.length - G.base) : 'Feuille ' + (pg.step + 1) + ' / ' + w.steps.length),
+        next != null ? h('button.btn.primary', { type: 'button', disabled: bloque, title: bloque ? 'Réponds à toutes les questions de la feuille pour passer à la suivante' : '', onclick: () => show(next) }, bloque ? '🔒 ' + w.steps[next].title : w.steps[next].title + ' →')
+          : h('button.btn.primary', { type: 'button', onclick: () => finish(w, pg) }, 'Terminer l’atelier'));
+      if (nav) nav.replaceWith(el);
+      nav = el;
+      return el;
+    };
+    let sheet = null;
+    const afterResult = () => {
+      TL.panels.refresh('feuilles'); TL.panels.refresh('suivi'); paintNote();
+      if (!G) return;
+      G.lock(sheet, w.steps[pg.step]);
+      const fini = G.done(pg.step);
+      if (fini !== wasDone) {
+        buildNav(); paintChoix();
+        if (fini && wasDone === false && G.parcours.indexOf(pg.step) < G.parcours.length - 1) TL.toast('Feuille terminée : la feuille suivante est débloquée.', 'ok');
+      }
+      wasDone = fini;
+    };
     const show = (i) => {
+      if (G && !G.ok(i)) return;
       pg.step = TL.clamp(i, 0, w.steps.length - 1);
-      if (choix) choix.value = String(pg.step);
       const s = w.steps[pg.step];
       if (!s) { board.innerHTML = ''; board.append(h('div.desk', h('p', 'Atelier vide.'))); return; }
       pg.seen[s.id] = true; app.saveProgress(pg);
       board.innerHTML = '';
-      const sheet = TL.renderSheet(w, s, pg.step, { pg, layers: app.layers, onResult: () => { TL.panels.refresh('feuilles'); TL.panels.refresh('suivi'); paintNote(); } });
+      sheet = TL.renderSheet(w, s, pg.step, { pg, layers: app.layers, onResult: () => setTimeout(afterResult, 0) });
       sheet.style.zoom = app.zoom;
-      const nav = h('nav.sheetnav',
-        pg.step > 0 ? h('button.btn.ghost', { type: 'button', onclick: () => show(pg.step - 1) }, '← ' + w.steps[pg.step - 1].title) : h('span'),
-        h('span.mono.small.muted', 'Feuille ' + (pg.step + 1) + ' / ' + w.steps.length),
-        pg.step < w.steps.length - 1 ? h('button.btn.primary', { type: 'button', onclick: () => show(pg.step + 1) }, w.steps[pg.step + 1].title + ' →') : h('button.btn.primary', { type: 'button', onclick: () => finish(w, pg) }, 'Terminer l’atelier'));
-      board.append(sheet, nav);
+      // « ressource 8 », « document A »… : liens vers le volet des ressources, à côté de la feuille
+      if (s.kind !== 'ressource') TL.ressources.linkify(sheet, { w, segpa: !!s.segpa, pg });
+      nav = null;
+      board.append(sheet, buildNav());
+      if (G) { G.lock(sheet, s); wasDone = G.done(pg.step); paintChoix(); }
       board.scrollTop = 0;
       paintNote();
       TL.panels.refresh('feuilles'); TL.panels.refresh('suivi');
@@ -339,7 +375,11 @@
       w.steps.filter((x) => x.kind === 'evaluation').forEach((x) => x.blocks.forEach((b) => { if (!TL.isGraded(b)) return; const p = b.bareme || 1; if (!b.bonus) pts += p; const a = pg.answers[b.id]; if (a && a.done) { any = true; got += p * (a.score || 0); } }));
       box.textContent = any && pts ? TL.fmtNum(Math.min(20, (got / pts) * 20), 1) + ' / 20' : '…… / 20';
     }
-    app.step = (d) => show(pg.step + d);
+    app.step = (d) => {
+      if (!G) { show(pg.step + d); return; }
+      const k = G.parcours.indexOf(pg.step) + d, si = G.parcours[k];
+      if (si != null && k >= G.base && G.ok(si)) show(si);
+    };
     rerender = () => show(pg.step);
 
     TL.panels.register('feuilles', { title: 'Feuilles', short: 'Feuilles', icon: '❐', w: 250, render(body) {
@@ -364,6 +404,45 @@
     if (app.seul) TL.panels.setMode('seul', [], []);
     else TL.panels.setMode('atelier', ['feuilles', 'suivi'], ['feuilles', 'suivi']);
     show(pg.step);
+  }
+  /* Mode élève guidé : parcours (feuilles P, puis synthèse et évaluation) de la série de l'élève, feuille de départ
+     (lien ?atelier=<id>/P2), une question n'est accessible que si la précédente a reçu une réponse. */
+  function guide(w, pg, codes) {
+    const segpa = !!app.seul.segpa;
+    let serie = w.steps.map((s, i) => i).filter((i) => !!w.steps[i].segpa === segpa);
+    if (!serie.length) serie = w.steps.map((s, i) => i);
+    const parcours = serie.filter((i) => w.steps[i].kind !== 'ressource');
+    const hasRes = TL.ressources.steps(w, segpa).length > 0;
+    let base = 0;
+    if (app.seul.feuille) {
+      const f = app.seul.feuille.toLowerCase(), court = (x) => x.toLowerCase().replace(/^([a-z·]+)0*/, '$1');
+      const k = parcours.findIndex((i) => w.steps[i].id.toLowerCase() === f || codes[i].toLowerCase() === f || court(codes[i]) === court(f));
+      if (k >= 0) base = k;
+    }
+    // une question est « faite » : juste, corrigée, rendue, ou essayée deux fois (la correction est alors proposée)
+    const faite = (b) => {
+      if (!TL.isGraded(b)) return true;
+      const a = pg.answers[b.id];
+      if (!a) return false;
+      if (b.type === 'procedure') return !!a.done;
+      return !!(a.done || a.revealed || a.pendingReview || (a.attempts || 0) >= 2);
+    };
+    const done = (si) => w.steps[si].blocks.every(faite);
+    const maxOpen = () => { let k = base; while (k < parcours.length - 1 && done(parcours[k])) k++; return k; };
+    const ok = (si) => { const k = parcours.indexOf(si); return k >= base && k <= maxOpen(); };
+    function lock(sheet, s) {
+      if (!sheet) return;
+      TL.$$('.lock-note', sheet).forEach((x) => x.remove());
+      let ferme = false, note = false;
+      s.blocks.forEach((b) => {
+        const el = sheet.querySelector('.sb[data-id="' + CSS.escape(b.id) + '"]');
+        if (!el) return;
+        el.classList.toggle('is-locked', ferme); el.inert = ferme;
+        if (ferme && !note) { el.before(h('div.lock-note', { role: 'note' }, '🔒 La suite se débloque quand tu as répondu à la question ci-dessus.')); note = true; }
+        if (!ferme && !faite(b)) ferme = true;
+      });
+    }
+    return { parcours, base, hasRes, done, maxOpen, ok, lock };
   }
   function finish(w, pg) {
     const st = TL.workshopStats(w, pg);

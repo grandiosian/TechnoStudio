@@ -1,7 +1,7 @@
 {
  "format": 2,
  "id": "programmer-robots-mbot-maqueen",
- "version": 2,
+ "version": 3,
  "title": "Programmer les robots mBot et Maqueen",
  "level": "college",
  "niveau": "5e",
@@ -259,7 +259,7 @@
     {
      "id": "p02-r1",
      "type": "robot",
-     "question": "Écris le programme anticollision, compile-le puis téléverse-le. Teste-le ensuite sur **l’autre robot** sans rien réécrire.",
+     "question": "Écris le programme anticollision dans le bloc **répéter indéfiniment** déjà posé (le robot doit mesurer la distance sans arrêt) : **si** distance < 15 **alors** reculer puis tourner, **sinon** avancer. Compile-le, téléverse-le, puis teste-le sur **l’autre robot** sans rien réécrire.",
      "tag": "ordi",
      "comp": [
       "T3C31",

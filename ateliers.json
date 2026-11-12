@@ -211,7 +211,7 @@
       ],
       "ouvrir": "anticollision-robot-mbot",
       "fichier": "ateliers/anticollision-robot-mbot.technostudio.json",
-      "version": 3,
+      "version": 4,
       "auteur": "Pôle des Sciences et de la Technologie"
     },
     {
@@ -252,7 +252,7 @@
       ],
       "ouvrir": "programmer-robots-mbot-maqueen",
       "fichier": "ateliers/programmer-robots-mbot-maqueen.technostudio.json",
-      "version": 2,
+      "version": 3,
       "auteur": "Pôle des Sciences et de la Technologie"
     },
     {

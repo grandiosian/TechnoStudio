@@ -1,7 +1,7 @@
 {
  "format": 2,
  "id": "anticollision-robot-mbot",
- "version": 3,
+ "version": 4,
  "title": "Anticollision robot mBot",
  "level": "college",
  "niveau": "5e",
@@ -1338,7 +1338,7 @@
      "comp": [
       "T3C31"
      ],
-     "question": "**Programmer** dans mBlock : le fichier **Robot_Pilotage_DoubleLigneRouge** est ouvert. Programme le robot pour qu’il **rebondisse** sur les deux lignes, puis clique sur le drapeau vert.",
+     "question": "**Programmer** dans mBlock : le fichier **Robot_Pilotage_DoubleLigneRouge** est ouvert. Le robot doit **avancer tout seul** et **rebondir** sur les deux lignes rouges. Sous le drapeau vert, ajoute un bloc **répéter indéfiniment** (catégorie Contrôle) : sans lui, le programme ne s’exécute qu’une fois. À l’intérieur : **bouger de 5 pas**, puis **deux blocs « si … alors »**, un par ligne (x > 100 et x < −200), qui font **pointer** le robot dans l’autre sens. Clique ensuite sur le drapeau vert.",
      "toolbox": [
       "mb_flag",
       "mb_key",
@@ -1447,7 +1447,128 @@
         }
        ]
       }
-     ]
+     ],
+     "solution": {
+      "blocks": {
+       "languageVersion": 0,
+       "blocks": [
+        {
+         "type": "mb_flag",
+         "x": 24,
+         "y": 24,
+         "next": {
+          "block": {
+           "type": "mb_sety",
+           "fields": {
+            "N": 0
+           },
+           "next": {
+            "block": {
+             "type": "mb_setx",
+             "fields": {
+              "N": -100
+             },
+             "next": {
+              "block": {
+               "type": "mb_point",
+               "fields": {
+                "N": 90
+               },
+               "next": {
+                "block": {
+                 "type": "mb_forever",
+                 "inputs": {
+                  "DO": {
+                   "block": {
+                    "type": "mb_move",
+                    "fields": {
+                     "N": 5
+                    },
+                    "next": {
+                     "block": {
+                      "type": "mb_if",
+                      "inputs": {
+                       "COND": {
+                        "block": {
+                         "type": "mb_gt",
+                         "inputs": {
+                          "A": {
+                           "block": {
+                            "type": "mb_x"
+                           }
+                          },
+                          "B": {
+                           "shadow": {
+                            "type": "math_number",
+                            "fields": {
+                             "NUM": 100
+                            }
+                           }
+                          }
+                         }
+                        }
+                       },
+                       "DO": {
+                        "block": {
+                         "type": "mb_point",
+                         "fields": {
+                          "N": -90
+                         }
+                        }
+                       }
+                      },
+                      "next": {
+                       "block": {
+                        "type": "mb_if",
+                        "inputs": {
+                         "COND": {
+                          "block": {
+                           "type": "mb_lt",
+                           "inputs": {
+                            "A": {
+                             "block": {
+                              "type": "mb_x"
+                             }
+                            },
+                            "B": {
+                             "shadow": {
+                              "type": "math_number",
+                              "fields": {
+                               "NUM": -200
+                              }
+                             }
+                            }
+                           }
+                          }
+                         },
+                         "DO": {
+                          "block": {
+                           "type": "mb_point",
+                           "fields": {
+                            "N": 90
+                           }
+                          }
+                         }
+                        }
+                       }
+                      }
+                     }
+                    }
+                   }
+                  }
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       ]
+      }
+     }
     }
    ]
   },
@@ -1539,7 +1660,7 @@
      "comp": [
       "T3C31"
      ],
-     "question": "**Programmer** dans mBlock : le fichier **Robot_Pilotage_CageRouge** est ouvert (le robot part en diagonale, direction 45). Programme les 4 rebonds, puis clique sur le drapeau vert.",
+     "question": "**Programmer** dans mBlock : le fichier **Robot_Pilotage_CageRouge** est ouvert (le robot part en diagonale, direction 45). Sous le drapeau vert, ajoute un bloc **répéter indéfiniment** (catégorie Contrôle) pour que le robot avance tout le temps. À l’intérieur : **bouger de 5 pas**, puis **quatre blocs « si … alors »**, un par paroi de la cage, qui font **pointer** le robot vers l’intérieur (directions de la question 2.5). Clique ensuite sur le drapeau vert.",
      "toolbox": [
       "mb_flag",
       "mb_key",
@@ -1676,7 +1797,198 @@
         }
        ]
       }
-     ]
+     ],
+     "solution": {
+      "blocks": {
+       "languageVersion": 0,
+       "blocks": [
+        {
+         "type": "mb_flag",
+         "x": 24,
+         "y": 24,
+         "next": {
+          "block": {
+           "type": "mb_sety",
+           "fields": {
+            "N": 0
+           },
+           "next": {
+            "block": {
+             "type": "mb_setx",
+             "fields": {
+              "N": -100
+             },
+             "next": {
+              "block": {
+               "type": "mb_point",
+               "fields": {
+                "N": 45
+               },
+               "next": {
+                "block": {
+                 "type": "mb_forever",
+                 "inputs": {
+                  "DO": {
+                   "block": {
+                    "type": "mb_move",
+                    "fields": {
+                     "N": 5
+                    },
+                    "next": {
+                     "block": {
+                      "type": "mb_if",
+                      "inputs": {
+                       "COND": {
+                        "block": {
+                         "type": "mb_gt",
+                         "inputs": {
+                          "A": {
+                           "block": {
+                            "type": "mb_x"
+                           }
+                          },
+                          "B": {
+                           "shadow": {
+                            "type": "math_number",
+                            "fields": {
+                             "NUM": 100
+                            }
+                           }
+                          }
+                         }
+                        }
+                       },
+                       "DO": {
+                        "block": {
+                         "type": "mb_point",
+                         "fields": {
+                          "N": -90
+                         }
+                        }
+                       }
+                      },
+                      "next": {
+                       "block": {
+                        "type": "mb_if",
+                        "inputs": {
+                         "COND": {
+                          "block": {
+                           "type": "mb_lt",
+                           "inputs": {
+                            "A": {
+                             "block": {
+                              "type": "mb_x"
+                             }
+                            },
+                            "B": {
+                             "shadow": {
+                              "type": "math_number",
+                              "fields": {
+                               "NUM": -200
+                              }
+                             }
+                            }
+                           }
+                          }
+                         },
+                         "DO": {
+                          "block": {
+                           "type": "mb_point",
+                           "fields": {
+                            "N": 90
+                           }
+                          }
+                         }
+                        },
+                        "next": {
+                         "block": {
+                          "type": "mb_if",
+                          "inputs": {
+                           "COND": {
+                            "block": {
+                             "type": "mb_gt",
+                             "inputs": {
+                              "A": {
+                               "block": {
+                                "type": "mb_y"
+                               }
+                              },
+                              "B": {
+                               "shadow": {
+                                "type": "math_number",
+                                "fields": {
+                                 "NUM": 150
+                                }
+                               }
+                              }
+                             }
+                            }
+                           },
+                           "DO": {
+                            "block": {
+                             "type": "mb_point",
+                             "fields": {
+                              "N": 180
+                             }
+                            }
+                           }
+                          },
+                          "next": {
+                           "block": {
+                            "type": "mb_if",
+                            "inputs": {
+                             "COND": {
+                              "block": {
+                               "type": "mb_lt",
+                               "inputs": {
+                                "A": {
+                                 "block": {
+                                  "type": "mb_y"
+                                 }
+                                },
+                                "B": {
+                                 "shadow": {
+                                  "type": "math_number",
+                                  "fields": {
+                                   "NUM": -150
+                                  }
+                                 }
+                                }
+                               }
+                              }
+                             },
+                             "DO": {
+                              "block": {
+                               "type": "mb_point",
+                               "fields": {
+                                "N": 0
+                               }
+                              }
+                             }
+                            }
+                           }
+                          }
+                         }
+                        }
+                       }
+                      }
+                     }
+                    }
+                   }
+                  }
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       ]
+      }
+     }
     },
     {
      "id": "p03-2",
@@ -1882,7 +2194,7 @@
      "comp": [
       "T3C31"
      ],
-     "question": "**Programmer** dans mBlock : écris le programme anticollision dans la simulation, puis clique sur **Démarrer**. Tu peux déplacer le mBot et les boîtes à la souris. Ensuite, programme le vrai mBot ci-dessous (ressource 7).",
+     "question": "**Programmer** dans mBlock : écris le programme anticollision sous « quand le mBot démarre ». Il doit **tourner en boucle** : commence par un bloc **répéter indéfiniment** (catégorie Contrôle), sinon le robot ne mesure la distance qu’une seule fois. À l’intérieur, un bloc **si … alors … sinon** : **si** distance ultrasons **< 10** **alors** reculer puis tourner (pendant 1 s chacun), **sinon** avancer. Clique sur **Démarrer** : tu peux déplacer le mBot et les boîtes à la souris. Ensuite, programme le vrai mBot ci-dessous (ressource 7).",
      "toolbox": [
       "mb_start",
       "mbot_fwd",
@@ -1971,7 +2283,83 @@
         }
        ]
       }
-     ]
+     ],
+     "solution": {
+      "blocks": {
+       "languageVersion": 0,
+       "blocks": [
+        {
+         "type": "mb_start",
+         "x": 24,
+         "y": 24,
+         "next": {
+          "block": {
+           "type": "mb_forever",
+           "inputs": {
+            "DO": {
+             "block": {
+              "type": "mb_ifelse",
+              "inputs": {
+               "COND": {
+                "block": {
+                 "type": "mb_lt",
+                 "inputs": {
+                  "A": {
+                   "block": {
+                    "type": "mbot_dist",
+                    "fields": {
+                     "PORT": "3"
+                    }
+                   }
+                  },
+                  "B": {
+                   "shadow": {
+                    "type": "math_number",
+                    "fields": {
+                     "NUM": 10
+                    }
+                   }
+                  }
+                 }
+                }
+               },
+               "DO": {
+                "block": {
+                 "type": "mbot_back_t",
+                 "fields": {
+                  "P": 50,
+                  "S": 1
+                 },
+                 "next": {
+                  "block": {
+                   "type": "mbot_turn_t",
+                   "fields": {
+                    "DIR": "left",
+                    "P": 50,
+                    "S": 1
+                   }
+                  }
+                 }
+                }
+               },
+               "ELSE": {
+                "block": {
+                 "type": "mbot_fwd",
+                 "fields": {
+                  "P": 50
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       ]
+      }
+     }
     },
     {
      "id": "p04-2r",
@@ -1981,7 +2369,7 @@
      "comp": [
       "T3C31"
      ],
-     "question": "**Programmer le vrai robot** : complète le programme comme au 3.2 (remplace les **0**), puis envoie-le dans le mBot (ressource 7) : branche le câble USB, clique sur **Téléverser**, débranche le câble, pose le robot au sol et allume-le. Tu as un robot **Maqueen** ? Choisis Maqueen (ressources 10 à 12) : le même programme est converti pour lui.",
+     "question": "**Programmer le vrai robot** : complète le programme (il est déjà dans un bloc **répéter indéfiniment** : il mesure la distance sans arrêt) comme au 3.2 (remplace les **0**), puis envoie-le dans le mBot (ressource 7) : branche le câble USB, clique sur **Téléverser**, débranche le câble, pose le robot au sol et allume-le. Tu as un robot **Maqueen** ? Choisis Maqueen (ressources 10 à 12) : le même programme est converti pour lui.",
      "robot": "mbot",
      "robots": [
       "mbot",

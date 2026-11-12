@@ -481,7 +481,19 @@
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const norm = (v) => String(v == null ? '' : v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
   const egal = (a, b) => { const na = Number(String(a).replace(',', '.')), nb = Number(String(b).replace(',', '.')); return String(a).trim() !== '' && isFinite(na) && isFinite(nb) ? Math.abs(na - nb) < 1e-6 : norm(a) === norm(b); };
-  M.runTests = (cfg, state) => (cfg.tests || []).map((t) => runTest(cfg, state, t));
+  const typesIn = (state) => { const out = new Set(); const walk = (x) => { if (!x) return; out.add(x.type); Object.values(x.inputs || {}).forEach((i) => walk(i.block)); walk(x.next && x.next.block); }; tops(state).forEach(walk); return out; };
+  const STRUCT = { mb_forever: 'répéter indéfiniment', mb_repeat: 'répéter … fois', mb_ifelse: 'si … alors … sinon', mb_if: 'si … alors', variables_set: 'mettre … à', math_change: 'ajouter … à', mb_say: 'dire', mb_say_t: 'dire … pendant … secondes', mb_arith: 'opération (+ − × ÷)' };
+  /** Blocs de structure du corrigé, dans l'ordre de STRUCT (affichés sous la consigne). */
+  M.blocsUtiles = (cfg) => { if (!cfg.solution) return []; const t = typesIn(cfg.solution); return Object.keys(STRUCT).filter((k) => t.has(k)).map((k) => STRUCT[k]); };
+  // La boucle infinie est exigée quand le corrigé l'utilise : sans elle, le programme ne s'exécute qu'une fois
+  const REQUIS = { mb_forever: { name: 'Le programme tourne en boucle (« répéter indéfiniment »)', why: 'Il manque le bloc « répéter indéfiniment » (catégorie Contrôle) : sans lui, le programme ne s’exécute qu’une seule fois. Mets les blocs qui doivent se répéter à l’intérieur.' } };
+  const requis = (cfg) => (cfg.solution ? [...typesIn(cfg.solution)].filter((t) => REQUIS[t]) : []);
+  M.testNames = (cfg) => requis(cfg).map((t) => REQUIS[t].name).concat((cfg.tests || []).map((t) => t.name));
+  M.runTests = (cfg, state) => {
+    const have = typesIn(state);
+    const pre = requis(cfg).map((t) => (have.has(t) ? { name: REQUIS[t].name, ok: true } : { name: REQUIS[t].name, ok: false, why: REQUIS[t].why }));
+    return pre.concat((cfg.tests || []).map((t) => runTest(cfg, state, t)));
+  };
 
   const countBlocks = (state) => { let n = 0; const walk = (b) => { if (!b) return; n++; Object.values(b.inputs || {}).forEach((i) => walk(i.block)); walk(b.next && b.next.block); }; tops(state).forEach(walk); return n; };
 
@@ -538,6 +550,7 @@
     if (P.cur && P.cur.b === b) return;
     if (P.cur) M.close();
     if (TL.robot && TL.robot.close) TL.robot.close();
+    if (TL.ressources && TL.ressources.close) TL.ressources.close();
     const inner = P.el.querySelector('.mbk-inner');
     inner.innerHTML = '';
     inner.append(h('p.mbk-loading', 'Chargement de mBlock…'));
@@ -559,7 +572,8 @@
       h('span.mbk-mode', mode === 'mbot' ? 'mBot · simulation' : (DECORS[cfg.decor] || DECORS.libre).name),
       h('span.mbk-sp'),
       h('button.mbk-x', { type: 'button', title: 'Replier l’environnement', 'aria-label': 'Fermer', onclick: () => M.close() }, '✕'));
-    const consigne = b.question ? h('div.mbk-consigne', { html: TL.inlineMd(b.question) }) : null;
+    const utiles = M.blocsUtiles(cfg);
+    const consigne = b.question ? h('div.mbk-consigne', h('div', { html: TL.inlineMd(b.question) }), utiles.length ? h('div.mbk-utiles', h('b', 'Blocs à utiliser : '), utiles.map((u, i) => [i ? ' · ' : '', h('span.mbk-utile', u)])) : null) : null;
     // Scène
     const canvas = h('canvas.mbk-canvas', { width: 480, height: 360, 'aria-label': mode === 'mbot' ? 'Table de test du mBot' : 'Scène du robot' });
     const g = canvas.getContext('2d');
@@ -585,10 +599,12 @@
     const logBox = h('div.mbk-log', { 'aria-live': 'polite' });
     // Tests
     const tests = cfg.tests || [];
+    const noms = M.testNames(cfg);
     const list = h('ul.goals.mbk-goals');
     const drawTests = (res) => {
       list.innerHTML = '';
-      tests.forEach((t, i) => list.append(h('li' + (res ? (res[i].ok ? '.is-ok' : '.is-bad') : ''), h('span.goal-mark', res ? (res[i].ok ? '✓' : '✗') : '○'), h('span', t.name, res && !res[i].ok && res[i].why ? h('small.why', res[i].why) : null))));
+      if (res && res.length !== noms.length) res = null; // résultat enregistré avant l'ajout d'une exigence
+      noms.forEach((nom, i) => list.append(h('li' + (res ? (res[i].ok ? '.is-ok' : '.is-bad') : ''), h('span.goal-mark', res ? (res[i].ok ? '✓' : '✗') : '○'), h('span', nom, res && !res[i].ok && res[i].why ? h('small.why', res[i].why) : null))));
     };
     drawTests(ctx.answer && ctx.answer.value && ctx.answer.value.tests);
     const check = tests.length && !b.demo ? TL.checkBar(ctx, {
@@ -603,7 +619,7 @@
         return out;
       },
     }) : null;
-    const left = h('div.mbk-left', h('div.mbk-stagewrap', canvas), bar, pad, logBox, tests.length ? h('div.mbk-tests', h('div.label-up', 'Tests'), list, check) : null);
+    const left = h('div.mbk-left', h('div.mbk-stagewrap', canvas), h('div.mbk-ctrl', bar, pad, logBox, tests.length ? h('div.mbk-tests', h('div.label-up', 'Tests'), list, check) : null));
     const code = h('div.mbk-code');
     inner.append(top, consigne, h('div.mbk-main', left, code));
 

@@ -817,6 +817,7 @@
     if (P.cur && P.cur.b === b) return;
     if (P.cur) R.close();
     if (TL.mblock && TL.mblock.close) TL.mblock.close();
+    if (TL.ressources && TL.ressources.close) TL.ressources.close();
     const inner = P.el.querySelector('.rbt-inner');
     inner.innerHTML = '';
     inner.append(h('p.mbk-loading', 'Chargement des blocs…'));
@@ -856,7 +857,8 @@
       sw,
       h('span.mbk-sp'),
       h('button.mbk-x', { type: 'button', title: 'Replier l’environnement', 'aria-label': 'Fermer', onclick: () => R.close() }, '✕'));
-    const consigne = b.question ? h('div.mbk-consigne', { html: TL.inlineMd(b.question) }) : null;
+    const utiles = (b.expect || []).filter((t) => ['rb_forever', 'rb_repeat', 'rb_ifelse', 'rb_if', 'rb_wait_until', 'rb_repeat_until', 'variables_set'].includes(t)).map((t) => ({ variables_set: 'mettre … à', rb_ifelse: 'si … alors … sinon' }[t] || R.label(t)));
+    const consigne = b.question ? h('div.mbk-consigne', h('div', { html: TL.inlineMd(b.question) }), utiles.length ? h('div.mbk-utiles', h('b', 'Blocs à utiliser : '), utiles.map((u, i) => [i ? ' · ' : '', h('span.mbk-utile', u)])) : null) : null;
 
     /* --- Colonne de droite : cible, actions, code, console --- */
     const cible = h('div.rbt-cible');
@@ -900,8 +902,11 @@
       },
     }) : null;
 
-    const right = h('div.rbt-right', modeSw, cible, bar, liveBox, warnBox, h('div.rbt-tabs', tabCode, tabLog, h('span.mbk-sp'), h('span.small.muted.rbt-lang')), pre, logBox,
-      !b.demo ? h('div.rbt-goals', h('div.label-up', 'Objectifs'), goals, check) : null);
+    // En haut : à gauche le robot et les actions (ou le mode direct et ses capteurs), à droite le code, la console et les objectifs ; en bas : les blocs
+    const right = h('div.rbt-right',
+      h('div.rbt-colA', modeSw, cible, bar, liveBox, warnBox),
+      h('div.rbt-colB', h('div.rbt-tabs', tabCode, tabLog, h('span.mbk-sp'), h('span.small.muted.rbt-lang')), pre, logBox,
+        !b.demo ? h('div.rbt-goals', h('div.label-up', 'Objectifs'), goals, check) : null));
     const code = h('div.mbk-code.rbt-code');
     inner.append(top, consigne, h('div.mbk-main.rbt-main', code, right));
 
