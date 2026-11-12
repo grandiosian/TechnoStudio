@@ -18,6 +18,7 @@
     motion: { name: 'Mouvement', colour: '#4C97FF' },
     action: { name: 'Action', colour: '#4C97FF' },
     sensing: { name: 'Capteurs', colour: '#5CB1D6' },
+    looks: { name: 'Apparence', colour: '#9966FF' },
     light: { name: 'Éclairage', colour: '#9966FF' },
     control: { name: 'Contrôle', colour: '#FFAB19' },
     ops: { name: 'Opérateurs', colour: '#59C059' },
@@ -50,6 +51,9 @@
     mbot_stop: { cat: 'action', message0: 'arrêter les moteurs' },
     mbot_dist: { cat: 'sensing', output: 'Number', message0: 'distance ultrasons %1 (cm)', args0: [{ type: 'field_dropdown', name: 'PORT', options: [['port3', '3'], ['port1', '1'], ['port2', '2'], ['port4', '4']] }] },
     mbot_led: { cat: 'light', message0: 'allumer la LED %1 en %2', args0: [{ type: 'field_dropdown', name: 'SIDE', options: [['toutes', 'all'], ['gauche', 'left'], ['droite', 'right']] }, { type: 'field_dropdown', name: 'COLOR', options: [['rouge', '#ff3b30'], ['vert', '#30d158'], ['bleu', '#2f7bff'], ['jaune', '#ffd60a'], ['blanc', '#ffffff'], ['éteinte', '']] }] },
+    mb_say: { cat: 'looks', message0: 'dire %1', args0: [val('V')] },
+    mb_say_t: { cat: 'looks', message0: 'dire %1 pendant %2 secondes', args0: [val('V'), val('S', 'Number')] },
+    mb_arith: { cat: 'ops', output: 'Number', message0: '%1 %2 %3', args0: [val('A', 'Number'), { type: 'field_dropdown', name: 'OP', options: [['+', '+'], ['−', '-'], ['×', '*'], ['÷', '/']] }, val('B', 'Number')] },
     mb_wait: { cat: 'control', message0: 'attendre %1 secondes', args0: [nb('N', 1, 0)] },
     mb_forever: { cat: 'control', end: true, message0: 'répéter indéfiniment', message1: '%1', args1: [{ type: 'input_statement', name: 'DO' }] },
     mb_repeat: { cat: 'control', message0: 'répéter %1 fois', args0: [nb('N', 10, 0)], message1: '%1', args1: [{ type: 'input_statement', name: 'DO' }] },
@@ -69,6 +73,8 @@
     mbot: ['mb_start', 'mbot_fwd', 'mbot_back', 'mbot_turn', 'mbot_back_t', 'mbot_turn_t', 'mbot_stop', 'mbot_dist', 'mb_wait', 'mb_forever', 'mb_if', 'mb_ifelse', 'mb_lt', 'mb_gt'],
   };
   const DEF_B = { mb_lt: 100, mb_gt: 100, mb_eq: 0 };
+  // ombres des entrées dans la palette (texte ou nombre)
+  const SHADOWS = { mb_say: { V: 'Bonjour !' }, mb_say_t: { V: 'Bonjour !', S: 2 }, mb_arith: { A: '', B: '' } };
 
   let defined = false;
   function define() {
@@ -97,10 +103,13 @@
       const items = list.filter((t) => DEFS[t] && DEFS[t].cat === cat).map((type) => {
         const it = { kind: 'block', type };
         if (['mb_lt', 'mb_gt', 'mb_eq'].includes(type)) it.inputs = { A: shadow(''), B: shadow(DEF_B[type]) };
+        if (SHADOWS[type]) { it.inputs = {}; Object.entries(SHADOWS[type]).forEach(([k, v]) => (it.inputs[k] = typeof v === 'string' && v && isNaN(+v) ? { shadow: { type: 'text', fields: { TEXT: v } } } : shadow(v))); }
         return it;
       });
       if (items.length) contents.push({ kind: 'category', name: c.name, colour: c.colour, contents: items });
     });
+    // « variables » dans la palette : catégorie Variables de Blockly (mettre, ajouter, valeur)
+    if (list.includes('variables')) contents.push({ kind: 'category', name: 'Variables', colour: '#FF8C1A', custom: 'VARIABLE' });
     return { kind: 'categoryToolbox', contents };
   }
 
@@ -110,6 +119,8 @@
     ligne: { name: 'Ligne rouge (x = 100)', lines: [{ x: 100 }] },
     double: { name: 'Deux lignes rouges (x = −200 et x = 100)', lines: [{ x: -200 }, { x: 100 }] },
     cage: { name: 'Cage rouge (x : −200 à 100, y : −150 à 150)', lines: [{ x: -200, y0: -150, y1: 150 }, { x: 100, y0: -150, y1: 150 }, { y: -150, x0: -200, x1: 100 }, { y: 150, x0: -200, x1: 100 }] },
+    murDroite: { name: 'Mur rouge (x = 200)', lines: [], mur: 200 },
+    murGauche: { name: 'Mur rouge (x = −200)', lines: [], mur: -200 },
   };
   const normDir = (d) => { d = ((((d + 180) % 360) + 360) % 360) - 180; return d === -180 ? 180 : d; };
   const statKeys = ['x', 'y', 'dir'];
@@ -117,8 +128,11 @@
   function spriteWorld(cfg) {
     const decor = DECORS[cfg.decor] || DECORS.libre;
     const init = Object.assign({ x: -100, y: 0, dir: 90 }, cfg.init);
-    const W = { kind: 'sprite', decor, r: 24, events: [] };
-    W.reset = () => { Object.assign(W, { x: init.x, y: init.y, dir: init.dir }); W.events = []; W.resetStats(); };
+    const W = { kind: 'sprite', decor, r: 24, events: [], said: '', bubble: '', varMon: [] };
+    W.reset = () => { Object.assign(W, { x: init.x, y: init.y, dir: init.dir, said: '', bubble: '', touche: false }); W.events = []; W.resetStats(); };
+    // « dire » : bulle au-dessus du robot ; W.said garde le dernier texte (tests)
+    // « dire » vide (silence) efface la bulle et ce que dit le robot ; la fin d'un « dire … pendant » n'efface que la bulle
+    W.say = (t, finDuree) => { const v = typeof t === 'number' ? fmt(t) : String(t == null ? '' : t); W.bubble = v; if (!finDuree) W.said = v; };
     W.resetStats = () => { W.stats = {}; statKeys.forEach((k) => (W.stats[k] = { min: W[k], max: W[k] })); W.px = W.x; W.py = W.y; };
     W.track = () => {
       statKeys.forEach((k) => { const s = W.stats[k]; s.min = Math.min(s.min, W[k]); s.max = Math.max(s.max, W[k]); });
@@ -129,7 +143,17 @@
       });
       W.px = W.x; W.py = W.y;
     };
-    const fence = () => { W.x = clamp(W.x, -235, 235); W.y = clamp(W.y, -175, 175); };
+    // le mur arrête le robot (son centre ne le dépasse pas)
+    const fence = () => {
+      W.x = clamp(W.x, -235, 235); W.y = clamp(W.y, -175, 175);
+      if (decor.mur != null) {
+        const m = decor.mur, avant = W.x;
+        W.x = m > 0 ? Math.min(W.x, m) : Math.max(W.x, m);
+        const touche = W.x === m;
+        if (touche && !W.touche) W.events.push('Le robot touche le mur (x = ' + m + ') !');
+        W.touche = touche; void avant;
+      }
+    };
     W.move = (n) => { W.x += n * Math.sin(rad(W.dir)); W.y += n * Math.cos(rad(W.dir)); W.x = Math.round(W.x * 1e6) / 1e6; W.y = Math.round(W.y * 1e6) / 1e6; fence(); };
     W.turn = (d) => { W.dir = normDir(W.dir + d); };
     W.point = (d) => { W.dir = normDir(d); };
@@ -160,8 +184,16 @@
         g.stroke();
         if (l.x != null && l.y0 == null) g.fillText('x = ' + l.x, 240 + l.x + 5, 352);
       });
+      if (decor.mur != null) {
+        const X = 240 + decor.mur, e = decor.mur > 0 ? 1 : -1;
+        g.fillStyle = '#e53935'; g.fillRect(e > 0 ? X : X - 14, 0, 14, 360);
+        g.fillStyle = 'rgba(0,0,0,.18)'; for (let yy = 0; yy < 360; yy += 18) g.fillRect(e > 0 ? X : X - 14, yy + (yy / 18 % 2 ? 9 : 0), 14, 2);
+        g.fillStyle = '#e53935'; g.font = '600 11px Helvetica, Arial, sans-serif'; g.textAlign = e > 0 ? 'right' : 'left';
+        g.fillText('mur x = ' + decor.mur, X - e * 6, 352); g.textAlign = 'left';
+      }
       drawSpriteRobot(g, 240 + W.x, 180 - W.y, W.dir);
-      drawMonitors(g, W.monitors());
+      if (W.bubble !== '') drawBubble(g, 240 + W.x, 180 - W.y - 30, W.bubble);
+      drawMonitors(g, W.monitors().concat(W.varMon));
     };
     W.reset();
     return W;
@@ -174,6 +206,15 @@
     g.fillStyle = '#9b9b9b'; g.strokeStyle = '#6b6b6b'; g.lineWidth = 1.5; g.fillRect(-16, -11, 30, 22); g.strokeRect(-16, -11, 30, 22);
     g.fillStyle = '#3a3a3a'; g.fillRect(18, -7, 6, 14);
     g.restore();
+  }
+  function drawBubble(g, X, Y, txt) {
+    g.font = '600 13px Helvetica, Arial, sans-serif';
+    const w = Math.min(220, g.measureText(txt).width + 20), hh = 28;
+    let x = clamp(X - w / 2 + 20, 4, 476 - w), y = clamp(Y - hh - 10, 4, 330);
+    g.fillStyle = '#fff'; g.strokeStyle = '#c8cbd4'; g.lineWidth = 1.5;
+    roundRect(g, x, y, w, hh, 10); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(clamp(X, x + 12, x + w - 12), y + hh); g.lineTo(clamp(X, x + 12, x + w - 12) - 8, y + hh - 1); g.lineTo(clamp(X, x + 12, x + w - 12) - 2, y + hh + 9); g.closePath(); g.fill();
+    g.fillStyle = '#575E75'; g.textBaseline = 'middle'; g.fillText(txt.length > 30 ? txt.slice(0, 29) + '…' : txt, x + 10, y + hh / 2 + 1); g.textBaseline = 'alphabetic';
   }
   function drawMonitors(g, rows) {
     g.font = '600 10.5px Helvetica, Arial, sans-serif'; g.textBaseline = 'middle';
@@ -301,7 +342,17 @@
   /* ================= Interpréteur (fils d'exécution à la Scratch) ================= */
   const tops = (state) => (state && state.blocks && state.blocks.blocks) || [];
   class Runtime {
-    constructor(world) { this.world = world; this.threads = []; this.state = null; this.error = null; this.ops = 0; }
+    constructor(world) { this.world = world; this.threads = []; this._state = null; this.error = null; this.ops = 0; this.vars = {}; }
+    // l'espace de travail sérialisé ; ses variables (par identifiant) gardent leur valeur d'une exécution à l'autre
+    get state() { return this._state; }
+    set state(st) {
+      this._state = st;
+      const vs = (st && st.variables) || [];
+      this.varNames = {}; vs.forEach((v) => { this.varNames[v.id] = v.name; if (!(v.id in this.vars)) this.vars[v.id] = 0; });
+      this.monVars();
+    }
+    varId(name) { const v = ((this._state && this._state.variables) || []).find((x) => x.name === name); return v ? v.id : null; }
+    monVars() { if (this.world.kind === 'sprite') this.world.varMon = Object.keys(this.varNames || {}).map((id) => ['Robot : ' + this.varNames[id], typeof this.vars[id] === 'number' ? fmt(this.vars[id]) : String(this.vars[id])]); }
     fire(kind, key) {
       if (kind !== 'key') this.stopAll();
       const type = { flag: 'mb_flag', start: 'mb_start', key: 'mb_key' }[kind];
@@ -315,17 +366,21 @@
     }
     stopAll() { this.threads = []; if (this.world.motors) this.world.motors(0, 0); }
     val(inp) { const b = inp && (inp.block || inp.shadow); return b ? this.ev(b) : 0; }
+    num(inp) { const v = Number(String(this.val(inp)).replace(',', '.')); return isFinite(v) ? v : 0; }
     ev(b) {
       const W = this.world, f = b.fields || {}, i = b.inputs || {};
       switch (b.type) {
         case 'math_number': return +f.NUM || 0;
+        case 'text': return String(f.TEXT == null ? '' : f.TEXT);
+        case 'variables_get': { const v = this.vars[f.VAR && f.VAR.id]; return v == null ? 0 : v; }
+        case 'mb_arith': { const a = this.num(i.A), c = this.num(i.B); return { '+': a + c, '-': a - c, '*': a * c, '/': c ? a / c : 0 }[f.OP] || 0; }
         case 'mb_x': return W.x || 0;
         case 'mb_y': return W.y || 0;
         case 'mb_dir': return W.dir || 0;
         case 'mbot_dist': return W.distance ? W.distance() : 400;
-        case 'mb_lt': return this.val(i.A) < this.val(i.B);
-        case 'mb_gt': return this.val(i.A) > this.val(i.B);
-        case 'mb_eq': return Math.abs(this.val(i.A) - this.val(i.B)) < 1e-9;
+        case 'mb_lt': return this.num(i.A) < this.num(i.B);
+        case 'mb_gt': return this.num(i.A) > this.num(i.B);
+        case 'mb_eq': { const a = this.val(i.A), c = this.val(i.B); return typeof a === 'string' || typeof c === 'string' ? norm(a) === norm(c) : Math.abs(a - c) < 1e-9; }
         case 'mb_and': return !!this.val(i.A) && !!this.val(i.B);
         case 'mb_or': return !!this.val(i.A) || !!this.val(i.B);
         case 'mb_not': return !this.val(i.A);
@@ -360,6 +415,10 @@
         case 'mbot_turn_t': f.DIR === 'right' ? W.motors(p, -p) : W.motors(-p, p); yield { wait: s }; W.motors(0, 0); break;
         case 'mbot_stop': W.motors(0, 0); break;
         case 'mbot_led': W.led(f.SIDE, f.COLOR); break;
+        case 'mb_say': W.say && W.say(this.val(i.V)); break;
+        case 'mb_say_t': W.say && W.say(this.val(i.V)); yield { wait: Math.max(0, this.num(i.S)) }; W.say && W.say('', true); break;
+        case 'variables_set': this.vars[f.VAR && f.VAR.id] = this.val(i.VALUE); this.monVars(); break;
+        case 'math_change': { const id = f.VAR && f.VAR.id; this.vars[id] = (Number(this.vars[id]) || 0) + this.num(i.DELTA); this.monVars(); break; }
       }
       W.track();
     }
@@ -399,6 +458,16 @@
     });
     if (R.error) return { name: t.name, ok: false, why: 'Erreur : ' + R.error };
     for (const e of t.expect || []) {
+      if (e.v === 'say') {
+        if (!egal(W.said, e.eq)) return { name: t.name, ok: false, why: e.why || (W.said ? `Le robot dit « ${W.said} » : il devrait dire « ${e.eq} ».` : `Le robot ne dit rien : il devrait dire « ${e.eq} ».`) };
+        continue;
+      }
+      if (e.var) {
+        const id = R.varId(e.var), v = id ? R.vars[id] : undefined;
+        if (id == null) return { name: t.name, ok: false, why: e.why || `Il manque la variable « ${e.var} ».` };
+        if (e.eq != null && !egal(v, e.eq)) return { name: t.name, ok: false, why: e.why || `La variable ${e.var} vaut ${typeof v === 'number' ? fmt(v) : v} : elle devrait valoir ${e.eq}.` };
+        continue;
+      }
       const s = W.stats[e.v]; if (!s) continue;
       const n = (v) => fmt(v);
       if (e.max != null && s.max > e.max + 1e-6) return { name: t.name, ok: false, why: e.why || `${cap(LABEL[e.v])} monte jusqu’à ${n(s.max)} : il ne faut pas dépasser ${n(e.max)}.` };
@@ -410,6 +479,8 @@
     return { name: t.name, ok: true };
   }
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const norm = (v) => String(v == null ? '' : v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const egal = (a, b) => { const na = Number(String(a).replace(',', '.')), nb = Number(String(b).replace(',', '.')); return String(a).trim() !== '' && isFinite(na) && isFinite(nb) ? Math.abs(na - nb) < 1e-6 : norm(a) === norm(b); };
   M.runTests = (cfg, state) => (cfg.tests || []).map((t) => runTest(cfg, state, t));
 
   const countBlocks = (state) => { let n = 0; const walk = (b) => { if (!b) return; n++; Object.values(b.inputs || {}).forEach((i) => walk(i.block)); walk(b.next && b.next.block); }; tops(state).forEach(walk); return n; };
@@ -538,7 +609,7 @@
 
     // Blockly
     const Bl = window.Blockly;
-    const allowed = (cfg.toolbox && cfg.toolbox.length ? cfg.toolbox : DEFAULT_TOOLBOX[mode]).filter((t) => DEFS[t]);
+    const allowed = (cfg.toolbox && cfg.toolbox.length ? cfg.toolbox : DEFAULT_TOOLBOX[mode]).filter((t) => DEFS[t] || t === 'variables');
     const ws = (c.ws = Bl.inject(code, {
       toolbox: toolbox(allowed), renderer: 'zelos', theme: 'mblock', media: TL.code.media || undefined, trashcan: false, sounds: false,
       zoom: { controls: true, wheel: true, startScale: 0.68, maxScale: 1.6, minScale: 0.35, scaleSpeed: 1.15 },

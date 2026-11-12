@@ -137,7 +137,7 @@
     const reponses = [];
     for (const id of act.champs) {
       const b = blocs[id], r = pg && pg.answers && pg.answers[id], pts = b.bareme || 1;
-      max += pts;
+      if (!b.bonus) max += pts;   // bonus : ajouté à la note, pas au total
       if (r && r.done) { faites++; score += pts * (r.score || 0); }
       if (r && r.value != null) {
         const x = { q: String(b.question || b.prompt || b.title || b.type).replace(/<[^>]+>/g, '').slice(0, 100), type: b.type, r: resume(r.value) };
@@ -152,7 +152,7 @@
       details.reponses = details.reponses.map((x) => Object.assign({}, x, { r: String(x.r).slice(0, Math.floor(String(x.r).length / 2)) }));
       if (details.reponses.every((x) => x.r.length < 20)) details.reponses.pop();
     }
-    return { titre: act.titre, faites, total: act.total, statut: faites === act.total ? 'termine' : 'commence', score: Math.round(score * 100) / 100, score_max: max, details };
+    return { titre: act.titre, faites, total: act.total, statut: faites === act.total ? 'termine' : 'commence', score: Math.round(Math.min(score, max) * 100) / 100, score_max: max, details };
   }
 
   /** Clés passées à Centrale.sauver / charger. */

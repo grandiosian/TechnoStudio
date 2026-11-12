@@ -22,6 +22,8 @@ jobs:
         run: node tools/verifier-ateliers.js
       - name: Téléversement Arduino (STK500, faux bootloader)
         run: node tests/stk500.test.js
+      - name: Simulateur mBlock (mur, variables, tests des activités et de leurs solutions)
+        run: node tests/mblock.test.js
       - name: Robots mBot et Maqueen (générateurs, croquis à jour)
         run: |
           node tests/robot.test.js --ecrire

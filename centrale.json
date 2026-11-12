@@ -93,6 +93,65 @@
   },
   "liste": [
    {
+    "id": "charte-lampe-de-poche/P1",
+    "titre": "P1 · Séance 1 - Feuille 1",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 6,
+    "competences": [
+     "SFC11.5.1",
+     "SFC11.5.2"
+    ]
+   },
+   {
+    "id": "charte-lampe-de-poche/P2",
+    "titre": "P2 · Séance 2 - Feuille 2",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 5,
+    "competences": [
+     "SFC11.5.2",
+     "CCRI22.5.1",
+     "OST32.5.1"
+    ]
+   },
+   {
+    "id": "charte-lampe-de-poche/S1",
+    "titre": "S1 · Synthèse",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 3,
+    "competences": []
+   },
+   {
+    "id": "charte-lampe-de-poche/E1",
+    "titre": "E1 · Évaluation (recto)",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 4,
+    "competences": [
+     "SFC11.5.1",
+     "SFC11.5.2"
+    ]
+   },
+   {
+    "id": "charte-lampe-de-poche/E2",
+    "titre": "E2 · Évaluation (verso)",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 4,
+    "competences": [
+     "SFC11.5.2",
+     "OST32.5.1",
+     "SFC21.5.1"
+    ]
+   },
+   {
+    "id": "charte-lampe-de-poche/S-P1",
+    "titre": "S·P1 · SEGPA - Feuille 1",
+    "groupe": "5e · Exemple : la lampe de poche",
+    "total": 6,
+    "competences": [
+     "SFC11.5.1",
+     "SFC11.5.2"
+    ]
+   },
+   {
     "id": "anticollision-robot-mbot/P1",
     "titre": "P1 · Séance 1 - Feuille 1",
     "groupe": "5e · Anticollision robot mBot",
@@ -110,7 +169,7 @@
     "id": "anticollision-robot-mbot/P2",
     "titre": "P2 · Séance 2 - Feuille 2",
     "groupe": "5e · Anticollision robot mBot",
-    "total": 9,
+    "total": 11,
     "competences": [
      "CCRI31.5.1",
      "CCRI31.5.2",
@@ -139,7 +198,7 @@
     "id": "anticollision-robot-mbot/P4",
     "titre": "P4 · Séance 3 - Feuille 4",
     "groupe": "5e · Anticollision robot mBot",
-    "total": 5,
+    "total": 7,
     "competences": [
      "SFC31.5.1",
      "SFC31.5.2",
@@ -214,65 +273,6 @@
     ]
    },
    {
-    "id": "charte-lampe-de-poche/P1",
-    "titre": "P1 · Séance 1 - Feuille 1",
-    "groupe": "5e · Exemple : la lampe de poche",
-    "total": 6,
-    "competences": [
-     "SFC11.5.1",
-     "SFC11.5.2"
-    ]
-   },
-   {
-    "id": "charte-lampe-de-poche/P2",
-    "titre": "P2 · Séance 2 - Feuille 2",
-    "groupe": "5e · Exemple : la lampe de poche",
-    "total": 5,
-    "competences": [
-     "SFC11.5.2",
-     "CCRI22.5.1",
-     "OST32.5.1"
-    ]
-   },
-   {
-    "id": "charte-lampe-de-poche/S1",
-    "titre": "S1 · Synthèse",
-    "groupe": "5e · Exemple : la lampe de poche",
-    "total": 3,
-    "competences": []
-   },
-   {
-    "id": "charte-lampe-de-poche/E1",
-    "titre": "E1 · Évaluation (recto)",
-    "groupe": "5e · Exemple : la lampe de poche",
-    "total": 4,
-    "competences": [
-     "SFC11.5.1",
-     "SFC11.5.2"
-    ]
-   },
-   {
-    "id": "charte-lampe-de-poche/E2",
-    "titre": "E2 · Évaluation (verso)",
-    "groupe": "5e · Exemple : la lampe de poche",
-    "total": 4,
-    "competences": [
-     "SFC11.5.2",
-     "OST32.5.1",
-     "SFC21.5.1"
-    ]
-   },
-   {
-    "id": "charte-lampe-de-poche/S-P1",
-    "titre": "S·P1 · SEGPA - Feuille 1",
-    "groupe": "5e · Exemple : la lampe de poche",
-    "total": 6,
-    "competences": [
-     "SFC11.5.1",
-     "SFC11.5.2"
-    ]
-   },
-   {
     "id": "programmer-robots-mbot-maqueen/P1",
     "titre": "P1 · Séance 1 - Feuille 1",
     "groupe": "5e · Programmer les robots mBot et Maqueen",
@@ -294,6 +294,233 @@
      "CCRI31.5.2",
      "SFC31.5.1",
      "SFC31.5.2"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/P1",
+    "titre": "P1 · Séance 1 - Feuille 1",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 6,
+    "competences": [
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3",
+     "SFC14.4.1",
+     "SFC14.4.2",
+     "CCRI31.4.1",
+     "CCRI31.4.2",
+     "CCRI31.4.3"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/P2",
+    "titre": "P2 · Séance 2 - Feuille 2",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 11,
+    "competences": [
+     "SFC14.4.1",
+     "SFC14.4.2",
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3",
+     "CCRI31.4.1",
+     "CCRI31.4.2",
+     "CCRI31.4.3"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/P3",
+    "titre": "P3 · Séance 3 - Feuille 3",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 5,
+    "competences": [
+     "CCRI31.4.1",
+     "CCRI31.4.2",
+     "CCRI31.4.3",
+     "SFC14.4.1",
+     "SFC14.4.2",
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/P4",
+    "titre": "P4 · Séance 4 - Feuille 4",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 7,
+    "competences": [
+     "CCRI31.4.1",
+     "CCRI31.4.2",
+     "CCRI31.4.3",
+     "SFC14.4.1",
+     "SFC14.4.2",
+     "CCRI22.4.1",
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/P5",
+    "titre": "P5 · Séance 5 - Feuille 5",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 7,
+    "competences": [
+     "SFC13.4.1",
+     "SFC14.4.1",
+     "SFC14.4.2",
+     "SFC21.4.1"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/P6",
+    "titre": "P6 · Séance 5 - Feuille 6",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 11,
+    "competences": [
+     "SFC11.4.1",
+     "SFC11.4.2",
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3",
+     "SFC14.4.1",
+     "SFC14.4.2",
+     "SFC21.4.1"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/S1",
+    "titre": "S1 · Synthèse",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 7,
+    "competences": []
+   },
+   {
+    "id": "radar-recul-robot-mbot/E1",
+    "titre": "E1 · Évaluation (recto)",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 5,
+    "competences": [
+     "SFC14.4.1",
+     "SFC14.4.2",
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3",
+     "CCRI31.4.1",
+     "CCRI31.4.2",
+     "CCRI31.4.3",
+     "SFC21.4.1"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/E2",
+    "titre": "E2 · Évaluation (verso)",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 12,
+    "competences": [
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3",
+     "SFC14.4.1",
+     "SFC14.4.2",
+     "SFC13.4.1",
+     "SFC11.4.1",
+     "SFC11.4.2",
+     "SFC21.4.1",
+     "CCRI31.4.1",
+     "CCRI31.4.2",
+     "CCRI31.4.3"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/S-P1",
+    "titre": "S·P1 · SEGPA - Feuille 1",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 6,
+    "competences": [
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3",
+     "SFC14.4.1",
+     "SFC14.4.2"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/S-P2",
+    "titre": "S·P2 · SEGPA - Feuille 2",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 8,
+    "competences": [
+     "SFC14.4.1",
+     "SFC14.4.2",
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3",
+     "CCRI31.4.1",
+     "CCRI31.4.2",
+     "CCRI31.4.3"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/S-P3",
+    "titre": "S·P3 · SEGPA - Feuille 3",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 8,
+    "competences": [
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3",
+     "CCRI31.4.1",
+     "CCRI31.4.2",
+     "CCRI31.4.3",
+     "CCRI22.4.1",
+     "SFC14.4.1",
+     "SFC14.4.2"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/S-P4",
+    "titre": "S·P4 · SEGPA - Feuille 4",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 6,
+    "competences": [
+     "SFC13.4.1",
+     "SFC11.4.1",
+     "SFC11.4.2",
+     "SFC21.4.1"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/S-E1",
+    "titre": "S·E1 · Évaluation SEGPA (recto)",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 5,
+    "competences": [
+     "SFC13.4.1",
+     "SFC14.4.1",
+     "SFC14.4.2",
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3",
+     "CCRI31.4.1",
+     "CCRI31.4.2",
+     "CCRI31.4.3"
+    ]
+   },
+   {
+    "id": "radar-recul-robot-mbot/S-E2",
+    "titre": "S·E2 · Évaluation SEGPA (verso)",
+    "groupe": "4e · Radar de recul robot mBot",
+    "total": 5,
+    "competences": [
+     "SFC13.4.1",
+     "SFC11.4.1",
+     "SFC11.4.2",
+     "SFC31.4.1",
+     "SFC31.4.2",
+     "SFC31.4.3",
+     "CCRI22.4.1"
     ]
    },
    {

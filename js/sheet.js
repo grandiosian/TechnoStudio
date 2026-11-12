@@ -143,7 +143,7 @@
       const head = h('div.sb-head',
         o.sheetKind === 'evaluation' || b.tag === 'none' ? null : h('span.tagbox.' + tag, tag === 'ordi' ? 'ORDI' : 'PAPIER'),
         h('div.bandq', o.num ? h('b.bandq-n', o.num + ' ') : null, h('span', { html: TL.inlineMd(b.question || (TL.activities[b.type] || {}).label || '') })),
-        b.bareme ? h('span.bareme', { title: 'Barème' }, '/' + b.bareme) : null);
+        b.bareme ? h('span.bareme', { title: b.bonus ? 'Bonus' : 'Barème' }, (b.bonus ? '+' : '/') + b.bareme) : null);
       box.append(head);
     }
     const pg = o.pg;

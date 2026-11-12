@@ -197,6 +197,7 @@ Champs communs à tous les blocs :
 | `num` | string — Numéro affiché (« 1. », « 1.6 »). Automatique si absent. |
 | `comp` | string /^(T\d|OST|SFC|CCRI)/[] — Pastilles de compétences (calque _Comp) : code de la fiche (T2C11, relié au référentiel par « ref ») ou directement un code du référentiel (SFC11.5.2). |
 | `bareme` | number [0–…] — Barème (feuilles d’évaluation, total ramené sur 20). |
+| `bonus` | boolean |
 | `hint` | string |
 | `explanation` | string |
 | `corr` | string |
@@ -236,7 +237,7 @@ Champs communs à tous les blocs :
 | `autoeval` | exercice | non | **items**, scale | object |
 | `circuit` | simulation | oui | cols, rows, battery, palette, initial, goals | object |
 | `blocks` | simulation | oui | **scene**, toolbox, vars, start, tests | object |
-| `mblock` | simulation | oui | mode, decor, init, toolbox, start, tests | object |
+| `mblock` | simulation | oui | mode, decor, solution, init, toolbox, start, tests | object |
 | `robot` | simulation | oui + correction enseignant | robot, robots, toolbox, start, expect | object |
 | `code` | simulation | oui + correction enseignant | **board**, start, toolbox, expect | object |
 

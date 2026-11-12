@@ -336,8 +336,8 @@
       const box = board.querySelector('[data-note]');
       if (!box) return;
       let pts = 0, got = 0, any = false;
-      w.steps.filter((x) => x.kind === 'evaluation').forEach((x) => x.blocks.forEach((b) => { if (!TL.isGraded(b)) return; const p = b.bareme || 1; pts += p; const a = pg.answers[b.id]; if (a && a.done) { any = true; got += p * (a.score || 0); } }));
-      box.textContent = any && pts ? TL.fmtNum((got / pts) * 20, 1) + ' / 20' : '…… / 20';
+      w.steps.filter((x) => x.kind === 'evaluation').forEach((x) => x.blocks.forEach((b) => { if (!TL.isGraded(b)) return; const p = b.bareme || 1; if (!b.bonus) pts += p; const a = pg.answers[b.id]; if (a && a.done) { any = true; got += p * (a.score || 0); } }));
+      box.textContent = any && pts ? TL.fmtNum(Math.min(20, (got / pts) * 20), 1) + ' / 20' : '…… / 20';
     }
     app.step = (d) => show(pg.step + d);
     rerender = () => show(pg.step);
