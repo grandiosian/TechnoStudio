@@ -129,6 +129,7 @@ Une activité par feuille notée, envoyée par `Centrale.progression(id, TechnoS
 | tous faits | `statut: "termine"` | Sinon `"commence"`. |
 | Σ barème × réussite | `score` / `score_max` | Barème du champ (1 par défaut). |
 | réponses ouvertes | `details.reponses` | 20 Ko au plus, tronqué au besoin ; les dessins sont remplacés par `[dessin]`. |
+| mesures du travail (`js/mesures.js`) | `mesures` | Cumuls qui remplacent les précédents : `temps_actif` (secondes de travail effectif sur la feuille : page visible, élève actif dans les 2 dernières minutes), `essais` (jamais remis à zéro, même avec « Recommencer »), `questions` essayées, `premier_coup`, `revelees`, `delai_median` (secondes entre la question vue débloquée à l'écran et la première réponse), `detail` par question. Rangées dans `pg.mesures` et fusionnées entre postes. |
 
 ### Les compétences
 

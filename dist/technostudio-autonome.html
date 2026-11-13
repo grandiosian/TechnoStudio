@@ -4447,7 +4447,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
   'use strict';
 
   const APP = 'technostudio';
-  const VERSION = '3.3.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
+  const VERSION = '3.4.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
   const KIND = { feuille: 'P', ressource: 'R', synthese: 'S', evaluation: 'E', fiche: 'F' };
 
   /** Codes des feuilles d'un atelier, comme sur le papier : P1, P2, R1, S1, E1, S·P1 (SEGPA). */
@@ -4566,6 +4566,42 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     if (v.text) return String(v.text).slice(0, 600);
     try { return JSON.stringify(v, (k, x) => (typeof x === 'string' && x.startsWith('data:') ? '[fichier]' : x)).slice(0, 600); } catch (e) { return ''; }
   };
+  /**
+   * Mesures d'une feuille (js/mesures.js → pg.mesures), envoyées avec sa progression :
+   * { temps_actif (s), essais, questions (champs notés essayés), premier_coup, revelees, delai_median (s, première réponse),
+   *   detail: [{ q, essais, ok1, okA, delai, revele }] } — null s'il n'y a rien.
+   */
+  function mesures(w, pg, act) {
+    const m = pg && pg.mesures;
+    if (!m) return null;
+    const s = w.steps[act.feuille] || {};
+    const f = (m.feuilles || {})[s.id] || {};
+    const blocs = {};
+    (s.blocks || []).forEach((b) => (blocs[b.id] = b));
+    let essais = 0, questions = 0, premier = 0, revelees = 0;
+    const delais = [], detail = [];
+    for (const id of act.champs) {
+      const q = (m.q || {})[id];
+      if (!q || (!q.essais && !q.revele)) continue;
+      const b = blocs[id] || {};
+      questions++;
+      essais += q.essais || 0;
+      if (q.ok1) premier++;
+      if (q.revele) revelees++;
+      if (q.delai != null) delais.push(q.delai);
+      const x = { q: (b.num ? b.num + ' ' : '') + String(b.question || b.title || b.type || id).replace(/<[^>]+>/g, '').replace(/\*\*/g, '').slice(0, 80), essais: q.essais || 0 };
+      if (q.ok1 != null) x.ok1 = q.ok1;
+      if (q.okA) x.okA = q.okA;
+      if (q.delai != null) x.delai = q.delai;
+      if (q.revele) x.revele = true;
+      detail.push(x);
+    }
+    if (!f.actif && !detail.length) return null;
+    delais.sort((a, b) => a - b);
+    const med = delais.length ? (delais.length % 2 ? delais[(delais.length - 1) / 2] : Math.round((delais[delais.length / 2 - 1] + delais[delais.length / 2]) / 2)) : null;
+    return { temps_actif: f.actif || 0, essais, questions, premier_coup: premier, revelees, delai_median: med, detail };
+  }
+
   /** Ce qui part à progression.php pour une feuille (null si rien n'est commencé). */
   function progression(w, pg, act) {
     const blocs = {};
@@ -4589,14 +4625,17 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
       details.reponses = details.reponses.map((x) => Object.assign({}, x, { r: String(x.r).slice(0, Math.floor(String(x.r).length / 2)) }));
       if (details.reponses.every((x) => x.r.length < 20)) details.reponses.pop();
     }
-    return { titre: act.titre, faites, total: act.total, statut: faites === act.total ? 'termine' : 'commence', score: Math.round(Math.min(score, max) * 100) / 100, score_max: max, details };
+    const envoi = { titre: act.titre, faites, total: act.total, statut: faites === act.total ? 'termine' : 'commence', score: Math.round(Math.min(score, max) * 100) / 100, score_max: max, details };
+    const me = mesures(w, pg, act);
+    if (me) envoi.mesures = me;
+    return envoi;
   }
 
   /** Clés passées à Centrale.sauver / charger. */
   const cleAtelier = (wid) => 'at/' + String(wid).replace(/[^A-Za-z0-9_\-.]/g, '-');
   const CLE_CODE = 'code/projet';
 
-  return { APP, VERSION, codesFeuilles, estNote, idActivite, activitesAtelier, activites, progression, cleAtelier, CLE_CODE, resume,
+  return { APP, VERSION, codesFeuilles, estNote, idActivite, activitesAtelier, activites, progression, mesures, cleAtelier, CLE_CODE, resume,
     RE_REF, refsFiche, codesBloc, atelierCatalogue, catalogue, constats, niveauPart };
 });
 
@@ -6446,6 +6485,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
       answer: ans, readonly: o.readonly,
       save(partial) { if (!pg) return; pg.answers[b.id] = Object.assign({}, pg.answers[b.id], partial); ctx.answer = pg.answers[b.id]; TL.app.saveProgress(pg); },
       result(a, silent) {
+        if (pg && TL.mesures) TL.mesures.resultat(pg, b, ctx.answer, a, silent);   // essais, délai de réponse (js/mesures.js)
         ctx.answer = a;
         if (pg) { pg.answers[b.id] = a; TL.app.saveProgress(pg); }
         paintStatus(a);
@@ -6900,6 +6940,119 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
       el.insertBefore(bankBand(words), el.querySelector('.cloze'));
     }
     return el;
+  };
+})();
+
+;
+/* ---- js/mesures.js ---- */
+/* TechnoStudio — mesures pendant l'atelier (monitoring), rangées dans la progression de l'élève (pg.mesures) :
+   • temps actif par feuille et pour l'atelier : compté par tranches de 10 s, seulement quand la page est visible
+     et que l'élève a agi (clic, touche, défilement…) dans les 2 dernières minutes ;
+   • par question notée : moment où elle est vue débloquée à l'écran (vu), première réponse (premier), nombre d'essais
+     (jamais remis à zéro, même avec « Recommencer »), réussite du premier coup (ok1), essai où elle est réussie (okA),
+     correction affichée (revele), et délai de première réponse en secondes (delai = premier − vu).
+   Rien de personnel : des durées et des compteurs, envoyés avec la progression (js/passerelle.js, champ « mesures »).
+   pg.mesures = { v: 1, debut, actif, feuilles: { idFeuille: { debut, actif, vu } }, q: { idChamp: { … } } } */
+(function () {
+  'use strict';
+  const TL = window.TL;
+  const M = (TL.mesures = {});
+  const TRANCHE = 10;              // secondes
+  const INACTIF = 120000;          // ms sans action : on ne compte plus
+  const SAUVE = 18;                // tranches entre deux sauvegardes (3 min) quand l'élève lit sans répondre
+  const now = () => Date.now();
+
+  let derniere = now();
+  const actif = () => { derniere = now(); };
+  ['pointerdown', 'keydown', 'wheel', 'touchstart', 'input', 'scroll', 'pointermove'].forEach((e) => document.addEventListener(e, actif, { passive: true, capture: true }));
+
+  const base = (pg) => {
+    const m = (pg.mesures = pg.mesures || { v: 1 });
+    m.feuilles = m.feuilles || {};
+    m.q = m.q || {};
+    return m;
+  };
+  const question = (pg, id) => { const m = base(pg); return (m.q[id] = m.q[id] || {}); };
+
+  /** La question est à l'écran et débloquée : on note la première fois. */
+  M.vu = function (pg, id) {
+    if (!pg || !id) return;
+    const q = question(pg, id);
+    if (!q.vu) q.vu = now();
+  };
+
+  /** Appelé à chaque résultat d'un champ (sheet.js, ctx.result), avant l'enregistrement. */
+  M.resultat = function (pg, b, prev, a, silent) {
+    if (!pg || !b || !a || !TL.isGraded(b)) return;
+    const q = question(pg, b.id);
+    const nouveau = !!a.at && a.at !== (prev && prev.at);
+    if (a.revealed && !(prev && prev.revealed)) { q.revele = true; q.dernier = a.at || now(); return; }
+    // résultats « silencieux » (étapes d'une procédure cochées une à une) : un essai quand le champ devient fait
+    const essai = nouveau && (!silent || (a.done && !(prev && prev.done)));
+    if (!essai) { if (nouveau) q.dernier = a.at; return; }
+    q.essais = (q.essais || 0) + 1;
+    if (!q.premier) {
+      q.premier = a.at;
+      if (!a.pendingReview) q.ok1 = !!a.correct;   // à corriger par le professeur : pas de « premier coup »
+      if (q.vu && a.at >= q.vu) q.delai = Math.min(3 * 3600, Math.round((a.at - q.vu) / 1000));
+    }
+    if (a.correct && !a.pendingReview && !q.okA) q.okA = q.essais;
+    q.dernier = a.at;
+  };
+
+  /**
+   * Suit une feuille affichée : temps actif et questions vues. Renvoie { maj, stop } ;
+   * maj() après un déblocage (les questions déjà à l'écran deviennent « vues »). S'arrête seul quand la feuille quitte la page.
+   */
+  M.suivre = function (pg, step, sheet) {
+    if (!pg || !step || !sheet) return { maj() {}, stop() {} };
+    const m = base(pg);
+    const f = (m.feuilles[step.id] = m.feuilles[step.id] || {});
+    if (!f.debut) f.debut = now();
+    if (!m.debut) m.debut = f.debut;
+    derniere = now();
+    // Question « vue » : débloquée et à l'écran (au moins la moitié, ou 120 px). Vérifié à l'ouverture, au défilement,
+    // après chaque déblocage (maj) et à chaque tranche de temps.
+    const enVue = (el) => {
+      const r = el.getBoundingClientRect(), hv = window.innerHeight || document.documentElement.clientHeight;
+      return r.height > 0 && Math.min(r.bottom, hv) - Math.max(r.top, 0) >= Math.min(120, r.height * 0.5);
+    };
+    const maj = () => {
+      if (!sheet.isConnected || document.visibilityState === 'hidden') return;
+      sheet.querySelectorAll('.sb.exo[data-id]:not(.is-locked)').forEach((el) => { if (!el.closest('[inert]') && enVue(el)) M.vu(pg, el.dataset.id); });
+    };
+    let attente = null;
+    const auDefilement = () => { if (!attente) attente = setTimeout(() => { attente = null; maj(); }, 400); };
+    document.addEventListener('scroll', auDefilement, { passive: true, capture: true });
+    setTimeout(maj, 300);
+    let n = 0;
+    const t = setInterval(() => {
+      if (!sheet.isConnected) { stop(); return; }
+      maj();
+      if (document.visibilityState !== 'visible' || now() - derniere > INACTIF) return;
+      f.actif = (f.actif || 0) + TRANCHE;
+      m.actif = (m.actif || 0) + TRANCHE;
+      f.vu = now();
+      if (++n % SAUVE === 0 && TL.app && TL.app.saveProgress) TL.app.saveProgress(pg);
+    }, TRANCHE * 1000);
+    function stop() { clearInterval(t); clearTimeout(attente); document.removeEventListener('scroll', auDefilement, { capture: true }); }
+    return { maj, stop };
+  };
+
+  /** Fusion de deux postes (js/centrale.js) : on garde le plus grand temps et la question la plus avancée. */
+  M.fusion = function (a, b) {
+    if (!a) return b; if (!b) return a;
+    const out = { v: 1, debut: Math.min(a.debut || Infinity, b.debut || Infinity), actif: Math.max(a.actif || 0, b.actif || 0), feuilles: {}, q: {} };
+    if (!isFinite(out.debut)) delete out.debut;
+    for (const k of new Set(Object.keys(a.feuilles || {}).concat(Object.keys(b.feuilles || {})))) {
+      const x = (a.feuilles || {})[k] || {}, y = (b.feuilles || {})[k] || {};
+      out.feuilles[k] = (x.actif || 0) >= (y.actif || 0) ? x : y;
+    }
+    for (const k of new Set(Object.keys(a.q || {}).concat(Object.keys(b.q || {})))) {
+      const x = (a.q || {})[k] || {}, y = (b.q || {})[k] || {};
+      out.q[k] = (x.essais || 0) > (y.essais || 0) || ((x.essais || 0) === (y.essais || 0) && (x.dernier || 0) >= (y.dernier || 0)) ? x : y;
+    }
+    return out;
   };
 })();
 
@@ -10610,6 +10763,7 @@ window.TL_ROBOT_IMG = {
     out.updatedAt = Math.max(local.updatedAt || 0, distant.updatedAt || 0);
     out.step = (local.updatedAt || 0) >= (distant.updatedAt || 0) ? local.step : distant.step;
     out.completedAt = local.completedAt || distant.completedAt || null;
+    if (TL.mesures && (local.mesures || distant.mesures)) out.mesures = TL.mesures.fusion(local.mesures, distant.mesures);
     return out;
   }
   Z.fusion = fusion;
@@ -12180,11 +12334,12 @@ Actionneurs = moteur, lampe`;
       nav = el;
       return el;
     };
-    let sheet = null;
+    let sheet = null, suivi = null;
     const afterResult = () => {
       TL.panels.refresh('feuilles'); TL.panels.refresh('suivi'); paintNote();
       if (!G) return;
       G.lock(sheet, w.steps[pg.step]);
+      if (suivi) suivi.maj();   // questions débloquées déjà à l'écran : « vues » maintenant
       const fini = G.done(pg.step);
       if (fini !== wasDone) {
         buildNav(); paintChoix();
@@ -12206,6 +12361,9 @@ Actionneurs = moteur, lampe`;
       nav = null;
       board.append(sheet, buildNav());
       if (G) { G.lock(sheet, s); wasDone = G.done(pg.step); paintChoix(); }
+      // Mesures (temps actif, questions vues, essais) : js/mesures.js
+      if (suivi) suivi.stop();
+      suivi = TL.mesures ? TL.mesures.suivre(pg, s, sheet) : null;
       board.scrollTop = 0;
       paintNote();
       TL.panels.refresh('feuilles'); TL.panels.refresh('suivi');

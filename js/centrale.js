@@ -197,6 +197,7 @@
     out.updatedAt = Math.max(local.updatedAt || 0, distant.updatedAt || 0);
     out.step = (local.updatedAt || 0) >= (distant.updatedAt || 0) ? local.step : distant.step;
     out.completedAt = local.completedAt || distant.completedAt || null;
+    if (TL.mesures && (local.mesures || distant.mesures)) out.mesures = TL.mesures.fusion(local.mesures, distant.mesures);
     return out;
   }
   Z.fusion = fusion;

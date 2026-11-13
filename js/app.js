@@ -433,11 +433,12 @@
       nav = el;
       return el;
     };
-    let sheet = null;
+    let sheet = null, suivi = null;
     const afterResult = () => {
       TL.panels.refresh('feuilles'); TL.panels.refresh('suivi'); paintNote();
       if (!G) return;
       G.lock(sheet, w.steps[pg.step]);
+      if (suivi) suivi.maj();   // questions débloquées déjà à l'écran : « vues » maintenant
       const fini = G.done(pg.step);
       if (fini !== wasDone) {
         buildNav(); paintChoix();
@@ -459,6 +460,9 @@
       nav = null;
       board.append(sheet, buildNav());
       if (G) { G.lock(sheet, s); wasDone = G.done(pg.step); paintChoix(); }
+      // Mesures (temps actif, questions vues, essais) : js/mesures.js
+      if (suivi) suivi.stop();
+      suivi = TL.mesures ? TL.mesures.suivre(pg, s, sheet) : null;
       board.scrollTop = 0;
       paintNote();
       TL.panels.refresh('feuilles'); TL.panels.refresh('suivi');

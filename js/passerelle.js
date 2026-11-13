@@ -10,7 +10,7 @@
   'use strict';
 
   const APP = 'technostudio';
-  const VERSION = '3.3.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
+  const VERSION = '3.4.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
   const KIND = { feuille: 'P', ressource: 'R', synthese: 'S', evaluation: 'E', fiche: 'F' };
 
   /** Codes des feuilles d'un atelier, comme sur le papier : P1, P2, R1, S1, E1, S·P1 (SEGPA). */
@@ -129,6 +129,42 @@
     if (v.text) return String(v.text).slice(0, 600);
     try { return JSON.stringify(v, (k, x) => (typeof x === 'string' && x.startsWith('data:') ? '[fichier]' : x)).slice(0, 600); } catch (e) { return ''; }
   };
+  /**
+   * Mesures d'une feuille (js/mesures.js → pg.mesures), envoyées avec sa progression :
+   * { temps_actif (s), essais, questions (champs notés essayés), premier_coup, revelees, delai_median (s, première réponse),
+   *   detail: [{ q, essais, ok1, okA, delai, revele }] } — null s'il n'y a rien.
+   */
+  function mesures(w, pg, act) {
+    const m = pg && pg.mesures;
+    if (!m) return null;
+    const s = w.steps[act.feuille] || {};
+    const f = (m.feuilles || {})[s.id] || {};
+    const blocs = {};
+    (s.blocks || []).forEach((b) => (blocs[b.id] = b));
+    let essais = 0, questions = 0, premier = 0, revelees = 0;
+    const delais = [], detail = [];
+    for (const id of act.champs) {
+      const q = (m.q || {})[id];
+      if (!q || (!q.essais && !q.revele)) continue;
+      const b = blocs[id] || {};
+      questions++;
+      essais += q.essais || 0;
+      if (q.ok1) premier++;
+      if (q.revele) revelees++;
+      if (q.delai != null) delais.push(q.delai);
+      const x = { q: (b.num ? b.num + ' ' : '') + String(b.question || b.title || b.type || id).replace(/<[^>]+>/g, '').replace(/\*\*/g, '').slice(0, 80), essais: q.essais || 0 };
+      if (q.ok1 != null) x.ok1 = q.ok1;
+      if (q.okA) x.okA = q.okA;
+      if (q.delai != null) x.delai = q.delai;
+      if (q.revele) x.revele = true;
+      detail.push(x);
+    }
+    if (!f.actif && !detail.length) return null;
+    delais.sort((a, b) => a - b);
+    const med = delais.length ? (delais.length % 2 ? delais[(delais.length - 1) / 2] : Math.round((delais[delais.length / 2 - 1] + delais[delais.length / 2]) / 2)) : null;
+    return { temps_actif: f.actif || 0, essais, questions, premier_coup: premier, revelees, delai_median: med, detail };
+  }
+
   /** Ce qui part à progression.php pour une feuille (null si rien n'est commencé). */
   function progression(w, pg, act) {
     const blocs = {};
@@ -152,13 +188,16 @@
       details.reponses = details.reponses.map((x) => Object.assign({}, x, { r: String(x.r).slice(0, Math.floor(String(x.r).length / 2)) }));
       if (details.reponses.every((x) => x.r.length < 20)) details.reponses.pop();
     }
-    return { titre: act.titre, faites, total: act.total, statut: faites === act.total ? 'termine' : 'commence', score: Math.round(Math.min(score, max) * 100) / 100, score_max: max, details };
+    const envoi = { titre: act.titre, faites, total: act.total, statut: faites === act.total ? 'termine' : 'commence', score: Math.round(Math.min(score, max) * 100) / 100, score_max: max, details };
+    const me = mesures(w, pg, act);
+    if (me) envoi.mesures = me;
+    return envoi;
   }
 
   /** Clés passées à Centrale.sauver / charger. */
   const cleAtelier = (wid) => 'at/' + String(wid).replace(/[^A-Za-z0-9_\-.]/g, '-');
   const CLE_CODE = 'code/projet';
 
-  return { APP, VERSION, codesFeuilles, estNote, idActivite, activitesAtelier, activites, progression, cleAtelier, CLE_CODE, resume,
+  return { APP, VERSION, codesFeuilles, estNote, idActivite, activitesAtelier, activites, progression, mesures, cleAtelier, CLE_CODE, resume,
     RE_REF, refsFiche, codesBloc, atelierCatalogue, catalogue, constats, niveauPart };
 });

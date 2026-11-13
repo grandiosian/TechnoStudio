@@ -158,6 +158,7 @@
       answer: ans, readonly: o.readonly,
       save(partial) { if (!pg) return; pg.answers[b.id] = Object.assign({}, pg.answers[b.id], partial); ctx.answer = pg.answers[b.id]; TL.app.saveProgress(pg); },
       result(a, silent) {
+        if (pg && TL.mesures) TL.mesures.resultat(pg, b, ctx.answer, a, silent);   // essais, délai de réponse (js/mesures.js)
         ctx.answer = a;
         if (pg) { pg.answers[b.id] = a; TL.app.saveProgress(pg); }
         paintStatus(a);

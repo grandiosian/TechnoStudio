@@ -31,6 +31,10 @@ defs.Progression = {
   properties: {
     titre: { type: 'string', maxLength: 120 }, faites: { type: 'integer', minimum: 0 }, total: { type: 'integer', minimum: 1 }, statut: { enum: ['commence', 'termine'] },
     score: { type: 'number', minimum: 0 }, score_max: { type: 'number', minimum: 0 },
+    mesures: { type: 'object', description: 'Monitoring de la feuille (js/mesures.js)', properties: {
+      temps_actif: { type: 'integer', minimum: 0 }, essais: { type: 'integer', minimum: 0 }, questions: { type: 'integer', minimum: 0 },
+      premier_coup: { type: 'integer', minimum: 0 }, revelees: { type: 'integer', minimum: 0 }, delai_median: { type: ['integer', 'null'], minimum: 0 },
+      detail: { type: 'array', maxItems: 200, items: { type: 'object', properties: { q: { type: 'string' }, essais: { type: 'integer' }, ok1: { type: 'boolean' }, okA: { type: 'integer' }, delai: { type: 'integer' }, revele: { type: 'boolean' } } } } } },
     details: { type: 'object', properties: { feuille: { type: 'string' }, reponses: { type: 'array', items: { type: 'object', required: ['q', 'type', 'r'], properties: { q: { type: 'string' }, type: { type: 'string' }, r: { type: 'string' }, note: { type: 'string' }, aCorriger: { type: 'boolean' } } } } } },
   },
 };
@@ -90,6 +94,7 @@ const desc = {
       score: 'points obtenus (barème de chaque champ, 1 par défaut) × réussite',
       score_max: 'somme des barèmes de la feuille',
       details: '{ feuille, reponses: [{ q, type, r, note, aCorriger }] } : réponses ouvertes à lire ou corriger (20 Ko au plus)',
+      mesures: 'Monitoring de la feuille (js/mesures.js), cumuls qui remplacent les précédents : temps_actif (s de travail effectif : page visible, élève actif dans les 2 dernières minutes), essais (réponses vérifiées ou rendues, jamais remises à zéro), questions essayées, premier_coup (réussies du premier coup), revelees (corrections affichées), delai_median (s entre la question vue débloquée et la première réponse), detail par question { q, essais, ok1, okA, delai, revele }.',
       constats: 'Feuille terminée seulement : un constat par code du référentiel, { competence, niveau, reussi, preuve } ; niveau d’après la part des points de ce code (moins de 40 % : 1 ; moins de 70 % : 2 ; moins de 90 % : 3 ; sinon 4). Un champ qui attend la correction du professeur suspend son code. Renvoyé seulement si les niveaux changent (pg.constats).',
     },
     champs_non_utilises: [],

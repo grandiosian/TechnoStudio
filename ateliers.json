@@ -2,7 +2,7 @@
   "format": "catalogue.ateliers",
   "version": 1,
   "app": "technostudio",
-  "app_version": "3.3.0",
+  "app_version": "3.4.0",
   "referentiel": "technologie-c4-2024",
   "ateliers": [
     {
