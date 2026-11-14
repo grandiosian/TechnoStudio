@@ -75,7 +75,7 @@
     window.Centrale.init({
       api: Z.serveur + 'api/',
       app: Z.app,
-      boutonRetour: false, // « ← Mes ateliers » est placé dans la barre de menus de TechnoStudio
+      boutonRetour: false, // pas de bouton flottant : le « ← » est dans le widget de l'élève (barre du haut)
       surEtat: (e) => {
         const map = { enregistre: 'online', enregistrement: 'syncing', modifie: 'syncing', 'hors-ligne': 'offline', erreur: 'error', conflit: 'error' };
         if (!Z.connecte()) return;
@@ -114,6 +114,7 @@
   };
   Z.deconnexion = async function () {
     if (Z.dispo) window.Centrale.deconnexion();
+    if (Z.precedent) Z.precedent.maj();
     etat('local');
   };
 
@@ -137,6 +138,7 @@
       etat(e.horsLigne ? 'offline' : 'error', e.message);
     }
     TL.emit('synced');
+    if (Z.precedent) Z.precedent.maj();   // connecté : le « ← » peut maintenant mener à l'étape précédente du parcours
     const demande = window.Centrale.activiteDemandee();
     if (demande) ouvrirActivite(demande);
   }
@@ -305,6 +307,15 @@
   }
   Z.ouvrirActivite = ouvrirActivite;
   Z.lienPortail = () => { try { return (Z.dispo && sessionStorage.getItem('centrale-retour')) || ''; } catch (e) { return ''; } };
+  /** Bouton « ← » du widget de l'élève, fourni par le module de la Centrale : « ← Étape précédente » dans un parcours
+      (l'étape d'avant, dans n'importe quelle application), « ← Mes ateliers » sinon, caché hors de la Centrale.
+      { bouton, maj }, ou null si le module (ancienne version, injoignable) ne le propose pas. */
+  Z.boutonPrecedent = function () {
+    if (Z.precedent) return Z.precedent;
+    if (!Z.dispo || !window.Centrale || !window.Centrale.boutonPrecedent) return null;
+    Z.precedent = window.Centrale.boutonPrecedent({ classe: 'tbid-ret mb-retour' });
+    return Z.precedent;
+  };
 
   /* ---------- Point d'accès unique : window.TechnoStudio (décrit dans centrale.json → acces_javascript) ---------- */
   const TS = {

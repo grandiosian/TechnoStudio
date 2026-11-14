@@ -22,10 +22,12 @@
       bar.append(btn);
     });
   };
-  MB.show = function (mi, btn, focus) {
+  MB.show = function (mi, btn, focus) { MB.ouvrir(mi, btn, MB.menus[mi].items, focus); };
+  /* Ouvre une liste déroulante sous un bouton : menus de la barre, et aussi le bouton Réglages (roue dentée). */
+  MB.ouvrir = function (cle, btn, entrees, focus) {
     MB.close();
-    const m = MB.menus[mi];
-    MB.open = mi;
+    const m = { items: entrees };
+    MB.open = cle;
     btn.setAttribute('aria-expanded', 'true'); btn.classList.add('on');
     const list = h('div.mb-menu', { role: 'menu' });
     const add = (items, into) => items.forEach((it) => {
@@ -55,7 +57,7 @@
   MB.close = function () {
     if (MB.el) MB.el.remove();
     MB.el = null; MB.open = null;
-    TL.$$('.mb-top').forEach((b) => { b.classList.remove('on'); b.setAttribute('aria-expanded', 'false'); });
+    TL.$$('.mb-top, .tb-ico[aria-haspopup]').forEach((b) => { b.classList.remove('on'); b.setAttribute('aria-expanded', 'false'); });
   };
   document.addEventListener('click', () => MB.close());
   window.addEventListener('resize', () => MB.close());

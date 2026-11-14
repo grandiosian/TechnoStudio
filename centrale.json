@@ -40,10 +40,10 @@
   ],
   "chargement": "Le module est chargé au démarrage, en parallèle de l’affichage. S’il est injoignable, TechnoStudio fonctionne seul (IndexedDB).",
   "connexion": {
-   "bouton": "« Mon code » dans la barre du haut (et à l’accueil) : formulaire Centrale.afficherConnexion ; une fois connecté, l’identifiant de l’élève s’affiche.",
+   "bouton": "Widget de l’élève dans la barre du haut, à droite du logo (« Visiteur », comme NetSim et Établi 3D) : un clic ouvre « Mon code » (formulaire Centrale.afficherConnexion) ; une fois connecté, l’identifiant de l’élève s’y affiche.",
    "depuis_le_portail": "Jeton dans l’adresse (#centrale=…) : connexion automatique, sans écran d’accueil.",
    "activite_directe": "Centrale.activiteDemandee() : « <atelier>/<feuille> » ouvre la feuille, « <atelier> » ouvre l’atelier.",
-   "retour": "Bouton « ← Mes ateliers » dans la barre de menus de TechnoStudio (boutonRetour: false)."
+   "retour": "Bouton « ← » au début du widget de l’élève : Centrale.boutonPrecedent() (« ← Étape précédente » dans un parcours, « ← Mes ateliers » sinon, caché hors de la Centrale) ; avec un module plus ancien, « ← Mes ateliers » (Centrale.retour). Pas de bouton flottant (boutonRetour: false)."
   },
   "fonctions_utilisees": [
    "init",
@@ -60,7 +60,9 @@
    "listeRessources",
    "chargerRessource",
    "afficherIdentifiant",
-   "retour"
+   "retour",
+   "boutonPrecedent",
+   "menuEleve"
   ],
   "fonctions_non_utilisees": [
    "envoyerFichier",

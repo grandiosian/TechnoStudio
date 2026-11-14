@@ -169,7 +169,8 @@
       status.title = v.errors.slice(0, 8).join('\n');
       status.classList.toggle('warn', !v.ok); status.classList.remove('dirty');
     }, 500);
-    const touch = () => { status.textContent = 'Modifications…'; status.classList.add('dirty'); bar.querySelector('.ed-title').textContent = w.title; save(); };
+    const H = TL.historique;
+    const touch = () => { status.textContent = 'Modifications…'; status.classList.add('dirty'); bar.querySelector('.ed-title').textContent = w.title; save(); if (H) H.noter('ed:' + w.id); };
     const redraw = TL.debounce(() => {
       const top = board.scrollTop;
       board.innerHTML = '';
@@ -310,6 +311,19 @@
         f('differenciation', 'Différenciation', 'area'), f('materiel', 'Matériel à prévoir', 'area'), f('author', 'Auteur', 'text'),
         h('div.p-col', h('a.btn.small.ghost', { href: '#fiche-' + w.id, onclick: async () => { await app.saveWorkshop(TL.clone(w), w.source); } }, 'Voir la fiche pédagogique')));
     } });
+
+    /* Annuler / rétablir (barre du haut) : l'atelier entier. Toutes les modifications passent par touch() ; l'état remis
+       remplace le contenu de w sur place (les panneaux le relisent), puis est enregistré comme une modification. */
+    if (H) H.brancher('ed:' + w.id, () => JSON.stringify(w), (etat) => {
+      const o = JSON.parse(etat);
+      Object.keys(w).forEach((k) => delete w[k]);
+      Object.assign(w, o);
+      si = TL.clamp(si, 0, Math.max(0, w.steps.length - 1));
+      if (sel && !(w.steps[si] && w.steps[si].blocks.some((b) => b.id === sel))) sel = null;
+      status.textContent = 'Modifications…'; status.classList.add('dirty'); bar.querySelector('.ed-title').textContent = w.title; save();
+      redraw();
+      ['ed-feuilles', 'ed-props', 'ed-fiche', 'ed-insertion'].forEach((id) => TL.panels.refresh(id));
+    });
 
     TL.panels.setMode('edit', ['ed-feuilles', 'ed-insertion', 'ed-props', 'ed-fiche'], ['ed-feuilles', 'ed-insertion', 'ed-props']);
     redraw();

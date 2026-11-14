@@ -16,9 +16,20 @@
 </head>
 <body>
 <!--APP-->
-<header class="menubar" role="menubar">
-  <nav id="menus" aria-label="Menus"></nav>
-  <div class="mb-right"><div class="sync" data-sync role="button" tabindex="0"></div></div>
+<!-- Barre du haut commune aux applications (NetSim, TechnoStudio, Établi 3D) :
+     logo et menus · annuler / rétablir · widget de l'élève (← et identifiant) · atelier en cours au centre · thème et réglages -->
+<header class="menubar">
+  <nav id="menus" role="menubar" aria-label="Menus"></nav>
+  <div class="tb-hist" role="group" aria-label="Historique">
+    <button class="tb-ico" type="button" id="bAnnuler" title="Annuler (Ctrl+Z)" aria-label="Annuler" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+    <button class="tb-ico" type="button" id="bRetablir" title="Rétablir (Ctrl+Y)" aria-label="Rétablir" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+  </div>
+  <div class="tbres tbid" id="widgetCentrale"><button class="tbid-moi" id="bCentrale" type="button" data-sync></button></div>
+  <div class="tb-centre" id="tbAtelier"></div>
+  <div class="mb-right">
+    <button class="tb-ico" type="button" data-theme-btn aria-label="Changer de thème"></button>
+    <button class="tb-ico" type="button" id="bReglages" aria-haspopup="true" aria-expanded="false" aria-label="Réglages" title="Réglages"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </div>
 </header>
 <div id="workspace">
   <div id="stage" class="stage"></div>

@@ -76,6 +76,7 @@
     P.host.classList.remove('res-open');
     if (P.ro) { P.ro.disconnect(); P.ro = null; }
     P.src = null;
+    TL.emit('ressources', false);   // bouton 📚 Ressources de la sous-barre (enfoncé ou non)
   };
 
   /** Ouvre le volet sur la ressource « num » (ou la première feuille ressource si num est vide).
@@ -107,6 +108,7 @@
     if (P.ro) P.ro.disconnect();
     P.ro = new ResizeObserver(ajuster); P.ro.observe(body);
     P.host.classList.add('res-open');
+    TL.emit('ressources', true);
     ajuster();
     function aller(si, bid) {
       TL.$$('.res-tab', tabs).forEach((t, k) => t.classList.toggle('on', steps[k].i === si));

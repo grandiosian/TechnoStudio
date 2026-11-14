@@ -12,7 +12,9 @@
        questions qui se débloquent une à une, ressources à côté) ; le travail est enregistré comme avant ;
      • enseignant (admin) : toute l'interface et toutes les options d'affichage. On y entre avec la clé enseignant,
        vérifiée par le serveur de compilation ; « Aperçu élève » montre la présentation des élèves. */
-  const vraiProf = () => !!app.enseignantCentrale || !!(app.profile && app.profile.role === 'prof');
+  // Ouvert depuis le portail élève de la Centrale (app.eleveCentrale) : toujours l'interface élève, même si ce navigateur
+  // a aussi une session de l'espace enseignant (l'enseignant qui « teste à la place d'un élève »).
+  const vraiProf = () => !app.eleveCentrale && (!!app.enseignantCentrale || !!(app.profile && app.profile.role === 'prof'));
   const isProf = () => vraiProf() && !app.apercu;
   const eleveUI = () => !!app.seul || !isProf();
   app.eleveUI = eleveUI; app.vraiProf = vraiProf;
@@ -84,11 +86,69 @@
   app.saveProgress = function (pg) {
     pg.updatedAt = Date.now();
     if (!pg.startedAt) pg.startedAt = pg.updatedAt;
+    hist.noter('pg:' + pg.wid);   // annuler / rétablir : un pas si les réponses ont changé
     if (app.seul) { TL.emit('progress', pg); return; } // atelier seul : en mémoire seulement
     clearTimeout(writes[pg.wid]);
     writes[pg.wid] = setTimeout(() => TL.db.set('pg:' + pg.wid, pg), 0);
     TL.centrale.sauver(pg);
     TL.emit('progress', pg);
+  };
+
+  /* ================= Annuler / rétablir ================= */
+  /* Historique du travail de la vue en cours : dans le lecteur, les réponses de l'élève à l'atelier ouvert (pg.answers :
+     textes, cases cochées, dessins, programmes…) ; dans l'éditeur, l'atelier entier. La vue « branche » une source :
+     lire() rend l'état (texte JSON), ecrire(état) le remet, l'enregistre par le chemin habituel (poste et Centrale)
+     et redessine. Chaque changement noté garde l'état d'avant ; des changements rapprochés (moins de 600 ms : un mot
+     tapé) ne font qu'un pas. 50 pas au plus par atelier, en mémoire pour la séance (rien n'est enregistré). */
+  const HIST_MAX = 50, HIST_GROUPE = 600, HIST_POIDS = 30e6;
+  const hist = (TL.historique = { source: null, piles: new Map(), calmeJusque: 0 });
+  hist.brancher = function (cle, lire, ecrire) {
+    let p = hist.piles.get(cle);
+    if (!p) hist.piles.set(cle, (p = { annuler: [], retablir: [], base: '', t: 0 }));
+    p.base = lire(); p.t = 0;
+    hist.source = { cle, lire, ecrire, p };
+    hist.maj();
+  };
+  hist.debrancher = function () { hist.source = null; hist.maj(); };
+  // Quelques instants où l'état peut bouger sans geste de l'utilisateur (un champ qui se redessine et s'enregistre
+  // de lui-même : Blockly, ordre tiré au sort…) : l'état de départ suit, sans faire de pas ni vider « Rétablir ».
+  hist.calme = function (ms) { hist.calmeJusque = Math.max(hist.calmeJusque, Date.now() + (ms || 0)); };
+  hist.noter = function (cle) {
+    const S = hist.source; if (!S || (cle && cle !== S.cle)) return;
+    const p = S.p, etat = S.lire();
+    if (etat === p.base) return;
+    const t = Date.now();
+    if (t < hist.calmeJusque) { p.base = etat; return; }
+    if (!p.annuler.length || t - p.t > HIST_GROUPE) {
+      p.annuler.push(p.base);
+      let poids = p.annuler.reduce((n, x) => n + x.length, 0);   // ateliers avec images : on borne aussi la mémoire
+      while (p.annuler.length > HIST_MAX || (poids > HIST_POIDS && p.annuler.length > 1)) poids -= p.annuler.shift().length;
+    }
+    p.retablir = [];
+    p.base = etat; p.t = t;
+    hist.maj();
+  };
+  function histBouger(de, vers) {
+    const S = hist.source; if (!S) return;
+    const p = S.p;
+    hist.noter(S.cle);   // un changement pas encore noté devient un pas
+    if (!p[de].length) return;
+    const etat = p[de].pop();
+    p[vers].push(p.base);
+    p.t = 0;
+    hist.calme(800);
+    try { S.ecrire(etat); } catch (e) { console.error(e); }
+    p.base = S.lire();   // ecrire peut retoucher l'état (réponses datées pour la Centrale)
+    hist.maj();
+  }
+  // travail rechargé de la Centrale (fusionné sur place) : c'est le nouveau point de départ, pas un geste à annuler
+  TL.on('synced', () => { const S = hist.source; if (S) S.p.base = S.lire(); });
+  hist.annuler = () => histBouger('annuler', 'retablir');
+  hist.retablir = () => histBouger('retablir', 'annuler');
+  hist.maj = function () {
+    const p = hist.source && hist.source.p, a = TL.$('#bAnnuler'), r = TL.$('#bRetablir');
+    if (a) a.disabled = !(p && p.annuler.length);
+    if (r) r.disabled = !(p && p.retablir.length);
   };
   TL.on('synced', () => {
     const open = (location.hash.match(/^#at-(.+)/) || [])[1];
@@ -110,27 +170,40 @@
   const cur = () => { const m = location.hash.match(/^#(at|ed|fiche)-(.+)$/); return m ? app.workshops.get(m[2]) : null; };
   // Élève : barre réduite (logo et son petit menu ; le lecteur y ajoute l'atelier et ses feuilles). Atelier seul : dessinée par le lecteur.
   const renderMenus = () => {
-    if (app.seul) return;
-    if (eleveUI()) { if (!/^#at-/.test(location.hash)) barreEleve([]); return; }
-    TL.menubar.render(menus());
+    if (!app.seul) {
+      if (eleveUI()) { if (!/^#at-/.test(location.hash)) barreEleve(); }
+      else TL.menubar.render(menus());
+    }
+    drawAtelier();
   };
   function menuEleve() {
-    const theme = document.documentElement.dataset.theme || 'auto';
     return [
       { label: 'Mes ateliers', action: () => app.go('accueil') },
       { label: TL.centrale.connecte() ? 'Mon compte (' + TL.centrale.user.name + ')' : 'Me connecter avec mon code…', action: () => (TL.centrale.connecte() ? app.go('compte') : app.connexion()) },
-      { sep: true }, { head: 'Thème' },
+      { sep: true },
+      app.apercu ? { label: '← Revenir au mode enseignant', action: () => { app.apercu = false; route(); } } : app.eleveCentrale ? null : { label: 'Mode enseignant…', action: () => app.modeEnseignant() },
+      { label: 'À propos de TechnoStudio', action: about },
+    ].filter(Boolean);
+  }
+  function barreEleve() {
+    TL.menubar.render([{ brand: h('span.brandmark', TL.brandSvg(), h('span', 'Techno', h('b', 'Studio'))), items: menuEleve }]);
+    if (app.apercu) TL.$('#menus').append(h('span.apercu-tag', { title: 'Vous voyez TechnoStudio comme un élève' }, 'Aperçu', h('span.apercu-plus', ' élève')));
+  }
+  /* Roue dentée (à droite de la barre) : thème, profil et connexion, mode enseignant. */
+  function menuReglages() {
+    const theme = document.documentElement.dataset.theme || 'auto';
+    const mode = app.apercu ? [{ label: '← Revenir au mode enseignant', action: () => { app.apercu = false; route(); } }]
+      : vraiProf() ? [{ label: 'Aperçu élève (présentation et parcours des élèves)', action: () => { app.apercu = true; if (TL.panels.close) TL.panels.close(); route(); } }, { label: 'Quitter le mode enseignant', action: () => app.quitterEnseignant() }]
+        : app.eleveCentrale ? [] : [{ label: 'Mode enseignant…', action: () => app.modeEnseignant() }];   // élève venu du portail : pas d'accès enseignant
+    return [
+      { head: 'Thème' },
       ...[['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => ({ label: l, check: theme === k, action: () => setTheme(k) })),
       { sep: true },
-      app.apercu ? { label: '← Revenir au mode enseignant', action: () => { app.apercu = false; route(); } } : { label: 'Mode enseignant…', action: () => app.modeEnseignant() },
+      { label: 'Profil et connexion…', action: () => app.go('compte') },
+      ...mode,
+      { sep: true },
       { label: 'À propos de TechnoStudio', action: about },
     ];
-  }
-  function barreEleve(extras) {
-    TL.menubar.render([{ brand: h('span.brandmark', TL.brandSvg(), h('span', 'Techno', h('b', 'Studio'))), items: menuEleve }]);
-    const bar = TL.$('#menus');
-    if (app.apercu) bar.append(h('span.apercu-tag', { title: 'Vous voyez TechnoStudio comme un élève' }, 'Aperçu élève'));
-    (extras || []).forEach((x) => x && bar.append(x));
   }
   /* Mode enseignant par la Centrale : TechnoStudio copié sur le serveur de la Centrale (…/miroir/technostudio/)
      est sur le même site que l'espace enseignant ; il lui demande si ce navigateur y est connecté. */
@@ -192,12 +265,9 @@
     const w = cur();
     const modeItems = [{ sep: true }, { label: 'Aperçu élève (présentation et parcours des élèves)', action: () => { app.apercu = true; if (TL.panels.close) TL.panels.close(); route(); } }, { label: 'Quitter le mode enseignant', action: () => app.quitterEnseignant() }];
     const mode = (location.hash.match(/^#([a-z]+)/) || [, 'accueil'])[1];
-    const theme = document.documentElement.dataset.theme || 'auto';
     return [
       { brand: h('span.brandmark', TL.brandSvg(), h('span', 'Techno', h('b', 'Studio'))), items: [
         { label: 'À propos de TechnoStudio', action: about },
-        { sep: true }, { head: 'Thème' },
-        ...[['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => ({ label: l, check: theme === k, action: () => setTheme(k) })),
         { sep: true }, { label: 'Profil et connexion…', action: () => app.go('compte') },
         ...modeItems,
       ] },
@@ -271,33 +341,164 @@
 
   /* ================= Coquille ================= */
   TL.brandSvg = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 512 512'); s.setAttribute('class', 'brand-mark'); s.setAttribute('aria-hidden', 'true'); s.innerHTML = '<rect width="512" height="512" rx="112" fill="#2F57A1"/><path d="M120 176h272M256 176v208" stroke="#fff" stroke-width="28" stroke-linecap="round"/><circle cx="120" cy="176" r="30" fill="#F5C400"/><circle cx="392" cy="176" r="30" fill="#fff"/><circle cx="256" cy="384" r="34" fill="#fff"/>'; return s; };
+  /* Barre du haut commune aux applications de la Centrale (même disposition que NetSim et Établi 3D) :
+     à gauche le logo et ses menus, puis le widget de l'élève (« ← » et identifiant) ; au centre l'atelier en cours ;
+     à droite le thème et les réglages. */
+  const icone = (d) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'i'); s.setAttribute('aria-hidden', 'true'); s.innerHTML = d; return s; };
+  const ICO = {
+    personne: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+    lune: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    soleil: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  };
+  /* Widget de l'élève : « Visiteur », ou son identifiant une fois connecté à la Centrale (clic : « Mon code » ou son compte).
+     Le bouton « ← » est placé à sa gauche : étape précédente du parcours, sinon « Mes ateliers » (portail). */
   function drawSync() {
+    const widget = TL.$('#widgetCentrale'), moi = TL.$('#bCentrale');
+    if (!widget || !moi) return;
+    moi.innerHTML = '';
     if (app.seul) {
-      TL.$$('[data-sync]').forEach((box) => {
-        const note = h('div.sync.st-local.seul-note', { title: 'Atelier en mode essai : les réponses restent dans cette page et disparaissent si on la recharge ou la ferme.' }, h('span.sync-dot'), h('span.sync-txt', 'Rien n’est enregistré'));
-        box.replaceWith(note);
-      });
+      moi.className = 'tbid-moi st-local seul-note'; moi.onclick = null; moi.setAttribute('aria-disabled', 'true');
+      moi.title = 'Atelier en mode essai : les réponses restent dans cette page et disparaissent si on la recharge ou la ferme.';
+      moi.append(h('span.sync-dot'), h('span.sync-txt', 'Rien n’est enregistré'));
       return;
     }
-    const Z = TL.centrale, st = Z.connecte() ? Z.status : 'local';
-    const txt = { local: 'Sur cet appareil', indispo: 'Sur cet appareil', online: 'Enregistré', offline: 'Hors ligne', syncing: 'Enregistrement…', error: 'À vérifier' }[st] || 'Sur cet appareil';
-    TL.$$('[data-sync]').forEach((box) => {
-      box.className = 'sync st-' + (st === 'indispo' ? 'local' : st); box.innerHTML = '';
-      box.append(h('span.sync-dot'), h('span.sync-txt', txt), Z.user ? h('span.sync-user', Z.user.name) : app.profile ? h('span.sync-user', app.profile.name) : null,
-        !Z.connecte() && Z.dispo ? h('span.sync-cta', 'Mon code') : null);
-      box.title = Z.message || (Z.connecte() ? 'Centrale ' + Z.serveur.replace(/^https?:\/\//, '').replace(/\/$/, '') + (Z.lastSync ? ' · ' + TL.fmtDate(Z.lastSync) : '') : 'Travail enregistré sur cet appareil. Clique pour te connecter avec ton code élève.');
-      box.onclick = () => (Z.connecte() ? app.go('compte') : app.connexion());
+    const Z = TL.centrale, on = Z.connecte(), st = on ? Z.status : 'local';
+    const etatTxt = { online: 'enregistré', offline: 'hors ligne', syncing: 'enregistrement…', error: 'à vérifier' }[st] || 'sur cet appareil';
+    moi.className = 'tbid-moi st-' + (st === 'indispo' ? 'local' : st);
+    moi.append(icone(ICO.personne), h('span.tbid-nom', on ? Z.user.name : 'Visiteur'), on ? h('span.sync-dot') : null);
+    moi.title = Z.message || (on ? 'Connecté à la Centrale ' + Z.serveur.replace(/^https?:\/\//, '').replace(/\/$/, '') + ' : travail ' + etatTxt + (Z.lastSync ? ' (' + TL.fmtDate(Z.lastSync) + ')' : '') + '. Clique pour ton compte.'
+      : 'Visiteur : ton travail est enregistré sur cet appareil. Clique pour te connecter avec ton code élève (Mon code).');
+    moi.setAttribute('aria-label', on ? 'Mon compte : ' + Z.user.name + ', travail ' + etatTxt : 'Visiteur : me connecter avec mon code');
+    // connecté : le menu de l'élève commun aux applications (module de la Centrale), sinon la page « Compte » ;
+    // visiteur : se connecter avec son code
+    moi.onclick = (e) => {
+      e.stopPropagation();
+      if (!Z.connecte()) { app.connexion(); return; }
+      const C = window.Centrale;
+      const ouvert = C && C.menuEleve && C.menuEleve(moi, {
+        liens: [{ texte: 'Mon compte et mes réglages…', action: () => app.go('compte') },
+          { texte: 'Se déconnecter', classe: 'cme-sortir', action: async () => { await Z.deconnexion(); TL.toast('Déconnecté : ton travail reste sur cet appareil.'); } }],
+        deconnexion: false,
+        onChange: () => drawSync(),
+      });
+      if (!ouvert) app.go('compte');
+    };
+    // « ← » : bouton partagé du module de la Centrale s'il le propose, sinon l'ancien « ← Mes ateliers » (Centrale.retour)
+    const ret = widget.querySelector('.tbid-ret');
+    const P = Z.boutonPrecedent ? Z.boutonPrecedent() : null;
+    if (P) { if (ret !== P.bouton) { if (ret) ret.remove(); widget.prepend(P.bouton); } }
+    else if (Z.lienPortail()) {
+      if (!ret) widget.prepend(h('button.tbid-ret.mb-retour', { type: 'button', title: 'Revenir à tous tes ateliers sur la Centrale (ton travail est enregistré)', 'aria-label': 'Mes ateliers', onclick: (e) => { e.stopPropagation(); window.Centrale.retour(); } },
+        h('span', { 'aria-hidden': 'true' }, '←'), h('span.centrale-precedent-txt', 'Mes ateliers')));
+    } else if (ret) ret.remove();
+  }
+  /* Feuilles comptées dans l'avancement : celles de la série en cours (normale ou SEGPA), sans les ressources. */
+  function feuillesAtelier(w, pg) {
+    const s0 = pg && w.steps[pg.step], segpa = !!(s0 && s0.segpa);
+    let idx = w.steps.map((s, i) => i).filter((i) => w.steps[i].kind !== 'ressource');
+    if (idx.some((i) => !!w.steps[i].segpa === segpa)) idx = idx.filter((i) => !!w.steps[i].segpa === segpa);
+    return idx.map((i) => ({ fait: !!TL.stepDone(w.steps[i], pg), ici: !!pg && i === pg.step }));
+  }
+  /* Centre de la barre : l'atelier en cours, en clair — pastille de niveau, « Atelier » et son titre | « Feuille » et son
+     code, petites barres (une par feuille) et « 1/5 feuilles faites » —, « Choisis un atelier » sinon. Le choix de la
+     feuille et 📚 Ressources sont dans la sous-barre du lecteur, juste en dessous (viewPlayer). */
+  function drawAtelier() {
+    const zone = TL.$('#tbAtelier'); if (!zone) return;
+    const w = cur();
+    const b = w && app.barre && app.barre.wid === w.id ? app.barre : null;
+    let pill;
+    if (!w) pill = app.seul ? null : h('button.tbres.tb-at.tb-choix', { type: 'button', title: 'Voir mes ateliers', onclick: () => app.go('accueil') }, h('span.tpnom', 'Choisis un atelier'));
+    else {
+      const feuilles = b ? b.feuilles() : feuillesAtelier(w, app.progress.get(w.id));
+      const faites = feuilles.filter((f) => f.fait).length, n = feuilles.length;
+      const code = b && b.code ? b.code() : '';
+      // les petites étiquettes (.tb-lbl) sont les premières à disparaître faute de place (palier serre-2)
+      const kids = [TL.pastille(w), h('span.tb-lbl', 'Atelier'), h('span.tpnom', w.title),
+        code || n ? h('span.tb-sep', { 'aria-hidden': 'true' }) : null,
+        code ? h('span.tb-lbl', 'Feuille') : null, code ? h('span.tpcn', code) : null,
+        n && n <= 14 ? h('span.tb-barres', { 'aria-hidden': 'true' }, feuilles.map((f) => h('i' + (f.fait ? '.on' : '') + (f.ici ? '.ici' : '')))) : null,
+        n ? h('span.tbpct', faites + '/' + n, h('span.tb-lbl', n > 1 ? ' feuilles faites' : ' feuille faite')) : null];
+      const resume = 'Atelier « ' + w.title + ' »' + (code ? ' · feuille ' + code : '') + (n ? ' · ' + faites + ' feuille' + (faites > 1 ? 's' : '') + ' faite' + (faites > 1 ? 's' : '') + ' sur ' + n : '');
+      const attrs = { style: '--cl:' + TL.niveauColor(w), title: resume + (app.seul ? '' : ' · voir mes ateliers'), 'aria-label': resume };
+      pill = app.seul ? h('div.tbres.tb-at', attrs, ...kids) : h('button.tbres.tb-at', Object.assign({ type: 'button', onclick: () => app.go('accueil') }, attrs), ...kids);
+    }
+    const old = zone.querySelector('.tb-at');
+    if (old && pill) old.replaceWith(pill); else if (old) old.remove(); else if (pill) zone.prepend(pill);
+    placerCentre();
+  }
+  app.majAtelier = drawAtelier;
+  /* Rien ne doit se chevaucher, et le thème et les réglages (à droite) restent toujours visibles. Faute de place, la barre
+     se resserre par paliers (classes serre-1 … serre-7 de .menubar, voir app.css), du moins utile au plus utile :
+     1 le logo seul (sans le texte « TechnoStudio ») · 2 les petites étiquettes de l'atelier (« Atelier », « Feuille »,
+     « feuilles faites »), « Aperçu » court · 3 texte du « ← », titre, feuille et barres de l'atelier · 4 compteur
+     « faites/total », marges réduites · 5 pastille de l'atelier · 6 nom de l'élève et « Aperçu » · 7 tout le centre.
+     Annuler / rétablir restent toujours (ils sont avant le widget de l'élève, compté dans le côté gauche).
+     À chaque palier, l'atelier est placé au milieu de la barre (comme NetSim), ou au plus près s'il toucherait un côté. */
+  const SERRE = 7;
+  function placerCentre() {
+    const bar = TL.$('.menubar'), zone = TL.$('#tbAtelier'), gauche = TL.$('#widgetCentrale'), droite = TL.$('.menubar .mb-right'), menus = TL.$('#menus');
+    if (!bar || !zone || !gauche || !droite) return;
+    const deborde = (el) => !!el && el.offsetWidth > 0 && el.scrollWidth > el.clientWidth + 1;
+    const tient = () => {
+      const b = bar.getBoundingClientRect(), g = gauche.getBoundingClientRect(), d = droite.getBoundingClientRect();
+      if (d.right > b.right + 1 || g.right > d.left - 6 || deborde(menus)) return false;
+      if (!zone.offsetWidth) return true;
+      const z = zone.getBoundingClientRect();
+      if (z.left < g.right + 5.5 || z.right > d.left - 5.5 || deborde(zone)) return false;   // demi-pixel de marge (arrondis)
+      const pill = zone.querySelector('.tb-at');
+      if (deborde(pill)) return false;
+      const nom = pill && pill.offsetWidth ? pill.querySelector('.tpnom') : null;
+      return !(nom && nom.offsetWidth && nom.scrollWidth > nom.clientWidth + 1 && nom.clientWidth < 90);   // titre trop coupé : palier suivant
+    };
+    // l'atelier au milieu de la barre ; s'il touche un côté, glissé juste ce qu'il faut (au plus près du milieu)
+    // tant que le nom « TechnoStudio » est affiché (palier 0), l'atelier doit être pile au milieu ; sinon, logo seul d'abord
+    const placer = (n) => {
+      zone.classList.add('au-milieu'); zone.style.left = '';
+      if (!zone.offsetWidth) return tient();
+      const b = bar.getBoundingClientRect(), g = gauche.getBoundingClientRect(), d = droite.getBoundingClientRect(), w = zone.offsetWidth;
+      const mini = g.right - b.left + 6 + w / 2, maxi = d.left - b.left - 6 - w / 2;
+      if (mini > maxi || (n === 0 && (mini > b.width / 2 + 1 || maxi < b.width / 2 - 1))) return false;
+      zone.style.left = Math.min(Math.max(b.width / 2, mini), maxi) + 'px';
+      return tient();
+    };
+    for (let n = 0; n <= SERRE; n++) {
+      for (let k = 1; k <= SERRE; k++) bar.classList.toggle('serre-' + k, k <= n);
+      if (placer(n)) return;
+    }
+  }
+  let rafCentre = 0;
+  const replacer = () => { cancelAnimationFrame(rafCentre); rafCentre = requestAnimationFrame(placerCentre); };
+  window.addEventListener('resize', replacer);
+  /* À droite : bouton du thème (clair / sombre) et roue dentée des réglages. */
+  const themeSombre = () => (document.documentElement.dataset.theme || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
+  function drawTheme() {
+    TL.$$('[data-theme-btn]').forEach((b) => {
+      const sombre = themeSombre();
+      b.replaceChildren(icone(sombre ? ICO.soleil : ICO.lune));
+      b.title = sombre ? 'Passer en thème clair' : 'Passer en thème sombre';
+      b.setAttribute('aria-label', b.title);
+      b.onclick = (e) => { e.stopPropagation(); setTheme(themeSombre() ? 'light' : 'dark'); };
     });
   }
-  function drawRetour() {
-    const zone = TL.$('.mb-right'); if (!zone) return;
-    let b = zone.querySelector('.mb-retour');
-    const lien = TL.centrale.lienPortail();
-    if (!lien) { if (b) b.remove(); return; }
-    if (!b) { b = h('button.btn.small.ghost.mb-retour', { type: 'button', title: 'Revenir au portail de la Centrale (ton travail est enregistré)', onclick: () => window.Centrale.retour() }, '← Mes ateliers'); zone.prepend(b); }
+  function initBarre() {
+    drawTheme();
+    const bA = TL.$('#bAnnuler'), bR = TL.$('#bRetablir');
+    if (bA) bA.onclick = (e) => { e.stopPropagation(); hist.annuler(); };
+    if (bR) bR.onclick = (e) => { e.stopPropagation(); hist.retablir(); };
+    hist.maj();
+    // le « ← » apparaît plus tard (module de la Centrale), les polices se chargent : la barre se recalcule
+    try { const ro = new ResizeObserver(replacer); ['#widgetCentrale', '#menus'].forEach((s) => TL.$(s) && ro.observe(TL.$(s))); } catch (e) { /* ancien navigateur */ }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(replacer).catch(() => {});
+    try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawTheme); } catch (e) { /* ancien navigateur */ }
+    const b = TL.$('#bReglages'); if (!b) return;
+    if (app.seul) { b.hidden = true; return; }   // atelier seul : le strict minimum (le thème reste)
+    const ouvrir = (focus) => TL.menubar.ouvrir('reglages', b, menuReglages, focus);
+    b.onclick = (e) => { e.stopPropagation(); if (TL.menubar.open === 'reglages') TL.menubar.close(); else ouvrir(); };
+    b.onkeydown = (e) => { if (e.key === 'ArrowDown') { e.preventDefault(); ouvrir(true); } };
   }
-  TL.on('hub', () => { drawSync(); drawRetour(); renderMenus(); });
-  function setTheme(k) { if (k === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = k; try { localStorage.setItem('tl-theme', k); } catch (e) { /* stockage indisponible */ } renderMenus(); }
+  TL.on('hub', () => { drawSync(); renderMenus(); });
+  TL.on('ressources', () => { const b = TL.$('.sous-barre .seul-res'); if (b) b.setAttribute('aria-pressed', String(TL.ressources.isOpen())); });
+  function setTheme(k) { if (k === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = k; try { localStorage.setItem('tl-theme', k); } catch (e) { /* stockage indisponible */ } renderMenus(); drawTheme(); }
   function applyZoom() { TL.$$('.pasteboard .sheet').forEach((s) => (s.style.zoom = app.zoom)); }
 
   let rerender = () => {};
@@ -314,6 +515,8 @@
     if (!app.seul && eleveUI() && /^(ed-|fiche-|creer$|passerelle$|code$|circuit$|maquettes$)/.test(hash)) { history.replaceState(null, '', location.pathname + location.search + '#accueil'); hash = 'accueil'; }
     // #activite=<atelier> ou <atelier>/<feuille> : ouverture directe, même sans la Centrale
     if (/^activite=/.test(hash)) { let id = ''; try { id = decodeURIComponent(hash.slice(9).split('&')[0]); } catch (e) { /* adresse illisible */ } if (id) { await TL.centrale.ouvrirActivite(id); if (/^#activite=/.test(location.hash)) app.go('accueil'); return; } }
+    app.barre = null;   // atelier en cours (centre de la barre) : renseigné par le lecteur
+    hist.debrancher();  // annuler / rétablir : la nouvelle vue branche sa propre source (lecteur, éditeur)
     renderMenus();
     const st = stage();
     st.innerHTML = ''; st.className = 'stage';
@@ -398,18 +601,28 @@
     const demande = app.seul || (app.demande && app.demande.id === w.id ? app.demande : null);
     if (app.demande && app.demande.id === w.id) app.demande = null;   // la feuille demandée (portail) ne sert qu'à l'ouverture
     const G = eleveUI() ? guide(w, pg, codes, demande || {}) : null;
-    let choix = null;
+    let choix = null, btnResG = null, boiteChoix = null, sousBarre = null;
     const resOpts = () => ({ segpa: !!(w.steps[pg.step] && w.steps[pg.step].segpa), pg });
     if (G) {
+      /* Sous-barre, juste sous la barre du haut : le choix de la feuille (dès que la feuille suivante est débloquée)
+         et 📚 Ressources (si l'atelier en a) ; absente si ni l'un ni l'autre. L'atelier lui-même est au centre de la
+         barre du haut (drawAtelier). Le menu garde le focus : ses options sont refaites sur place (paintChoix). */
       choix = h('select.field.seul-feuille', { 'aria-label': 'Feuille', onchange: () => show(+choix.value) });
-      const btnRes = G.hasRes ? h('button.btn.small.seul-res', { type: 'button', title: 'Ouvrir les documents ressources à côté de la feuille', onclick: () => (TL.ressources.isOpen() ? TL.ressources.close() : TL.ressources.open(w, null, null, resOpts())) }, '📚 Ressources') : null;
-      const extras = [h('span.seul-titre', TL.pastille(w), h('b', w.title)), choix, btnRes];
-      if (app.seul) { const bar = TL.$('#menus'); bar.innerHTML = ''; bar.append(h('span.seul-brand', TL.brandSvg()), ...extras.filter(Boolean)); }
-      else barreEleve(extras);
+      boiteChoix = h('label.ssb-feuille', h('span.ssb-lbl', 'Feuille'), choix);
+      btnResG = G.hasRes ? h('button.btn.small.seul-res', { type: 'button', title: 'Ouvrir ou fermer les documents ressources, à côté de la feuille', 'aria-pressed': String(TL.ressources.isOpen()), onclick: () => (TL.ressources.isOpen() ? TL.ressources.close() : TL.ressources.open(w, null, null, resOpts())) }, h('span', { 'aria-hidden': 'true' }, '📚'), h('span', 'Ressources')) : null;
+      sousBarre = h('div.sous-barre', { role: 'toolbar', 'aria-label': 'Feuille et ressources', hidden: true }, h('div.ssb-in', boiteChoix, btnResG));
+      board.before(sousBarre);
+      if (app.seul) { const bar = TL.$('#menus'); bar.innerHTML = ''; bar.append(h('span.seul-brand', TL.brandSvg())); }
+      else barreEleve();
       // ouverture : la feuille demandée, sinon la plus avancée des feuilles débloquées
       if (demande && demande.feuille) pg.step = G.parcours[G.base];
       else if (!G.ok(pg.step)) pg.step = G.parcours[G.maxOpen()];
     }
+    app.barre = {
+      wid: w.id,
+      code: () => codes[pg.step] || '',
+      feuilles: () => (G ? G.parcours.slice(G.base).map((si) => ({ fait: !!G.done(si), ici: si === pg.step })) : feuillesAtelier(w, pg)),
+    };
     const paintChoix = () => {
       if (!choix) return;
       choix.innerHTML = '';
@@ -417,6 +630,9 @@
       G.parcours.forEach((si, k) => { if (k >= G.base && k <= max) choix.append(h('option', { value: si }, codes[si] + ' · ' + w.steps[si].title)); });
       if (max < G.parcours.length - 1) choix.append(h('option', { value: '', disabled: true }, '🔒 La suite se débloque quand la feuille est finie'));
       choix.value = String(pg.step);
+      // une seule feuille ouverte : pas de choix à faire ; ni choix ni ressources : pas de sous-barre
+      boiteChoix.hidden = max <= G.base;
+      sousBarre.hidden = boiteChoix.hidden && !btnResG;
     };
     let nav = null, wasDone = null;
     const buildNav = () => {
@@ -435,7 +651,7 @@
     };
     let sheet = null, suivi = null;
     const afterResult = () => {
-      TL.panels.refresh('feuilles'); TL.panels.refresh('suivi'); paintNote();
+      TL.panels.refresh('feuilles'); TL.panels.refresh('suivi'); paintNote(); drawAtelier();
       if (!G) return;
       G.lock(sheet, w.steps[pg.step]);
       if (suivi) suivi.maj();   // questions débloquées déjà à l'écran : « vues » maintenant
@@ -451,6 +667,7 @@
       pg.step = TL.clamp(i, 0, w.steps.length - 1);
       const s = w.steps[pg.step];
       if (!s) { board.innerHTML = ''; board.append(h('div.desk', h('p', 'Atelier vide.'))); return; }
+      hist.calme(1000);   // la feuille se dessine : ses champs peuvent s'enregistrer d'eux-mêmes (pas un geste de l'élève)
       pg.seen[s.id] = true; app.saveProgress(pg);
       board.innerHTML = '';
       sheet = TL.renderSheet(w, s, pg.step, { pg, layers: app.layers, onResult: () => setTimeout(afterResult, 0) });
@@ -466,6 +683,7 @@
       board.scrollTop = 0;
       paintNote();
       TL.panels.refresh('feuilles'); TL.panels.refresh('suivi');
+      drawAtelier();
     };
     function paintNote() {
       const box = board.querySelector('[data-note]');
@@ -480,6 +698,20 @@
       if (si != null && k >= G.base && G.ok(si)) show(si);
     };
     rerender = () => show(pg.step);
+    /* Annuler / rétablir : les réponses de cet atelier. La Centrale fusionne réponse par réponse en gardant la plus
+       récente (at) : chaque réponse remise est datée de maintenant, et une réponse retirée devient une réponse vide
+       datée (sinon la copie du serveur la ferait revenir). Puis la feuille est redessinée, à la même hauteur. */
+    hist.brancher('pg:' + w.id, () => JSON.stringify(pg.answers || {}), (etat) => {
+      const avant = pg.answers || {}, apres = JSON.parse(etat), t = Date.now();
+      Object.keys(avant).forEach((k) => { if (!(k in apres)) apres[k] = { at: t }; });
+      Object.keys(apres).forEach((k) => { if (JSON.stringify(apres[k]) !== JSON.stringify(avant[k])) apres[k] = Object.assign({}, apres[k], { at: t }); });
+      pg.answers = apres;
+      app.saveProgress(pg);
+      const haut = board.scrollTop, etait = pg.step;
+      if (G && !G.ok(pg.step)) pg.step = G.parcours[G.maxOpen()];   // feuille de nouveau verrouillée : la plus avancée ouverte
+      show(pg.step);
+      if (pg.step === etait) board.scrollTop = haut;
+    });
 
     TL.panels.register('feuilles', { title: 'Feuilles', short: 'Feuilles', icon: '❐', w: 250, render(body) {
       body.append(h('a.p-row.fiche-link', { href: '#fiche-' + w.id }, h('span.kind.k-fiche', 'F'), h('span.p-row-t', 'Fiche pédagogique')));
@@ -717,7 +949,7 @@
     const name = h('input.field', { id: 'pf-name', type: 'text', value: p.name || '', autocomplete: 'name' });
     const role = vraiProf()
       ? h('div', h('span.pill.on', 'Mode enseignant'), ' ', h('button.btn.small.ghost', { type: 'button', onclick: () => app.quitterEnseignant() }, 'Quitter le mode enseignant'))
-      : h('div', h('span.pill.neutral', 'Élève'), ' ', h('button.btn.small.ghost', { type: 'button', onclick: () => app.modeEnseignant() }, 'Mode enseignant…'));
+      : h('div', h('span.pill.neutral', 'Élève'), app.eleveCentrale ? null : ' ', app.eleveCentrale ? null : h('button.btn.small.ghost', { type: 'button', onclick: () => app.modeEnseignant() }, 'Mode enseignant…'));
     desk.append(h('header.desk-head', h('p.eyebrow', 'Profil, Centrale, compilation'), h('h1', 'Compte et connexion')));
     const box = h('section.card');
     const draw = () => {
@@ -913,10 +1145,18 @@
     TL.modal('TechnoStudio ' + TL.VERSION, h('div.prose', { html: TL.md('Ateliers de technologie au format de la charte (feuilles P, ressources R, synthèse S, évaluation E, version SEGPA), simulations, programmation de cartes.\n\nFonctionne hors ligne ; se connecte à la **Centrale élèves** (code élève, ateliers reçus, sauvegarde, suivi) selon le **descripteur de passerelle ' + TL.descriptor.version + '** (format ' + TL.descriptor.format + ').') }), [{ label: 'Fermer', primary: true }]);
   }
   function shortcuts() {
-    TL.modal('Raccourcis clavier', h('table.simple', h('tbody', [['← / →', 'Feuille précédente / suivante'], ['Ctrl O', 'Bibliothèque'], ['Échap', 'Fermer un menu ou une fenêtre'], ['Double-clic sur un titre de panneau', 'Replier / déplier'], ['Glisser le titre d’un panneau', 'Le déplacer']].map(([k, v]) => h('tr', h('td.mono', k), h('td', v))))), [{ label: 'Fermer', primary: true }]);
+    TL.modal('Raccourcis clavier', h('table.simple', h('tbody', [['← / →', 'Feuille précédente / suivante'], ['Ctrl Z', 'Annuler (hors d’un champ de texte)'], ['Ctrl Y ou Ctrl Maj Z', 'Rétablir'], ['Ctrl O', 'Bibliothèque'], ['Échap', 'Fermer un menu ou une fenêtre'], ['Double-clic sur un titre de panneau', 'Replier / déplier'], ['Glisser le titre d’un panneau', 'Le déplacer']].map(([k, v]) => h('tr', h('td.mono', k), h('td', v))))), [{ label: 'Fermer', primary: true }]);
   }
   document.addEventListener('keydown', (e) => {
-    if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable],.injectionDiv')) return;
+    // dans un champ (texte, éditeur de code, Blockly) : le navigateur ou l'éditeur gère lui-même Ctrl+Z
+    if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable],.injectionDiv,.blocklyWidgetDiv')) return;
+    const touche = (e.key || '').toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (touche === 'z' || touche === 'y')) {
+      if (document.querySelector('.modal')) return;
+      e.preventDefault();
+      if (touche === 'y' || e.shiftKey) hist.retablir(); else hist.annuler();
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o' && !app.seul) { e.preventDefault(); app.go('accueil'); }
     if (app.step && !e.ctrlKey && !e.metaKey && !e.altKey) { if (e.key === 'ArrowRight') app.step(1); if (e.key === 'ArrowLeft') app.step(-1); }
   });
@@ -960,9 +1200,13 @@
     if (app.seul) return startSeul();
     // Lancé depuis la Centrale : ?mode=enseignant (session de l'espace enseignant) ou ?mode=eleve (présentation des élèves)
     let modeDemande = ''; try { modeDemande = new URLSearchParams(location.search).get('mode') || ''; } catch (e) { /* rien */ }
-    app.enseignantCentrale = (await app.sessionEnseignant()) === true;
-    if (modeDemande === 'eleve' && app.enseignantCentrale) app.apercu = true;
     const depuisPortail = /(^|[#&])centrale=/.test(location.hash) || /^#activite=/.test(location.hash);   // ou lien direct vers un atelier
+    // Venu du portail élève (jeton, adresse de retour dans l'adresse ou gardée par le module pour cet onglet) : mode élève
+    let retourPortail = /(^|[#&])retour=/.test(location.hash);
+    try { retourPortail = retourPortail || !!sessionStorage.getItem('centrale-retour'); } catch (e) { /* rien */ }
+    app.eleveCentrale = modeDemande !== 'enseignant' && (/(^|[#&])centrale=/.test(location.hash) || retourPortail);
+    app.enseignantCentrale = !app.eleveCentrale && (await app.sessionEnseignant()) === true;
+    if (modeDemande === 'eleve' && app.enseignantCentrale) app.apercu = true;
     app.profile = await TL.db.get('profile');
     if (!app.profile && window.TL_DEFAULT_PROFILE) app.profile = Object.assign({ createdAt: Date.now(), profOk: true }, window.TL_DEFAULT_PROFILE);
     if (app.profile && app.profile.role === 'prof' && !app.profile.profOk) app.profile.role = 'eleve';   // « Enseignant » choisi sans clé : redevient élève
@@ -972,6 +1216,7 @@
     await TL.panels.load();
     await app.loadWorkshops();
     const centrale = TL.centrale.init(); // en parallèle : l'appli s'affiche sans attendre le réseau
+    initBarre();
     drawSync();
     window.addEventListener('hashchange', route);
     TL.on('synced', () => { drawSync(); renderMenus(); });
@@ -989,6 +1234,7 @@
     await TL.panels.load();
     await app.loadWorkshops();
     const w = app.workshops.get(app.seul.id);
+    initBarre();
     drawSync();
     if (!w) {
       TL.$('#menus').append(h('span.seul-brand', TL.brandSvg()));
