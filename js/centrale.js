@@ -131,13 +131,18 @@
       if (!app.profile.role) app.profile.role = 'eleve';
       await TL.db.set('profile', app.profile);
     }
+    let remis = false;
     try {
       const n = await Z.recevoir();
+      const vide = await verifierCopieLocale(infos);
+      remis = vide === 'remis';
       await Z.chargerTout();
       Z.declarer();
       Z.lastSync = Date.now();
       etat('online');
       if (n) TL.toast(n + ' atelier(s) reçu(s) de la Centrale.', 'ok');
+      if (remis) TL.toast('Ton travail a été remis à zéro : tu repars du début.', '');
+      if (vide && TL.app.route) TL.app.route();   // la vue ouverte montrait l'ancien travail
     } catch (e) {
       etat(e.horsLigne ? 'offline' : 'error', e.message);
     }
@@ -145,6 +150,35 @@
     if (Z.precedent) Z.precedent.maj();   // connecté : le « ← » peut maintenant mener à l'étape précédente du parcours
     const demande = window.Centrale.activiteDemandee();
     if (demande) ouvrirActivite(demande);
+  }
+
+  /* ---------- À qui est la copie de ce navigateur ? ----------
+     Le travail gardé dans le navigateur est lié à l'élève qui s'est connecté (« classe/numéro », ts-centrale-eleve).
+     À la connexion, il n'est fusionné puis renvoyé à la Centrale que s'il est à cet élève, ou fait en visiteur (pas de
+     lien). Copie d'un autre élève (poste partagé, essais de l'enseignant), ou rien sur le serveur pour cet élève
+     (« Remettre à zéro » dans l'espace enseignant) : la copie est oubliée et l'élève repart de ce qu'a la Centrale.
+     Renvoie '' (rien à faire), 'autre' ou 'remis'. */
+  const LIEN = 'ts-centrale-eleve';
+  async function verifierCopieLocale(infos) {
+    const qui = (infos.classe || '') + '/' + (infos.eleve || '');
+    const lie = lireReglage(LIEN);
+    let vider = '';
+    if (lie && lie !== qui) vider = 'autre';
+    else if (lie) {
+      try {
+        const [donnees, progressions] = await Promise.all([
+          window.Centrale.listeDonnees(),
+          window.Centrale.mesProgressions ? window.Centrale.mesProgressions() : Promise.resolve({ inconnu: true }),
+        ]);
+        if (!(donnees || []).length && !Object.keys(progressions || {}).length) vider = 'remis';
+      } catch (e) { return ''; }   // serveur injoignable : on ne décide rien (le lien reste)
+    }
+    if (vider) {
+      await TL.app.oublierTravail();
+      Object.keys(envoyes).forEach((k) => delete envoyes[k]);
+    }
+    ecrireReglage(LIEN, qui);
+    return vider;
   }
 
   /* ---------- Contenus : ressources déposées par l'enseignant ---------- */

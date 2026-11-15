@@ -94,6 +94,15 @@
     TL.centrale.sauver(pg);
     TL.emit('progress', pg);
   };
+  /* Travail de ce navigateur oublié (réponses des ateliers, projet de l'atelier Code, annuler / rétablir) : copie d'un
+     autre élève, ou travail remis à zéro sur la Centrale (js/centrale.js, verifierCopieLocale). */
+  app.oublierTravail = async function () {
+    Object.keys(writes).forEach((k) => clearTimeout(writes[k]));
+    for (const k of await TL.db.keys('pg:')) await TL.db.del(k);
+    await TL.db.del('code:projet');
+    app.progress.clear();
+    for (const k of [...hist.piles.keys()]) if (String(k).startsWith('pg:')) hist.piles.delete(k);
+  };
 
   /* ================= Annuler / rétablir ================= */
   /* Historique du travail de la vue en cours : dans le lecteur, les réponses de l'élève à l'atelier ouvert (pg.answers :
