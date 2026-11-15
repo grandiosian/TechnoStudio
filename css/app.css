@@ -94,6 +94,13 @@ div.tbres.tb-at:hover { border-color: var(--ui-line); }
 .tb-barres i.ici { height: 16px; box-shadow: 0 0 0 1px var(--ui-muted); }
 .tb-at .tbpct { flex: none; font: 12px var(--f-mono); color: var(--ui-muted); }
 .tb-at .tbpct .tb-lbl { font-family: var(--f-ui); }
+/* Essai de l'enseignant « à la place d'un élève » : interrupteur Élève | Enseignant, juste après l'atelier (app.basculerVue) */
+.tb-vue { flex: none; display: inline-flex; align-items: center; gap: 2px; height: 34px; padding: 2px; box-sizing: border-box; border-radius: 999px; background: var(--surface-2); border: 1px dashed var(--signal); }
+.tb-vue-opt { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border: 0; border-radius: 999px; background: transparent; color: var(--ui-muted); font: 600 12.5px var(--f-ui); white-space: nowrap; cursor: pointer; }
+.tb-vue-opt .i { width: 16px; height: 16px; }
+.tb-vue-opt:hover { color: var(--ui-ink); }
+.tb-vue-opt.on { background: #F5C400; color: #3a2d00; cursor: default; }
+.tb-vue-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 /* Boutons-icônes de la barre (annuler / rétablir, thème, réglages) */
 .tb-ico { display: inline-grid; place-items: center; width: 36px; height: 34px; padding: 0; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--ui-ink); cursor: pointer; }
 .tb-ico:hover, .tb-ico.on { background: var(--ui-hover); border-color: var(--ui-line); }
@@ -108,6 +115,8 @@ div.tbres.tb-at:hover { border-color: var(--ui-line); }
 .serre-1 .brandmark > span { display: none; }
 .serre-1 .brand-btn { padding: 4px 6px; }
 .serre-2 .tb-txt, .serre-2 .apercu-plus, .serre-2 .tb-at .tb-lbl { display: none; }
+.serre-3 .tb-vue-txt { display: none; }
+.serre-3 .tb-vue-opt { padding: 0 8px; }
 .serre-3 .tbid .tbid-ret .centrale-precedent-txt, .serre-3 .tb-at .tb-barres, .serre-3 .tb-at .tpcn, .serre-3 .tb-at .tb-sep { display: none; }
 .serre-4 .tb-at .tbpct { display: none; }
 .serre-4 .tbres, .serre-4 .tbid > button { padding: 0 9px; }

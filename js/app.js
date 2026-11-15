@@ -13,7 +13,8 @@
      • enseignant (admin) : toute l'interface et toutes les options d'affichage. On y entre avec la clé enseignant,
        vérifiée par le serveur de compilation ; « Aperçu élève » montre la présentation des élèves. */
   // Ouvert depuis le portail élève de la Centrale (app.eleveCentrale) : toujours l'interface élève, même si ce navigateur
-  // a aussi une session de l'espace enseignant (l'enseignant qui « teste à la place d'un élève »).
+  // a aussi une session de l'espace enseignant. Exception : la session d'essai de l'enseignant qui « teste à la place
+  // d'un élève » (Centrale.session().essai) a l'interrupteur Élève | Enseignant de la barre (app.basculerVue).
   const vraiProf = () => !app.eleveCentrale && (!!app.enseignantCentrale || !!(app.profile && app.profile.role === 'prof'));
   const isProf = () => vraiProf() && !app.apercu;
   const eleveUI = () => !!app.seul || !isProf();
@@ -189,7 +190,8 @@
       { label: 'Mes ateliers', action: () => app.go('accueil') },
       { label: TL.centrale.connecte() ? 'Mon compte (' + TL.centrale.user.name + ')' : 'Me connecter avec mon code…', action: () => (TL.centrale.connecte() ? app.go('compte') : app.connexion()) },
       { sep: true },
-      app.apercu ? { label: '← Revenir au mode enseignant', action: () => { app.apercu = false; route(); } } : app.eleveCentrale ? null : { label: 'Mode enseignant…', action: () => app.modeEnseignant() },
+      app.essaiProf ? { label: 'Vue enseignant (tous les modes)', action: () => app.basculerVue(true) }
+        : app.apercu ? { label: '← Revenir au mode enseignant', action: () => { app.apercu = false; route(); } } : app.eleveCentrale ? null : { label: 'Mode enseignant…', action: () => app.modeEnseignant() },
       { label: 'À propos de TechnoStudio', action: about },
     ].filter(Boolean);
   }
@@ -201,7 +203,8 @@
   /* Roue dentée (à droite de la barre) : thème, profil et connexion, mode enseignant. */
   function menuReglages() {
     const theme = document.documentElement.dataset.theme || 'auto';
-    const mode = app.apercu ? [{ label: '← Revenir au mode enseignant', action: () => { app.apercu = false; route(); } }]
+    const mode = app.essaiProf ? [{ label: app.vueProf ? 'Vue élève (règles de l’atelier appliquées)' : 'Vue enseignant (tous les modes)', action: () => app.basculerVue(!app.vueProf) }]
+      : app.apercu ? [{ label: '← Revenir au mode enseignant', action: () => { app.apercu = false; route(); } }]
       : vraiProf() ? [{ label: 'Aperçu élève (présentation et parcours des élèves)', action: () => { app.apercu = true; if (TL.panels.close) TL.panels.close(); route(); } }, { label: 'Quitter le mode enseignant', action: () => app.quitterEnseignant() }]
         : app.eleveCentrale ? [] : [{ label: 'Mode enseignant…', action: () => app.modeEnseignant() }];   // élève venu du portail : pas d'accès enseignant
     return [
@@ -262,6 +265,7 @@
     const m = TL.modal('Mode enseignant', h('div.form', principal, secours), [{ label: 'Fermer' }]);
   };
   app.quitterEnseignant = async function () {
+    if (app.vueProf) { app.basculerVue(false); return; }   // essai à la place d'un élève : retour à la vue élève
     const parCentrale = !!app.enseignantCentrale;
     app.enseignantCentrale = false;
     if (app.profile) { app.profile.role = 'eleve'; app.profile.profOk = false; await TL.db.set('profile', app.profile); }
@@ -358,6 +362,7 @@
     personne: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
     lune: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
     soleil: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    tableau: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20l4-4 4 4M7 9h6M7 12h9"/>',
   };
   /* Widget de l'élève : « Visiteur », ou son identifiant une fois connecté à la Centrale (clic : « Mon code » ou son compte).
      Le bouton « ← » est placé à sa gauche : étape précédente du parcours, sinon « Mes ateliers » (portail). */
@@ -438,9 +443,47 @@
     }
     const old = zone.querySelector('.tb-at');
     if (old && pill) old.replaceWith(pill); else if (old) old.remove(); else if (pill) zone.prepend(pill);
+    const vue = zone.querySelector('.tb-vue'), nv = app.essaiProf ? boutonVue() : null;
+    if (vue && nv) vue.replaceWith(nv); else if (vue) vue.remove(); else if (nv) zone.append(nv);
     placerCentre();
   }
   app.majAtelier = drawAtelier;
+  /* « Tester à la place d'un élève » (espace enseignant de la Centrale) : la session d'essai porte « essai ». Juste après
+     l'atelier, au centre de la barre, l'interrupteur Élève | Enseignant passe de la vue de l'élève (mode atelier : règles
+     de l'atelier, présentation guidée) à la vue enseignant (toute l'interface, tous les modes), en restant connecté comme
+     l'élève : ce qui est fait s'enregistre dans son dossier. Le choix est gardé pour l'onglet (sessionStorage). */
+  function boutonVue() {
+    const opt = (prof, txt, ico, aide) => h('button.tb-vue-opt' + (app.vueProf === prof ? '.on' : ''), {
+      type: 'button', 'aria-pressed': String(app.vueProf === prof), title: aide,
+      onclick: (e) => { e.stopPropagation(); app.basculerVue(prof); },
+    }, icone(ico), h('span.tb-vue-txt', txt));
+    return h('div.tb-vue', { role: 'group', 'aria-label': 'Essai à la place de l’élève : choix de la vue' },
+      opt(false, 'Élève', ICO.personne, 'Vue élève : l’atelier comme le voit l’élève (fenêtres, fonctions et règles de l’atelier)'),
+      opt(true, 'Enseignant', ICO.tableau, 'Vue enseignant : toute l’interface et tous les modes, toujours connecté comme l’élève'));
+  }
+  const CLE_VUE = 'ts-essai-vue';
+  app.essaiProf = false; app.vueProf = false;
+  app.verifierEssai = function () {
+    const s = !app.seul && TL.centrale.session ? TL.centrale.session() : null;
+    const ok = !!(s && s.essai);
+    if (ok === app.essaiProf) return;
+    app.essaiProf = ok;
+    let garde = ''; try { garde = sessionStorage.getItem(CLE_VUE) || ''; } catch (e) { /* rien */ }
+    if (ok && garde === 'enseignant') app.basculerVue(true, true);
+    else if (!ok && app.vueProf) app.basculerVue(false, true);
+    else drawAtelier();
+  };
+  app.basculerVue = function (prof, silence) {
+    prof = !!prof && app.essaiProf;
+    if (prof === app.vueProf) { drawAtelier(); return; }
+    app.vueProf = prof;
+    if (prof) { app.eleveAvantVue = app.eleveCentrale; app.eleveCentrale = false; app.enseignantCentrale = true; }
+    else { app.eleveCentrale = app.eleveAvantVue !== undefined ? app.eleveAvantVue : app.eleveCentrale; app.enseignantCentrale = false; if (TL.panels.close) TL.panels.close(); }
+    app.apercu = false;
+    try { sessionStorage.setItem(CLE_VUE, prof ? 'enseignant' : 'eleve'); } catch (e) { /* rien */ }
+    if (!silence) TL.toast(prof ? 'Vue enseignant : toute l’interface, toujours connecté comme l’élève.' : 'Vue élève : l’atelier comme le voit l’élève.', 'ok');
+    drawSync(); route();
+  };
   /* Rien ne doit se chevaucher, et le thème et les réglages (à droite) restent toujours visibles. Faute de place, la barre
      se resserre par paliers (classes serre-1 … serre-8 de .menubar, voir app.css), du moins utile au plus utile :
      1 le logo seul (sans le texte « TechnoStudio ») · 2 les petites étiquettes de l'atelier (« Atelier », « Feuille »,
@@ -515,7 +558,7 @@
     b.onclick = (e) => { e.stopPropagation(); if (TL.menubar.open === 'reglages') TL.menubar.close(); else ouvrir(); };
     b.onkeydown = (e) => { if (e.key === 'ArrowDown') { e.preventDefault(); ouvrir(true); } };
   }
-  TL.on('hub', () => { drawSync(); renderMenus(); });
+  TL.on('hub', () => { app.verifierEssai(); drawSync(); renderMenus(); });
   TL.on('ressources', () => { const b = TL.$('.sous-barre .seul-res'); if (b) b.setAttribute('aria-pressed', String(TL.ressources.isOpen())); });
   function setTheme(k) { if (k === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = k; try { localStorage.setItem('tl-theme', k); } catch (e) { /* stockage indisponible */ } renderMenus(); drawTheme(); }
   function applyZoom() { TL.$$('.pasteboard .sheet').forEach((s) => (s.style.zoom = app.zoom)); }
@@ -1242,9 +1285,10 @@
     drawSync();
     window.addEventListener('hashchange', route);
     TL.on('synced', () => { drawSync(); renderMenus(); });
+    app.verifierEssai();   // session d'essai déjà gardée pour cet onglet (rechargement)
     if (!app.profile) { route(); await centrale; await onboarding(); drawSync(); }
     route();
-    centrale.then(() => { drawSync(); renderMenus(); });
+    centrale.then(() => { app.verifierEssai(); drawSync(); renderMenus(); });
     if (modeDemande === 'enseignant' && !vraiProf()) setTimeout(() => app.modeEnseignant(), 300);
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/claude/.test(location.hostname) && !window.TL_NO_SW) navigator.serviceWorker.register('sw.js').catch(() => {});
   };
