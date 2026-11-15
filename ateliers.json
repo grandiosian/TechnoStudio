@@ -2,7 +2,7 @@
   "format": "catalogue.ateliers",
   "version": 1,
   "app": "technostudio",
-  "app_version": "3.4.0",
+  "app_version": "3.5.0",
   "referentiel": "technologie-c4-2024",
   "ateliers": [
     {
@@ -75,6 +75,11 @@
       ],
       "ouvrir": "charte-lampe-de-poche",
       "version": 2,
+      "interface": {
+        "menu": false,
+        "bibliotheque": false,
+        "niveau": false
+      },
       "auteur": "Charte TechnoStudio"
     },
     {
@@ -212,6 +217,11 @@
       "ouvrir": "anticollision-robot-mbot",
       "fichier": "ateliers/anticollision-robot-mbot.technostudio.json",
       "version": 5,
+      "interface": {
+        "menu": false,
+        "bibliotheque": false,
+        "niveau": false
+      },
       "auteur": "Pôle des Sciences et de la Technologie"
     },
     {
@@ -253,6 +263,11 @@
       "ouvrir": "programmer-robots-mbot-maqueen",
       "fichier": "ateliers/programmer-robots-mbot-maqueen.technostudio.json",
       "version": 4,
+      "interface": {
+        "menu": false,
+        "bibliotheque": false,
+        "niveau": false
+      },
       "auteur": "Pôle des Sciences et de la Technologie"
     },
     {
@@ -493,6 +508,11 @@
       "ouvrir": "radar-recul-robot-mbot",
       "fichier": "ateliers/radar-recul-robot-mbot.technostudio.json",
       "version": 2,
+      "interface": {
+        "menu": false,
+        "bibliotheque": false,
+        "niveau": false
+      },
       "auteur": "Pôle des Sciences et de la Technologie"
     },
     {
@@ -522,6 +542,11 @@
       ],
       "ouvrir": "charte-parking-connecte",
       "version": 2,
+      "interface": {
+        "menu": false,
+        "bibliotheque": false,
+        "niveau": false
+      },
       "auteur": "Pôle des Sciences et de la Technologie"
     },
     {
@@ -583,6 +608,11 @@
       ],
       "ouvrir": "demo-circuits-serie-derivation",
       "version": 3,
+      "interface": {
+        "menu": false,
+        "bibliotheque": false,
+        "niveau": false
+      },
       "auteur": "TechnoStudio (démo)"
     },
     {
@@ -608,6 +638,11 @@
       ],
       "ouvrir": "demo-pro-consignation-mesures",
       "version": 2,
+      "interface": {
+        "menu": false,
+        "bibliotheque": false,
+        "niveau": false
+      },
       "auteur": "TechnoStudio (démo)"
     },
     {
@@ -660,6 +695,11 @@
       ],
       "ouvrir": "demo-eclairage-premier-programme",
       "version": 2,
+      "interface": {
+        "menu": false,
+        "bibliotheque": false,
+        "niveau": false
+      },
       "auteur": "TechnoStudio (démo)"
     },
     {
@@ -717,6 +757,11 @@
       ],
       "ouvrir": "demo-portail-automatique",
       "version": 3,
+      "interface": {
+        "menu": false,
+        "bibliotheque": false,
+        "niveau": false
+      },
       "auteur": "TechnoStudio (démo)"
     },
     {
@@ -748,6 +793,11 @@
       ],
       "ouvrir": "demo-snt-parking-connecte",
       "version": 2,
+      "interface": {
+        "menu": false,
+        "bibliotheque": false,
+        "niveau": false
+      },
       "auteur": "TechnoStudio (démo)"
     },
     {
@@ -779,6 +829,11 @@
       ],
       "ouvrir": "demo-sti2d-serre-regulation",
       "version": 2,
+      "interface": {
+        "menu": false,
+        "bibliotheque": false,
+        "niveau": false
+      },
       "auteur": "TechnoStudio (démo)"
     }
   ]

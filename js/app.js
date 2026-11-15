@@ -168,6 +168,14 @@
 
   /* ================= Menus ================= */
   const cur = () => { const m = location.hash.match(/^#(at|ed|fiche)-(.+)$/); return m ? app.workshops.get(m[2]) : null; };
+  /* Mode atelier (SPECIFICATION de la Centrale §2.6) : ouvert depuis le portail, l'élève reste sur son atelier. Règles de
+     l'atelier (TL.passerelle.interfaceAtelier, publiées dans ateliers.json) : menu du logo, bibliothèque, niveau. */
+  app.regleAtelier = (cle) => {
+    if (!app.eleveCentrale || app.seul || app.apercu) return true;
+    const P = TL.passerelle;
+    return !(P && P.interfaceAtelier) || P.interfaceAtelier(cur())[cle] !== false;
+  };
+  app.versPortail = () => { const C = window.Centrale; if (C && C.allerPortail && C.allerPortail()) return; if (C && C.retour) C.retour(); };
   // Élève : barre réduite (logo et son petit menu ; le lecteur y ajoute l'atelier et ses feuilles). Atelier seul : dessinée par le lecteur.
   const renderMenus = () => {
     if (!app.seul) {
@@ -187,6 +195,7 @@
   }
   function barreEleve() {
     TL.menubar.render([{ brand: h('span.brandmark', TL.brandSvg(), h('span', 'Techno', h('b', 'Studio'))), items: menuEleve }]);
+    if (!app.regleAtelier('menu')) { const b = TL.$('#menus .brand-btn'); if (b) { b.disabled = true; b.removeAttribute('aria-haspopup'); } }   // mode atelier : pas de menu du logo
     if (app.apercu) TL.$('#menus').append(h('span.apercu-tag', { title: 'Vous voyez TechnoStudio comme un élève' }, 'Aperçu', h('span.apercu-plus', ' élève')));
   }
   /* Roue dentée (à droite de la barre) : thème, profil et connexion, mode enseignant. */
@@ -366,15 +375,16 @@
     const etatTxt = { online: 'enregistré', offline: 'hors ligne', syncing: 'enregistrement…', error: 'à vérifier' }[st] || 'sur cet appareil';
     moi.className = 'tbid-moi st-' + (st === 'indispo' ? 'local' : st);
     moi.append(icone(ICO.personne), h('span.tbid-nom', on ? Z.user.name : 'Visiteur'), on ? h('span.sync-dot') : null);
-    moi.title = Z.message || (on ? 'Connecté à la Centrale ' + Z.serveur.replace(/^https?:\/\//, '').replace(/\/$/, '') + ' : travail ' + etatTxt + (Z.lastSync ? ' (' + TL.fmtDate(Z.lastSync) + ')' : '') + '. Clique pour ton compte.'
+    moi.title = Z.message || (on ? 'Connecté à la Centrale ' + Z.serveur.replace(/^https?:\/\//, '').replace(/\/$/, '') + ' : travail ' + etatTxt + (Z.lastSync ? ' (' + TL.fmtDate(Z.lastSync) + ')' : '') + '. Clic : retour sur la Centrale.'
       : 'Visiteur : ton travail est enregistré sur cet appareil. Clique pour te connecter avec ton code élève (Mon code).');
     moi.setAttribute('aria-label', on ? 'Mon compte : ' + Z.user.name + ', travail ' + etatTxt : 'Visiteur : me connecter avec mon code');
-    // connecté : le menu de l'élève commun aux applications (module de la Centrale), sinon la page « Compte » ;
-    // visiteur : se connecter avec son code
+    // connecté : retour sur la Centrale (le compte et le surnom se gèrent sur le portail) ; module plus ancien : le menu
+    // de l'élève commun, sinon la page « Compte » ; visiteur : se connecter avec son code
     moi.onclick = (e) => {
       e.stopPropagation();
       if (!Z.connecte()) { app.connexion(); return; }
       const C = window.Centrale;
+      if (C && C.allerPortail && C.allerPortail()) return;
       const ouvert = C && C.menuEleve && C.menuEleve(moi, {
         liens: [{ texte: 'Mon compte et mes réglages…', action: () => app.go('compte') },
           { texte: 'Se déconnecter', classe: 'cme-sortir', action: async () => { await Z.deconnexion(); TL.toast('Déconnecté : ton travail reste sur cet appareil.'); } }],
@@ -419,8 +429,12 @@
         n && n <= 14 ? h('span.tb-barres', { 'aria-hidden': 'true' }, feuilles.map((f) => h('i' + (f.fait ? '.on' : '') + (f.ici ? '.ici' : '')))) : null,
         n ? h('span.tbpct', faites + '/' + n, h('span.tb-lbl', n > 1 ? ' feuilles faites' : ' feuille faite')) : null];
       const resume = 'Atelier « ' + w.title + ' »' + (code ? ' · feuille ' + code : '') + (n ? ' · ' + faites + ' feuille' + (faites > 1 ? 's' : '') + ' faite' + (faites > 1 ? 's' : '') + ' sur ' + n : '');
-      const attrs = { style: '--cl:' + TL.niveauColor(w), title: resume + (app.seul ? '' : ' · voir mes ateliers'), 'aria-label': resume };
-      pill = app.seul ? h('div.tbres.tb-at', attrs, ...kids) : h('button.tbres.tb-at', Object.assign({ type: 'button', onclick: () => app.go('accueil') }, attrs), ...kids);
+      // atelier seul (lien d'essai) : la pastille nomme l'atelier, sans clic ; ouvert depuis le portail de la Centrale,
+      // elle ramène au portail (« Mes ateliers ») ; sinon, elle ouvre la bibliothèque de TechnoStudio
+      const portail = !app.seul && app.eleveCentrale;
+      const versPortail = app.versPortail;
+      const attrs = { style: '--cl:' + TL.niveauColor(w), title: resume + (app.seul ? '' : portail ? ' · retour à mes ateliers, sur la Centrale' : ' · voir mes ateliers'), 'aria-label': resume };
+      pill = app.seul ? h('div.tbres.tb-at', attrs, ...kids) : h('button.tbres.tb-at', Object.assign({ type: 'button', onclick: portail ? versPortail : () => app.go('accueil') }, attrs), ...kids);
     }
     const old = zone.querySelector('.tb-at');
     if (old && pill) old.replaceWith(pill); else if (old) old.remove(); else if (pill) zone.prepend(pill);
@@ -428,18 +442,20 @@
   }
   app.majAtelier = drawAtelier;
   /* Rien ne doit se chevaucher, et le thème et les réglages (à droite) restent toujours visibles. Faute de place, la barre
-     se resserre par paliers (classes serre-1 … serre-7 de .menubar, voir app.css), du moins utile au plus utile :
+     se resserre par paliers (classes serre-1 … serre-8 de .menubar, voir app.css), du moins utile au plus utile :
      1 le logo seul (sans le texte « TechnoStudio ») · 2 les petites étiquettes de l'atelier (« Atelier », « Feuille »,
-     « feuilles faites »), « Aperçu » court · 3 texte du « ← », titre, feuille et barres de l'atelier · 4 compteur
-     « faites/total », marges réduites · 5 pastille de l'atelier · 6 nom de l'élève et « Aperçu » · 7 tout le centre.
+     « feuilles faites »), « Aperçu » court · 3 texte du « ← », feuille et barres de l'atelier · 4 compteur
+     « faites/total », marges réduites · 5 pastille de l'atelier · 6 nom de l'élève et « Aperçu » · 7 bouton de l'élève
+     (le « ← » reste) · 8 tout le centre. Le titre de l'atelier reste jusqu'au palier 7 : coupé avec « … », il peut
+     descendre à 48 px à partir du palier 3.
      Annuler / rétablir restent toujours (ils sont avant le widget de l'élève, compté dans le côté gauche).
      À chaque palier, l'atelier est placé au milieu de la barre (comme NetSim), ou au plus près s'il toucherait un côté. */
-  const SERRE = 7;
+  const SERRE = 8;
   function placerCentre() {
     const bar = TL.$('.menubar'), zone = TL.$('#tbAtelier'), gauche = TL.$('#widgetCentrale'), droite = TL.$('.menubar .mb-right'), menus = TL.$('#menus');
     if (!bar || !zone || !gauche || !droite) return;
     const deborde = (el) => !!el && el.offsetWidth > 0 && el.scrollWidth > el.clientWidth + 1;
-    const tient = () => {
+    const tient = (n) => {
       const b = bar.getBoundingClientRect(), g = gauche.getBoundingClientRect(), d = droite.getBoundingClientRect();
       if (d.right > b.right + 1 || g.right > d.left - 6 || deborde(menus)) return false;
       if (!zone.offsetWidth) return true;
@@ -448,18 +464,21 @@
       const pill = zone.querySelector('.tb-at');
       if (deborde(pill)) return false;
       const nom = pill && pill.offsetWidth ? pill.querySelector('.tpnom') : null;
-      return !(nom && nom.offsetWidth && nom.scrollWidth > nom.clientWidth + 1 && nom.clientWidth < 90);   // titre trop coupé : palier suivant
+      return !(nom && nom.scrollWidth > nom.clientWidth + 1 && nom.clientWidth < (n >= 3 ? 48 : 90));   // titre trop coupé (ou réduit à rien) : palier suivant
     };
     // l'atelier au milieu de la barre ; s'il touche un côté, glissé juste ce qu'il faut (au plus près du milieu)
     // tant que le nom « TechnoStudio » est affiché (palier 0), l'atelier doit être pile au milieu ; sinon, logo seul d'abord
     const placer = (n) => {
       zone.classList.add('au-milieu'); zone.style.left = '';
-      if (!zone.offsetWidth) return tient();
+      // l'atelier ne dépasse pas la place libre entre les deux côtés : son titre se coupe avec « … » au lieu de tout cacher
+      const g0 = gauche.getBoundingClientRect(), d0 = droite.getBoundingClientRect();
+      zone.style.maxWidth = Math.max(0, Math.floor(d0.left - g0.right - 14)) + 'px';   // 6 px de chaque côté, plus 1 px pour les arrondis
+      if (!zone.offsetWidth) return n >= SERRE || !zone.querySelector('.tb-at') ? tient(n) : false;   // atelier écrasé faute de place : palier suivant
       const b = bar.getBoundingClientRect(), g = gauche.getBoundingClientRect(), d = droite.getBoundingClientRect(), w = zone.offsetWidth;
       const mini = g.right - b.left + 6 + w / 2, maxi = d.left - b.left - 6 - w / 2;
       if (mini > maxi || (n === 0 && (mini > b.width / 2 + 1 || maxi < b.width / 2 - 1))) return false;
       zone.style.left = Math.min(Math.max(b.width / 2, mini), maxi) + 'px';
-      return tient();
+      return tient(n);
     };
     for (let n = 0; n <= SERRE; n++) {
       for (let k = 1; k <= SERRE; k++) bar.classList.toggle('serre-' + k, k <= n);
@@ -540,7 +559,10 @@
     renderMenus();
   }
   app.route = route;
-  app.go = (hash) => { if (location.hash === '#' + hash) route(); else location.hash = hash; };
+  app.go = (hash) => {
+    if (hash === 'accueil' && !app.regleAtelier('bibliotheque')) { app.versPortail(); return; }   // mode atelier : retour au portail plutôt que la bibliothèque
+    if (location.hash === '#' + hash) route(); else location.hash = hash;
+  };
   const page = (cls) => { const p = h('div.pasteboard.scroll', h('div.desk' + (cls ? '.' + cls : ''))); stage().append(p); return p.firstChild; };
 
   /* ================= Bibliothèque ================= */
@@ -789,7 +811,7 @@
     }
     TL.modal(st.pct === 100 ? 'Atelier terminé' : 'Pas tout à fait fini', h('div.finish', h('div.finish-score', h('span.mono.big', st.score + ' %'), h('span.small.muted', 'score moyen sur ' + st.total + ' activités')),
       h('p', st.pct === 100 ? (TL.centrale.connecte() ? 'Ton travail est enregistré sur la Centrale : ton professeur voit ton avancement.' : 'Ton travail est enregistré sur cet appareil.') : 'Il reste ' + (st.total - st.done) + ' activité(s). Le panneau « Feuilles » montre celles qui sont terminées (✓).')),
-    [{ label: 'Rester ici' }, { label: 'Bibliothèque', primary: true, onClick: () => app.go('accueil') }]);
+    [{ label: 'Rester ici' }, { label: app.regleAtelier('bibliotheque') ? 'Bibliothèque' : 'Retour à mes ateliers', primary: true, onClick: () => app.go('accueil') }]);
   }
   // Lien « atelier seul » : l'élève n'a que l'atelier, rien n'est enregistré (essai en classe sans codes élèves)
   async function lienEssai(w) {

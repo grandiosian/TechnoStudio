@@ -104,20 +104,22 @@ div.tbres.tb-at:hover { border-color: var(--ui-line); }
   .menubar { gap: 6px; padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
   .tbid-nom { max-width: 140px; }
 }
-/* Faute de place, la barre se resserre par paliers (placerCentre dans js/app.js ajoute serre-1 … serre-7, cumulés) */
+/* Faute de place, la barre se resserre par paliers (placerCentre dans js/app.js ajoute serre-1 … serre-8, cumulés) */
 .serre-1 .brandmark > span { display: none; }
 .serre-1 .brand-btn { padding: 4px 6px; }
 .serre-2 .tb-txt, .serre-2 .apercu-plus, .serre-2 .tb-at .tb-lbl { display: none; }
-.serre-3 .tbid .tbid-ret .centrale-precedent-txt, .serre-3 .tb-at:not(.tb-choix) .tpnom, .serre-3 .tb-at .tb-barres, .serre-3 .tb-at .tpcn, .serre-3 .tb-at .tb-sep { display: none; }
+.serre-3 .tbid .tbid-ret .centrale-precedent-txt, .serre-3 .tb-at .tb-barres, .serre-3 .tb-at .tpcn, .serre-3 .tb-at .tb-sep { display: none; }
 .serre-4 .tb-at .tbpct { display: none; }
 .serre-4 .tbres, .serre-4 .tbid > button { padding: 0 9px; }
 .serre-4 .tbid-nom { max-width: 110px; }
-.serre-5 .tb-at { display: none; }
+.serre-5 .tb-at .pastille { display: none; }   /* le titre de l'atelier reste, coupé avec « … » */
 .serre-6 .tbid-nom, .serre-6 .apercu-tag { display: none; }
-.serre-7 .tb-centre { display: none; }
+.serre-7 .tbid-moi { display: none; }   /* plutôt que le titre de l'atelier ; le « ← » reste */
+.serre-8 .tb-centre { display: none; }
 .mb-top { border: 0; background: transparent; color: var(--ui-ink); font: 500 13.5px var(--f-ui); padding: 6px 10px; border-radius: 6px; cursor: default; white-space: nowrap; }
 .mb-top:hover, .mb-top.on { background: var(--ui-hover); }
 .brand-btn { padding: 4px 10px 4px 6px; }
+.brand-btn:disabled { opacity: 1; cursor: default; }   /* mode atelier : logo sans menu */
 .brandmark { display: inline-flex; align-items: center; gap: 8px; font: 900 15px var(--f-display); letter-spacing: -.01em; }
 .brandmark b { color: var(--accent); font-weight: 900; }
 .brand-mark { width: 22px; height: 22px; flex: none; }

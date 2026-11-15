@@ -10,7 +10,7 @@
   'use strict';
 
   const APP = 'technostudio';
-  const VERSION = '3.4.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
+  const VERSION = '3.5.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
   const KIND = { feuille: 'P', ressource: 'R', synthese: 'S', evaluation: 'E', fiche: 'F' };
 
   /** Codes des feuilles d'un atelier, comme sur le papier : P1, P2, R1, S1, E1, S·P1 (SEGPA). */
@@ -76,6 +76,10 @@
     const m = /^\s*([3-6])\s*e/i.exec(w.niveau || '');
     return m ? m[1] + 'e' : NIVEAUX[w.level] != null ? NIVEAUX[w.level] : '';
   }
+  /* Mode atelier (SPECIFICATION de la Centrale §2.6) : lancé depuis le portail, l'atelier ferme par défaut le menu du logo,
+     la bibliothèque (« Mes ateliers », Ctrl O) et le changement de niveau ; un atelier peut en rouvrir avec interface:{…}. */
+  const INTERFACE_ATELIER = { menu: false, bibliotheque: false, niveau: false };
+  function interfaceAtelier(w) { return Object.assign({}, INTERFACE_ATELIER, (w && w.interface) || {}); }
   /** Un atelier du catalogue ; fichier : contenu publié avec l'appli (ateliers/…), vide pour un atelier du code. */
   function atelierCatalogue(w, fichier) {
     const acts = activitesAtelier(w);
@@ -84,6 +88,7 @@
       activites: acts.map((a) => ({ id: a.id, titre: a.titre, total: a.total, competences: a.competences })), ouvrir: w.id };
     if (fichier) e.fichier = fichier;
     e.version = w.version || 1;
+    e.interface = interfaceAtelier(w);   // ce que l'élève peut ouvrir quand l'atelier est lancé depuis la Centrale
     if (w.author) e.auteur = String(w.author).slice(0, 80);
     return e;
   }
@@ -199,5 +204,5 @@
   const CLE_CODE = 'code/projet';
 
   return { APP, VERSION, codesFeuilles, estNote, idActivite, activitesAtelier, activites, progression, mesures, cleAtelier, CLE_CODE, resume,
-    RE_REF, refsFiche, codesBloc, atelierCatalogue, catalogue, constats, niveauPart };
+    RE_REF, refsFiche, codesBloc, atelierCatalogue, catalogue, constats, niveauPart, interfaceAtelier };
 });

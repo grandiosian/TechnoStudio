@@ -6,7 +6,9 @@ contrat avec la Centrale : [PASSERELLE.md](PASSERELLE.md). Vue d'ensemble : [../
 
 ## Règles
 - Textes visibles en français, simples (élèves de collège).
+- **Mode atelier** (ouvert depuis le portail) : `app.regleAtelier('menu'|'bibliotheque'|'niveau')` suit les règles de l'atelier (`TL.passerelle.interfaceAtelier`, champ `interface` d'un atelier, publié dans `ateliers.json`). Par défaut, le logo n'ouvre plus de menu et `app.go('accueil')` (Mes ateliers, Ctrl+O) ramène au portail. Règle commune : SPECIFICATION de la Centrale, §2.6.
 - **Le mode élève l'emporte** quand l'application vient du portail (`#centrale=`, `#retour=` ou `sessionStorage['centrale-retour']`), même si le navigateur a une session enseignant : `app.eleveCentrale`. Seul `?mode=enseignant` ouvre le mode enseignant.
+- **Charte graphique** : [CHARTE-GRAPHIQUE.md](CHARTE-GRAPHIQUE.md) (logo, couleurs clair / sombre, polices) est à respecter. Un changement de logo ou de couleur principale se fait d'abord dans ce document, puis dans le code et dans le portail de la Centrale (`centrale/public/index.php` : `LOGOS` et `.app-…`).
 - La barre du haut suit la règle commune (SPECIFICATION de la Centrale §2.6, NetSim en référence). Une modification se reporte dans NetSim, Établi 3D et le portail.
 - Le module `centrale-client.js` vient du serveur de la Centrale : testez une fonction récente avant de l'appeler et gardez l'ancien comportement en repli.
 - **À chaque modification visible**, changez la version du cache dans `sw.js` (`technostudio-vX.Y.Z`) : sinon les postes de la salle gardent l'ancienne version.
@@ -18,7 +20,7 @@ contrat avec la Centrale : [PASSERELLE.md](PASSERELLE.md). Vue d'ensemble : [../
   - la barre du haut :
     - `drawSync()` : widget de l'élève ; au clic, `Centrale.menuEleve` quand l'élève est connecté ;
     - `drawAtelier()` : pilule centrale, avec les libellés « Atelier » et « Feuille » ;
-    - `placerCentre()` : place l'atelier au milieu, ou au plus près, et resserre la barre par paliers `serre-1…7` en commençant par masquer le nom (logo seul) ;
+    - `placerCentre()` : place l'atelier au milieu, ou au plus près, et resserre la barre par paliers `serre-1…8` en commençant par masquer le nom (logo seul). Le titre de l'atelier reste jusqu'au palier 7 (coupé avec « … », la zone du centre est bornée à la place libre) ; le bouton de l'élève part avant lui ;
   - la sous-barre de la feuille (`.sous-barre` : choix de la feuille quand plusieurs sont ouvertes, 📚 Ressources) ;
   - **annuler / rétablir** (`TL.historique`) : chaque vue branche une source `lire()` / `ecrire()`, et les réponses de l'élève sont notées dans `app.saveProgress` ;
   - le lecteur d'atelier (`viewPlayer`) et le choix du mode élève / enseignant.
