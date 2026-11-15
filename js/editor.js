@@ -23,7 +23,8 @@
     const app = TL.app;
     const page = h('div.page');
     const mine = [...app.workshops.values()].filter((w) => w.source !== 'demo').sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-    const demos = [...app.workshops.values()].filter((w) => w.source === 'demo');
+    const publies = [...app.workshops.values()].filter((w) => w.source === 'demo' && w.publie);
+    const demos = [...app.workshops.values()].filter((w) => w.source === 'demo' && !w.publie);
     page.append(h('header.pagehead', h('div', h('p.eyebrow', 'Espace enseignant'), h('h1', 'Créer et convertir')),
       h('div.pagehead-acts',
         h('button.btn.ghost', { type: 'button', onclick: () => E.importDialog(null) }, 'Convertir une fiche papier'),
@@ -36,38 +37,89 @@
     page.append(h('h2.sec', 'Mes ateliers'));
     if (!mine.length) page.append(h('p.muted', 'Aucun atelier personnel pour l’instant. Crée-en un, convertis une fiche ou duplique une démo ci-dessous.'));
     else page.append(h('div.rows', mine.map((w) => row(w))));
+    if (publies.length) {
+      page.append(h('h2.sec', 'Ateliers publiés avec TechnoStudio'),
+        h('p.small.muted', '« Modifier » garde l’identifiant de l’atelier : le travail des élèves reste rattaché. « Dupliquer » en fait un autre atelier.'),
+        h('div.rows', publies.map((w) => row(w))));
+    }
     page.append(h('h2.sec', 'Démonstrations à dupliquer'), h('div.rows', demos.map((w) => row(w))));
     root.append(page);
 
     function row(w) {
-      const isDemo = w.source === 'demo';
+      const isDemo = w.source === 'demo', publie = isDemo && w.publie;
+      const etat = w.source === 'centrale' ? 'reçu de la Centrale' : publie ? 'publié · v' + (w.version || 1) : isDemo ? 'démo'
+        : (w.publie ? 'modification de l’atelier publié (v' + (w.versionPubliee || w.version || 1) + '), pas encore publiée · ' : '') + 'modifié ' + TL.fmtDate(w.updatedAt);
       return h('div.wrow',
         h('div.wrow-main', h('span.chip.lv-' + w.level, (TL.LEVELS[w.level] || {}).short || w.level), h('a.wrow-title', { href: '#at-' + w.id }, w.title),
-          h('span.small.muted.mono', w.steps.length + ' ét. · ' + (w.source === 'centrale' ? 'reçu de la Centrale' : isDemo ? 'démo' : 'modifié ' + TL.fmtDate(w.updatedAt)))),
+          h('span.small.muted.mono', w.steps.length + ' ét. · ' + w.id + ' · ' + etat)),
         h('div.wrow-acts',
-          h('a.btn.small', { href: '#ed-' + w.id }, isDemo ? 'Dupliquer' : 'Modifier'),
-          h('button.btn.small.ghost', { type: 'button', onclick: () => TL.saveAs(slug(w.title) + '.technostudio.json', JSON.stringify(exportable(w), null, 1)) }, 'Exporter'),
+          publie ? h('a.btn.small', { href: '#ed-' + w.id, title: 'Modifier cet atelier en gardant son identifiant (le travail des élèves reste rattaché)' }, 'Modifier') : null,
+          h('a.btn.small' + (publie ? '.ghost' : ''), { href: (isDemo ? '#dup-' : '#ed-') + w.id }, isDemo ? 'Dupliquer' : 'Modifier'),
+          h('button.btn.small.ghost', { type: 'button', onclick: () => TL.saveAs(E.nomFichier(w), JSON.stringify(exportable(w), null, 1)) }, 'Exporter'),
           h('button.btn.small.ghost', { type: 'button', onclick: () => E.publish(w) }, 'Publier'),
-          !isDemo ? h('button.btn.small.ghost.danger', { type: 'button', onclick: async () => { if (await TL.confirm('Supprimer l’atelier', '« ' + w.title + ' » sera supprimé de cet appareil. Le travail des élèves enregistré sur la Centrale n’est pas touché.', 'Supprimer')) { await TL.app.deleteWorkshop(w.id); TL.app.route(); } } }, 'Supprimer') : null));
+          !isDemo ? h('button.btn.small.ghost.danger', { type: 'button', onclick: async () => {
+            const msg = w.publie ? 'Tes modifications de « ' + w.title + ' » seront effacées de cet appareil ; la version publiée revient.'
+              : '« ' + w.title + ' » sera supprimé de cet appareil. Le travail des élèves enregistré sur la Centrale n’est pas touché.';
+            if (await TL.confirm(w.publie ? 'Abandonner mes modifications' : 'Supprimer l’atelier', msg, w.publie ? 'Abandonner' : 'Supprimer')) { await TL.app.deleteWorkshop(w.id); TL.app.route(); } } },
+          w.publie ? 'Abandonner' : 'Supprimer') : null));
     }
   };
-  const exportable = (w) => { const c = TL.clone(w); delete c.source; return c; };
+  /** Ce qui part dans le fichier : sans les marques propres à ce poste (source, publication). */
+  const exportable = (w) => { const c = TL.clone(w); ['source', 'publie', 'versionPubliee', 'empreintePubliee'].forEach((k) => delete c[k]); return c; };
+  E.exportable = exportable;
+  /** Empreinte du contenu publié (sans version ni date) : dit si l'atelier a changé depuis sa dernière publication. */
+  E.empreinte = function (w) {
+    const c = exportable(w); delete c.version; delete c.updatedAt;
+    const s = JSON.stringify(c);
+    let x = 5381;
+    for (let i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0;
+    return x.toString(36) + '-' + s.length;
+  };
+  /** Nom du fichier d'un atelier : toujours d'après son identifiant (le même pour Exporter et Publier). */
+  E.nomFichier = (w) => String(w.id).replace(/[^A-Za-z0-9_-]/g, '-') + '.technostudio.json';
+  /** Identifiant lisible proposé d'après le titre (« radar-recul-robot-mbot »), libre sur ce poste. */
+  E.idPropose = function (titre, sauf) {
+    const base = slug(titre).slice(0, 48) || 'atelier';
+    let id = base, n = 2;
+    while (TL.app.workshops.has(id) && id !== sauf) id = base + '-' + n++;
+    return id;
+  };
+  E.ID_RE = /^[A-Za-z0-9-]+$/;
+  /** L'identifiant peut encore changer : l'atelier n'a jamais été publié (ni téléchargé pour l'être). */
+  E.idModifiable = (w) => !w.publie && w.versionPubliee == null && w.source !== 'demo' && w.source !== 'centrale';
 
   /** Publication : le fichier de l'atelier rejoint le dossier ateliers/ de l'appli (disponible sans serveur, importé
       par la Centrale) ; en attendant, il peut encore être déposé dans « Ressources des ateliers » de la Centrale. */
   E.publish = function (w) {
     const v = TL.descriptor.validate('Workshop', exportable(w));
     const Z = TL.centrale;
-    const nom = String(w.id).replace(/[^A-Za-z0-9_-]/g, '-') + '.technostudio.json';
-    const sansPublie = (x) => { const c = exportable(x); delete c.publie; return c; };
+    const nom = E.nomFichier(w);
+    // déjà publié : la publication d'un contenu changé porte la version suivante (une seule fois, même si on retélécharge)
+    const dejaPublie = w.versionPubliee != null || (w.source === 'demo' && w.publie);
+    const emp = E.empreinte(w);
+    const prochaine = w.source === 'demo' || w.versionPubliee == null ? (w.version || 1)
+      : emp === w.empreintePubliee ? w.versionPubliee : Math.max(w.version || 1, w.versionPubliee + 1);
+    const telecharger = async () => {
+      let x = w;
+      if (w.source !== 'demo' && w.source !== 'centrale') {   // ce poste retient la version publiée (pour la suivante, et l'identifiant se fige)
+        x = TL.clone(w); x.version = prochaine; x.versionPubliee = prochaine; x.empreintePubliee = emp;
+        await TL.app.saveWorkshop(x, w.source);
+        if (TL.editor.current && TL.editor.current.w.id === x.id) Object.assign(TL.editor.current.w, { version: prochaine, versionPubliee: prochaine, empreintePubliee: emp });
+      }
+      TL.saveAs(nom, JSON.stringify(exportable(x), null, 1));
+    };
     TL.modal('Publier l’atelier', h('div.form',
       v.ok ? null : h('p.callout.warn', 'L’atelier n’est pas conforme au descripteur : ' + v.errors[0]),
+      /^at-/.test(w.id) && E.idModifiable(w) ? h('p.callout.warn', 'Son identifiant « ' + w.id + ' » a été tiré au hasard. Pour un identifiant lisible, change-le maintenant dans le panneau Fiche (Identifiant) : après la publication, il ne pourra plus changer.') : null,
+      h('p.small.muted', 'Identifiant ', h('code', w.id), ' · version ', h('b', String(prochaine)),
+        w.versionPubliee != null && prochaine > w.versionPubliee ? ' (la version publiée était la ' + w.versionPubliee + ')' : ''),
       h('h3', 'Avec l’application (conseillé : disponible pour tous, sans serveur)'),
       h('ol.steps',
-        h('li', h('button.btn.small.primary', { type: 'button', disabled: !v.ok, onclick: () => TL.saveAs(nom, JSON.stringify(sansPublie(w), null, 1)) }, 'Télécharger ' + nom)),
-        h('li', 'Sur GitHub, dans le dossier ', h('a', { href: 'https://github.com/grandiosian/TechnoStudio/tree/main/ateliers', target: '_blank', rel: 'noopener' }, 'ateliers/'), ' de TechnoStudio : Add file → Upload files, puis Commit changes.'),
+        h('li', h('button.btn.small.primary', { type: 'button', disabled: !v.ok, onclick: telecharger }, 'Télécharger ' + nom)),
+        h('li', 'Sur GitHub, dans le dossier ', h('a', { href: 'https://github.com/grandiosian/TechnoStudio/tree/main/ateliers', target: '_blank', rel: 'noopener' }, 'ateliers/'), ' de TechnoStudio : Add file → Upload files, puis Commit changes.'
+          + (dejaPublie ? ' Le fichier a le même nom que la version publiée : il la remplace.' : '')),
         h('li', 'Quelques minutes plus tard, l’atelier est dans la bibliothèque de TechnoStudio, pour tous les élèves.'),
-        h('li', 'Dans la Centrale : Ateliers → « Ateliers des applications » → TechnoStudio → Mettre à jour.')),
+        h('li', 'Dans la Centrale : Ateliers → « Imports et disponibilité » → TechnoStudio → Mettre à jour, puis « Inspecter » l’atelier pour vérifier ses activités et ses compétences.')),
       h('h3', 'Par la Centrale (en attendant)'),
       h('ol.steps',
         h('li', 'Ouvre l’espace enseignant de la Centrale : ', h('a', { href: Z.serveur + 'admin/#ressources', target: '_blank', rel: 'noopener' }, Z.serveur.replace(/^https?:\/\//, '') + 'admin/')),

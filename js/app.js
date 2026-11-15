@@ -37,7 +37,8 @@
   app.loadWorkshops = async function () {
     app.workshops.clear();
     (TL.DEMOS || []).forEach((w) => app.workshops.set(w.id, w));
-    (await ateliersPublies()).forEach((w) => app.workshops.set(w.id, w));
+    app.publies = new Map();   // gardés à part : « Abandonner mes modifications » fait revenir la version publiée
+    (await ateliersPublies()).forEach((w) => { app.publies.set(w.id, w); app.workshops.set(w.id, w); });
     (await TL.db.all('ws:')).forEach((w) => app.workshops.set(w.id, TL.normalizeWorkshop(w)));
   };
   /* Ateliers publiés avec l'appli (dossier ateliers/, listés dans ateliers.json) : disponibles sans serveur.
@@ -73,7 +74,7 @@
   app.deleteWorkshop = async function (id) {
     await TL.db.del('ws:' + id);
     app.workshops.delete(id);
-    const demo = (TL.DEMOS || []).find((d) => d.id === id);
+    const demo = (app.publies && app.publies.get(id)) || (TL.DEMOS || []).find((d) => d.id === id);
     if (demo) app.workshops.set(id, demo);
   };
   app.getProgress = async function (id) {
@@ -315,7 +316,9 @@
         { sep: true },
         { label: 'Fiche pédagogique', check: mode === 'fiche', action: () => app.go('fiche-' + w.id) },
         { label: 'Feuilles de l’atelier', check: mode === 'at', action: () => app.go('at-' + w.id) },
-        { label: w && w.source === 'demo' ? 'Dupliquer et modifier' : 'Modifier', hidden: !isProf(), check: mode === 'ed', action: () => app.go('ed-' + w.id) },
+        // atelier publié : « Modifier » garde son identifiant ; démo intégrée au code : seulement « Dupliquer »
+        { label: w && w.source === 'demo' && !w.publie ? 'Dupliquer et modifier' : 'Modifier', hidden: !isProf(), check: mode === 'ed', action: () => app.go('ed-' + w.id) },
+        { label: 'Dupliquer (nouvel atelier)', hidden: !isProf() || !w || (w.source === 'demo' && !w.publie), action: () => app.go('dup-' + w.id) },
         { sep: true },
         { label: 'Copier le lien d’essai (atelier seul, sans enregistrement)…', hidden: !isProf(), action: () => w && lienEssai(w) },
         { label: 'Effacer ma progression…', action: clearProgress },
@@ -615,6 +618,7 @@
       if (hash.startsWith('at-')) await viewPlayer(hash.slice(3));
       else if (hash.startsWith('fiche-')) await viewFiche(hash.slice(6));
       else if (hash.startsWith('ed-')) { TL.panels.setMode('edit', [], []); await TL.editor.view(st, hash.slice(3)); }
+      else if (hash.startsWith('dup-')) { await TL.editor.dupliquer(hash.slice(4)); }
       else if (hash === 'creer') { TL.panels.setMode('creer', [], []); await TL.editor.list(page()); }
       else if (hash === 'compte') { TL.panels.setMode('compte', [], []); await viewAccount(); }
       else if (hash === 'passerelle') { TL.panels.setMode('passerelle', [], []); await viewGateway(); }
@@ -873,7 +877,8 @@
       body.append(h('div.p-label', 'Affichage'),
         h('label.p-check', h('input', { type: 'checkbox', checked: app.layers.comp, onchange: (e) => { app.layers.comp = e.target.checked; rerender(); } }), ' Pastilles de compétences'),
         isProf() ? h('label.p-check', h('input', { type: 'checkbox', checked: app.layers.corr, onchange: (e) => { app.layers.corr = e.target.checked; rerender(); } }), ' Correction') : null,
-        isProf() ? h('div.p-col', h('a.btn.small.ghost', { href: '#ed-' + w.id }, w.source === 'demo' ? 'Dupliquer et modifier' : 'Modifier cet atelier')) : null);
+        isProf() ? h('div.p-col', h('a.btn.small.ghost', { href: '#ed-' + w.id }, w.source === 'demo' && !w.publie ? 'Dupliquer et modifier' : 'Modifier cet atelier'),
+          w.source !== 'demo' || w.publie ? h('a.btn.small.ghost', { href: '#dup-' + w.id }, 'Dupliquer') : null) : null);
     } });
     if (G) TL.panels.setMode('seul', [], []);
     else TL.panels.setMode('atelier', ['feuilles', 'suivi'], ['feuilles', 'suivi']);

@@ -14,6 +14,7 @@ contrat avec la Centrale : [PASSERELLE.md](PASSERELLE.md). Vue d'ensemble : [../
 - **À chaque modification visible**, changez la version du cache dans `sw.js` (`technostudio-vX.Y.Z`) : sinon les postes de la salle gardent l'ancienne version.
 - Ne jamais écrire `centrale.json` / `ateliers.json` à la main : `node tools/centrale-json.js` (la liste `fonctions_utilisees` est dans ce script).
 - Ne renommez aucun identifiant d'atelier, de feuille (`atelier/P1`…) ni de clé de données.
+- **Éditeur et identifiants** (`js/editor.js`, `js/editor2.js`) : l'identifiant d'un atelier se change dans le panneau Fiche tant qu'il n'a jamais été publié (`E.idModifiable`, `E.changerId`), puis il est figé. « Modifier » un atelier publié (`ateliers/`, `source: 'demo'` + `publie`) le copie sur le poste **sous le même id** (`versionPubliee`, `empreintePubliee`) ; « Dupliquer » (`#dup-<id>`, `E.dupliquer`) crée un autre atelier. « Publier » augmente `version` si le contenu a changé depuis la dernière publication (`E.empreinte`) ; ces marques du poste ne partent pas dans le fichier (`E.exportable`). La zone Compétences garde `color` et `ref` (« → SFC31.5.1 »). Procédure enseignant : `centrale/public/passerelle/CREER-UN-ATELIER.md`.
 
 ## Carte de `js/`
 - `app.js` : la coquille, avec :

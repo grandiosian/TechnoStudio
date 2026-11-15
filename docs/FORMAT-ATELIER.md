@@ -1,32 +1,71 @@
 # Format des ateliers TechnoStudio
 
-Un atelier est un fichier JSON (`.technostudio.json`). L'éditeur le produit pour vous ; ce document sert aux échanges par la passerelle, aux scripts et aux corrections fines (bouton **JSON** de chaque bloc dans l'éditeur).
+Un atelier est un fichier JSON (`.technostudio.json`, **format 2**). L'éditeur le produit pour vous ; ce document sert aux échanges par la passerelle, aux scripts et aux corrections fines (bouton **JSON** de chaque bloc dans l'éditeur). La liste complète et à jour des champs est produite depuis le code : [descripteur-ateliers.md](descripteur-ateliers.md) (`node tools/descripteur-doc.js`). Pas à pas, de la fiche papier aux élèves : procédure de la Centrale, `passerelle/?doc=creer-atelier`.
 
 ## Structure
 
 ```json
 {
-  "format": 1,
-  "id": "portail-4a",
-  "title": "Le portail automatique",
-  "level": "college",
-  "duration": 55,
-  "version": 1,
-  "author": "M. Caruana",
-  "summary": "Chaînes d'information et d'énergie, programme de commande.",
-  "competences": ["Écrire, mettre au point et exécuter un programme"],
+  "format": 2,
+  "id": "programmer-robots-mbot-maqueen",
+  "version": 4,
+  "title": "Programmer les robots mBot et Maqueen",
+  "level": "college", "niveau": "5e", "cycle": 4, "seq": 2, "duration": 110,
+  "author": "Pôle des Sciences et de la Technologie",
+  "summary": "Programmer un robot avec des blocs, compiler puis téléverser.",
+  "problematique": "Comment un même programme peut-il commander deux robots différents ?",
+  "objet": "Robots mBot et Maqueen",
+  "competences": [
+    { "code": "T3C3", "label": "Concevoir, écrire, tester et mettre au point un programme",
+      "sub": [ { "code": "T3C31", "label": "Écrire un programme", "ref": ["CCRI31.5.1", "CCRI31.5.2"] } ] }
+  ],
+  "deroulement": [ { "seance": "Séance 1", "objectif": "…", "activites": "…", "ressources": "Ressource 1" } ],
+  "prof": { "organisation": "… jamais montré aux élèves" },
   "steps": [
-    { "id": "e1", "title": "Observer", "blocks": [ { "type": "text", "md": "…" } ] }
+    { "id": "p01", "title": "Séance 1 - Feuille 1", "kind": "feuille", "seance": 1, "feuille": 1,
+      "blocks": [
+        { "id": "p01-t", "type": "text", "md": "# 1. Mon premier programme" },
+        { "id": "p01-q", "type": "questions", "comp": ["T3C31"], "items": [ { "q": "…", "corr": "…" } ] }
+      ] },
+    { "id": "r01", "title": "Ressources 1 et 2", "kind": "ressource",
+      "blocks": [ { "id": "r01-1", "type": "ressource", "num": "1", "title": "Compiler et téléverser", "md": "…" } ] }
   ]
 }
 ```
 
-- `level` : `college`, `sti2d`, `snt` ou `pro`.
-- `id` : lettres, chiffres et tirets. Un même `id` publié de nouveau devient une nouvelle version.
-- Chaque bloc peut avoir un `id` stable : la progression des élèves y est rattachée. S'il manque, il est attribué automatiquement (`e1-b1`, `e1-b2`…).
-- Champs communs aux exercices : `question` (Markdown), `hint` (indice après une erreur), `explanation` (après la réponse).
+- `level` : `college`, `sti2d`, `snt` ou `pro` ; `niveau` (6e, 5e, 4e, 3e…) donne la couleur de la pastille ; `seq` (n° AT SEQ) sert au tri.
+- Fiche pédagogique : `presentation`, `deroulement`, `synthese`, `evaluation`, `differenciation`, `materiel` (Markdown) ; `prof` n'est jamais transmis aux élèves.
+- `interface` (facultatif) : `{ "menu": false, "bibliotheque": false, "niveau": false }`, ce que l'élève garde en mode atelier (ouvert depuis le portail).
+
+## Identifiants : ce qui ne doit jamais changer
+
+Le travail des élèves est rattaché aux identifiants. Une fois l'atelier publié :
+
+- **`id` de l'atelier** : lettres sans accent, chiffres et tirets. L'éditeur le propose d'après le titre et le laisse modifier (panneau Fiche → Identifiant) **tant que l'atelier n'a jamais été publié** ; il est figé ensuite. « Modifier » un atelier publié garde son `id` ; « Dupliquer » en crée un autre.
+- **Activité de la Centrale** = une feuille qui contient au moins un bloc noté. Son identifiant : `<id>/<code de la feuille>`, par exemple `programmer-robots-mbot-maqueen/P1`.
+- **Code d'une feuille** : `kind` donne la lettre (`feuille` → P, `ressource` → R, `synthese` → S, `evaluation` → E ; SEGPA, `segpa: true` → `S·P1`). Le numéro d'une feuille P vient de `feuille` (ou de son rang) ; celui d'une feuille R, S ou E vient de son **rang** : insérer ou déplacer une feuille R/S/E change les codes suivants. Ajoutez les nouvelles feuilles à la fin.
+- **`id` de chaque bloc** : unique dans tout l'atelier, la progression de l'élève y est rattachée. S'il manque, il est attribué automatiquement.
+- **`version`** : l'éditeur l'augmente à la publication d'un atelier déjà publié dont le contenu a changé. Elle est recopiée dans `ateliers.json` et la Centrale l'affiche.
+
+## Compétences
+
+- `competences` : les compétences de la fiche (`T2C3`…) et leurs sous-compétences (`T2C31`…). Chacune peut porter `ref` : les codes du référentiel commun de la Centrale (`SFC31.5.1`…). Dans l'éditeur : « - T2C31 : intitulé → SFC31.5.1, SFC31.5.2 ».
+- Une question notée porte des pastilles `comp` : un code de la fiche (`T3C31`), relié au référentiel par son `ref`, ou directement un code du référentiel. **Sans `ref`, la compétence n'arrive pas à la Centrale.** Une question notée sans pastille prend `referentiel` (capacités de l'atelier).
+- Vérifier : Centrale → Ateliers → Inspecter (« aucun lien au référentiel » est signalé).
 
 ## Blocs
+
+Champs communs : `id`, `type`, `question` (Markdown), `tag` (`papier`, `ordi` ou `none`), `num`, `comp` (pastilles), `bareme`, `bonus`, `hint` (indice après une erreur), `explanation` (après la réponse), `corr` (correction, enseignant), `demo` (démonstration non notée).
+
+| famille | types |
+|---|---|
+| contenu (non noté) | `text`, `image`, `programme`, `svg`, `scan`, `link`, `ressource`, `mots` |
+| mise en page | `objectif`, `retenir`, `decoupe`, `filet` |
+| exercices notés | `qcm`, `vraifaux`, `cloze`, `numeric`, `match`, `order`, `sort`, `table`, `boxes`, `chain`, `label`, `bits`, `graph`, `mindmap`, `procedure` |
+| notés, corrigés par l'enseignant | `draw`, `questions`, `report` (`autoeval` n'est pas noté) |
+| simulations (notées) | `circuit`, `blocks`, `mblock`, `robot`, `code` |
+
+Les plus courants :
 
 | type | champs principaux |
 |---|---|
@@ -35,6 +74,7 @@ Un atelier est un fichier JSON (`.technostudio.json`). L'éditeur le produit pou
 | `svg` | `svg` (code), `caption` |
 | `scan` | `title`, `pages` (liste d'images), `open` |
 | `link` | `url`, `title`, `text`, `kind` (`link` ou `video`) |
+| `ressource` | `num` (numéro cité dans les feuilles : « ressource 2 » devient un lien), `title`, `md`, `src`, `program` |
 | `qcm` | `options`: `[{ "text", "correct", "feedback" }]`, `multiple`, `shuffle` |
 | `cloze` | `text` avec `[[réponse]]`, `[[variante1|variante2]]`, `[[!bonne|leurre|leurre]]` |
 | `numeric` | `answer`, `tolerance` ou `tolerancePct`, `unit`, `formula` |
@@ -44,9 +84,15 @@ Un atelier est un fichier JSON (`.technostudio.json`). L'éditeur le produit pou
 | `chain` | `items`: `[{ "text", "slot" }]`, slot parmi `acquerir`, `traiter`, `communiquer`, `alimenter`, `distribuer`, `convertir`, `transmettre` ; `infoIn`, `infoOut`, `energyIn`, `action` |
 | `label` | `src` ou `svg`, `points`: `[{ "x": %, "y": %, "answer" }]`, `distractors` |
 | `procedure` | `items`: `[{ "text", "detail", "image", "warn" }]` |
+| `questions` | `items`: `[{ "q", "corr" }]` |
 | `report` | `placeholder`, `photo` (false pour interdire les photos) |
 | `circuit` | voir ci-dessous |
 | `blocks` | voir ci-dessous |
+| `mblock` | `mode` (`sprite` ou `mbot`), `decor`, `toolbox`, `start`, `solution` (jamais montrée), `tests` |
+| `robot` | `robot` (`mbot` ou `maqueen`), `robots`, `toolbox` (`rb_…`), `start`, `expect` |
+| `code` | `board` (`uno`, `nano`, `esp32`, `esp32-mpy`, `microbit`), `start`, `toolbox`, `expect` |
+
+Les images sont gardées dans le fichier (`data:image/…`, réduites à 1 400 px par l'éditeur) : au-delà de 1 à 2 Mo, les postes de la salle chargent l'atelier lentement.
 
 ### Simulateur de circuits
 

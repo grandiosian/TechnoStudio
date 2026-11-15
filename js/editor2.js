@@ -28,6 +28,8 @@
     autoeval: () => ({ type: 'autoeval', question: 'Je fais le point : je colorie un rond par ligne.', items: ['Je sais nommer les constituants.', 'Je sais décrire la chaîne d’énergie.'] }),
     code: () => ({ type: 'code', question: 'Programme la carte.', tag: 'ordi', board: 'uno' }),
     robot: () => ({ type: 'robot', question: 'Programme le robot, compile puis téléverse.', tag: 'ordi', robot: 'mbot' }),
+    // simulation façon mBlock ; les tests et le programme corrigé (solution) se règlent dans le JSON du champ
+    mblock: () => ({ type: 'mblock', question: 'Programme le robot dans mBlock, puis vérifie avec le drapeau vert.', tag: 'ordi', mode: 'sprite', decor: 'libre', tests: [] }),
   });
 
   /* ---------- Formulaires ---------- */
@@ -53,6 +55,9 @@
     mindmap: [Q, { k: 'center', kind: 'text', label: 'Centre' }, { k: 'branches', kind: 'brItems', label: 'Branches (« Titre : réponse ; réponse » ou « Titre : 2 » pour 2 cases libres)' }, HINT],
     autoeval: [Q, { k: 'items', kind: 'lines', label: 'Critères (un par ligne)', rows: 4 }, { k: 'scale', kind: 'csv', label: 'Échelle (oui, un peu, pas encore)' }],
     robot: [Q, { k: 'robot', kind: 'select', label: 'Robot à l’ouverture', opts: [['mbot', 'mBot'], ['maqueen', 'Maqueen']] }, { k: 'expect', kind: 'lines', label: 'Blocs attendus (rb_forever, rb_if, rb_distance…, un par ligne)', rows: 3 }, { k: 'demo', kind: 'check', label: 'Démonstration (non notée)' }],
+    mblock: [Q, { k: 'mode', kind: 'select', label: 'Simulation', opts: [['sprite', 'Robot à l’écran (lutin)'], ['mbot', 'mBot sur une table']] },
+      { k: 'decor', kind: 'select', label: 'Décor (lutin)', opts: [['libre', 'Scène libre'], ['ligne', 'Ligne rouge (x = 100)'], ['double', 'Deux lignes rouges'], ['cage', 'Cage rouge'], ['murDroite', 'Mur à droite'], ['murGauche', 'Mur à gauche']] },
+      { k: 'demo', kind: 'check', label: 'Démonstration (non notée)' }],
     code: [Q, { k: 'board', kind: 'select', label: 'Carte', opts: () => Object.entries(TL.code.BOARDS).map(([k, b]) => [k, b.name]) }, { k: '_ws', kind: 'codeWs', label: 'Programme de départ' }, { k: 'expect', kind: 'lines', label: 'Fragments attendus dans le code généré (un par ligne, facultatif)', rows: 3 }, { k: 'demo', kind: 'check', label: 'Démonstration (non notée)' }],
   });
   S.label = S.label.slice(); S.label.splice(1, 0, { k: 'mode', kind: 'select', label: 'Réponse', opts: [['liste', 'liste déroulante'], ['saisie', 'cases à compléter (saisie)']] }, { k: 'bank', kind: 'check', label: 'Banque de mots (mode saisie)' });
@@ -130,7 +135,7 @@
     ['Mise en page', ['objectif', 'decoupe', 'filet', 'questions', 'retenir']],
     ['Contenus', ['text', 'ressource', 'mots', 'image', 'programme', 'scan', 'svg', 'link']],
     ['Comme sur papier', ['label', 'table', 'vraifaux', 'qcm', 'cloze', 'match', 'boxes', 'order', 'sort', 'numeric', 'bits', 'graph', 'draw', 'mindmap', 'procedure', 'report', 'autoeval']],
-    ['Numérique (ORDI)', ['circuit', 'blocks', 'code', 'robot', 'chain']],
+    ['Numérique (ORDI)', ['circuit', 'blocks', 'mblock', 'code', 'robot', 'chain']],
   ];
   let ctx = null; // { w, s, sel, insert(type) }
   E.insertMenu = function () {
@@ -139,17 +144,53 @@
     return items;
   };
 
+  /** Dupliquer : un AUTRE atelier (nouvel identifiant, version 1), sans lien avec celui d'origine. */
+  E.dupliquer = async function (id) {
+    const app = TL.app, w = app.workshops.get(id);
+    if (!w) { location.replace('#creer'); return; }
+    const copy = TL.clone(w);
+    ['publie', 'versionPubliee', 'empreintePubliee'].forEach((k) => delete copy[k]);
+    copy.title = w.title + ' (ma version)';
+    copy.id = E.idPropose(copy.title);
+    copy.author = (app.profile && app.profile.name) || '';
+    copy.version = 1;
+    const saved = await app.saveWorkshop(copy, 'local');
+    TL.toast('Copie créée (« ' + saved.id + ' ») : c’est un nouvel atelier, tu peux la modifier librement.');
+    location.replace('#ed-' + saved.id);
+  };
+
+  /** Changer l'identifiant d'un atelier jamais publié : l'atelier est réenregistré sous le nouveau, l'ancien est effacé. */
+  E.changerId = async function (w, nouveau) {
+    const app = TL.app;
+    nouveau = String(nouveau || '').trim();
+    if (nouveau === w.id) return true;
+    if (!E.idModifiable(w)) { TL.toast('Cet atelier a déjà été publié : son identifiant ne change plus.', 'bad'); return false; }
+    if (!E.ID_RE.test(nouveau)) { TL.toast('Identifiant : lettres sans accent, chiffres et tirets seulement.', 'bad'); return false; }
+    if (app.workshops.has(nouveau)) { TL.toast('« ' + nouveau + ' » est déjà pris par un autre atelier.', 'bad'); return false; }
+    const ancien = w.id;
+    w.id = nouveau;   // l'objet de l'éditeur aussi : un enregistrement encore en attente part sous le nouvel identifiant
+    const copy = TL.clone(w);
+    await app.saveWorkshop(copy, w.source);
+    await app.deleteWorkshop(ancien);
+    TL.toast('Identifiant changé : « ' + nouveau + ' ».', 'ok');
+    location.replace('#ed-' + nouveau);
+    return true;
+  };
+
   /* ---------- Vue d'édition ---------- */
   E.view = async function (root, id) {
     const app = TL.app;
     let w = app.workshops.get(id);
     if (!w) { root.append(h('div.pasteboard', h('div.desk', h('p', 'Atelier introuvable.')))); return; }
-    if (w.source === 'demo') {
-      const copy = TL.clone(w); copy.id = TL.uid('at-'); copy.title = w.title + ' (ma version)'; copy.author = (app.profile && app.profile.name) || ''; copy.version = 1;
-      const saved = await app.saveWorkshop(copy, 'local');
-      TL.toast('Copie créée : tu peux la modifier librement.');
-      location.replace('#ed-' + saved.id); return;
-    }
+    if (w.source === 'demo' && w.publie) {
+      // atelier publié avec l'application : on le modifie sous le MÊME identifiant (le travail des élèves y reste rattaché) ;
+      // la copie de ce poste retient la version publiée, pour publier la suivante
+      const copy = TL.clone(w);
+      copy.versionPubliee = w.version || 1;
+      copy.empreintePubliee = E.empreinte(w);
+      w = await app.saveWorkshop(copy, 'local');
+      TL.toast('Tu modifies l’atelier publié « ' + w.title + ' » : il garde son identifiant. Publie-le ensuite pour remplacer l’ancien.');
+    } else if (w.source === 'demo') { E.dupliquer(id); return; }
     w = TL.clone(w);
     TL.normalizeWorkshop(w);
     E.current = { w };
@@ -283,29 +324,69 @@
         else { x = h('input.field.small', { id: idf, type: type === 'number' ? 'number' : 'text', value: w[k] != null ? w[k] : '', min: extra && extra.min, max: extra && extra.max }); x.oninput = () => { w[k] = type === 'number' ? (x.value === '' ? undefined : +x.value) : x.value; redraw(); touch(); }; }
         return h('label.p-field', { for: idf }, h('span', label), x);
       };
-      const compsTxt = (w.competences || []).map((c) => (typeof c === 'string' ? c : (c.code ? c.code + ' | ' : '') + c.label + (c.co ? ' | CO : ' + c.co : '') + (c.sub || []).map((s) => '\n- ' + s.code + ' : ' + s.label).join(''))).join('\n');
+      /* Compétences, une par ligne : « T2C3 | intitulé | CO : connaissances | → SFC31 », sous-compétences
+         « - T2C31 : intitulé → SFC31.5.1, SFC31.5.2 ». « → … » = codes du référentiel de la Centrale (champ ref) : sans eux,
+         les pastilles des questions n'arrivent pas à la Centrale. La couleur (et un ref non réécrit) est gardée d'après le code. */
+      const RE_REF = /^(OST|SFC|CCRI)\d{2}(\.[3-6]\.\d+)?$/;
+      const fleche = (r) => (r && [].concat(r).length ? ' → ' + [].concat(r).join(', ') : '');
+      const lireRefs = (t) => t.split(/[,;\s]+/).map((x) => x.trim()).filter((x) => RE_REF.test(x));
+      const coupeRef = (t) => { const m = String(t).split(/\s*(?:→|->)\s*/); return { texte: m[0].trim(), ref: m.length > 1 ? lireRefs(m.slice(1).join(' ')) : null }; };
+      const compsTxt = (w.competences || []).map((c) => (typeof c === 'string' ? c : (c.code ? c.code + ' | ' : '') + c.label + (c.co ? ' | CO : ' + c.co : '') + (c.ref && c.ref.length ? ' |' + fleche(c.ref) : '')
+        + (c.sub || []).map((s) => '\n- ' + s.code + ' : ' + s.label + fleche(s.ref)).join(''))).join('\n');
       const comps = h('textarea.field.small.code', { rows: 6, 'aria-label': 'Compétences' }); comps.value = compsTxt;
       comps.oninput = () => {
+        const avant = {};   // ce qu'on ne réécrit pas (couleur) d'après le code
+        (w.competences || []).forEach((c) => { if (c && typeof c === 'object') { if (c.code) avant[c.code] = c; (c.sub || []).forEach((s) => { if (s && s.code) avant[s.code] = s; }); } });
         const out = [];
         lines(comps.value).forEach((l) => {
-          if (/^-/.test(l) && out.length) { const m = l.replace(/^-\s*/, '').match(/^(\S+)\s*:\s*(.*)$/); const last = out[out.length - 1]; if (typeof last === 'object') { last.sub = last.sub || []; last.sub.push(m ? { code: m[1], label: m[2] } : { code: '', label: l.slice(1).trim() }); } return; }
+          if (/^-/.test(l) && out.length) {
+            const { texte, ref } = coupeRef(l.replace(/^-\s*/, ''));
+            const m = texte.match(/^(\S+)\s*:\s*(.*)$/), last = out[out.length - 1];
+            if (typeof last === 'object') {
+              const s = m ? { code: m[1], label: m[2] } : { code: '', label: texte };
+              if (ref && ref.length) s.ref = ref;
+              last.sub = last.sub || []; last.sub.push(s);
+            }
+            return;
+          }
           const parts = l.split('|').map((x) => x.trim());
           const code = /^T\d/.test(parts[0]) ? parts.shift() : '';
-          const co = parts.find((p) => /^CO\s*:/i.test(p));
-          out.push({ code, label: parts.filter((p) => p !== co).join(' | '), co: co ? co.replace(/^CO\s*:\s*/i, '') : undefined });
+          let ref = null;
+          const reste = parts.filter((p) => { const r = coupeRef(p); if (r.ref) { ref = r.ref; return r.texte !== ''; } return true; }).map((p) => coupeRef(p).texte);
+          const co = reste.find((p) => /^CO\s*:/i.test(p));
+          const c = { code, label: reste.filter((p) => p !== co).join(' | '), co: co ? co.replace(/^CO\s*:\s*/i, '') : undefined };
+          if (code && avant[code] && avant[code].color) c.color = avant[code].color;
+          if (ref && ref.length) c.ref = ref;
+          out.push(c);
         });
         w.competences = out; touch();
       };
       const der = h('textarea.field.small', { rows: 4, 'aria-label': 'Déroulement' });
       der.value = (w.deroulement || []).map((d) => [d.seance, d.objectif, d.activites, d.ressources].join(' | ')).join('\n');
       der.oninput = () => { w.deroulement = lines(der.value).map((l) => { const [seance, objectif, activites, ressources] = l.split('|').map((x) => (x || '').trim()); return { seance, objectif, activites, ressources }; }); touch(); };
+      // Identifiant : modifiable tant que l'atelier n'a jamais été publié, figé ensuite (le travail des élèves y est rattaché)
+      const idIn = h('input.field.small.mono', { type: 'text', value: w.id, spellcheck: false, pattern: '[A-Za-z0-9-]+', 'aria-describedby': 'ed-id-aide' });
+      const idAide = h('span.small.muted', { id: 'ed-id-aide' });
+      const idBox = h('div.p-field', h('label', { for: (idIn.id = TL.uid('wf')) }, h('span', 'Identifiant de l’atelier')), idIn, idAide);
+      if (E.idModifiable(w)) {
+        const propose = E.idPropose(w.title, w.id);
+        idAide.textContent = 'Il apparaît dans les adresses et sur la Centrale, et ne pourra plus changer après la publication. Lettres sans accent, chiffres, tirets.';
+        const valider = h('button.btn.small', { type: 'button', onclick: () => E.changerId(w, idIn.value) }, 'Changer');
+        const suggerer = /^at-/.test(w.id) && propose !== w.id ? h('button.btn.small.ghost', { type: 'button', onclick: () => { idIn.value = propose; } }, 'Proposer « ' + propose + ' »') : null;
+        idIn.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); E.changerId(w, idIn.value); } };
+        idBox.append(h('div.p-col', valider, suggerer));
+      } else {
+        idIn.readOnly = true;
+        idAide.textContent = 'Figé : l’atelier a été publié' + (w.versionPubliee != null ? ' (version ' + w.versionPubliee + ')' : '') + ', le travail des élèves est rattaché à cet identifiant. Pour un autre atelier : « Dupliquer ».';
+      }
       body.append(
+        idBox,
         f('title', 'Titre de l’atelier', 'text'),
         h('div.p-row2', f('level', 'Filière', 'select', { opts: Object.entries(TL.LEVELS).map(([k, v]) => [k, v.label]) }), f('niveau', 'Niveau (pastille)', 'select', { opts: [['6e', '6e'], ['5e', '5e (vert)'], ['4e', '4e (jaune)'], ['3e', '3e (rouge)'], ['2nde', '2nde'], ['1re', '1re'], ['Tle', 'Tle'], ['Pro', 'Pro / BTS']] })),
         h('div.p-row2', f('cycle', 'Cycle', 'number'), f('seq', 'AT SEQ n°', 'number'), f('duration', 'Durée (min)', 'number')),
         f('summary', 'Résumé et objectif de l’atelier', 'area', { rows: 3 }),
         f('problematique', 'Problématique', 'area'), f('objet', 'Objet ou système technique', 'text'), f('position', 'Positionnement sur le cycle (1 à 9)', 'number', { min: 1, max: 9 }),
-        h('label.p-field', h('span', 'Compétences (CT) — « T2C1 | intitulé | CO : connaissances », sous-compétences « - T2C11 : … »'), comps),
+        h('label.p-field', h('span', 'Compétences (CT) — « T2C1 | intitulé | CO : connaissances », sous-compétences « - T2C11 : intitulé → SFC11.5.1, SFC11.5.2 » (→ codes du référentiel de la Centrale)'), comps),
         f('presentation', 'Présentation de la séquence', 'area', { rows: 3 }), f('synthese', 'Éléments de la synthèse', 'area'), f('evaluation', 'Modalités d’évaluation', 'area'),
         h('label.p-field', h('span', 'Déroulement — « Séance 1 | objectif | activités | ressources »'), der),
         f('differenciation', 'Différenciation', 'area'), f('materiel', 'Matériel à prévoir', 'area'), f('author', 'Auteur', 'text'),
