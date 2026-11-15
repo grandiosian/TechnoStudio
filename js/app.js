@@ -721,7 +721,7 @@
     const activiteIci = () => { const a = TL.passerelle.activitesAtelier(w).find((x) => x.feuille === pg.step); return a ? a.id : TL.passerelle.idActivite(w, codes[pg.step] || ''); };
     app.activiteOuverte = activiteIci;
     const feuilleSeule = !!(demande && demande.feuille);   // le portail (ou l'étape du parcours) a demandé une seule feuille
-    let nav = null, wasDone = null;
+    let nav = null, wasDone = null, navOuverte = false;   // navOuverte : première feuille montrée (maj() forcé)
     /* Pied de la feuille : « ← » / « Feuille n / N » / « Suivant → ». Ouvert depuis la Centrale (module avec
        Centrale.navigation), la Centrale décide de la suite : activité suivante de l'atelier du calendrier (page
        rechargée sur #activite=…), étape suivante du parcours, ou retour aux ateliers ; sinon, la feuille suivante. */
@@ -808,7 +808,8 @@
       if (s.kind !== 'ressource') TL.ressources.linkify(sheet, { w, segpa: !!s.segpa, pg });
       nav = null;
       board.append(sheet, buildNav());
-      if (TL.centrale.majNavigation) TL.centrale.majNavigation();   // autre feuille : la Centrale recalcule la suite
+      if (TL.centrale.majNavigation) TL.centrale.majNavigation(!navOuverte);   // feuille ouverte ou changée : la Centrale recalcule la suite
+      navOuverte = true;
       if (G) { G.lock(sheet, s); wasDone = G.done(pg.step); paintChoix(); }
       // Mesures (temps actif, questions vues, essais) : js/mesures.js
       if (suivi) suivi.stop();

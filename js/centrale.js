@@ -336,8 +336,9 @@
       TL.emit('nav-centrale', Z.nav);
     }, { activite: () => (calcul = activiteOuverte()) }) || null;
   }
-  /** L'élève a changé de feuille : la suite (carte d'atelier) est recalculée pour cette feuille. */
-  Z.majNavigation = () => { if (Z.navCtl && Z.navActivite !== activiteOuverte()) Z.navCtl.maj(); };
+  /** Une feuille vient de s'ouvrir (force : ouverture de l'atelier, après un rechargement par exemple) ou l'élève en a
+      changé : la Centrale recalcule tout de suite la suite et « Étape n / N » pour cette feuille. */
+  Z.majNavigation = (force) => { if (Z.navCtl && (force || Z.navActivite !== activiteOuverte())) Z.navCtl.maj(); };
 
   /* ---------- Point d'accès unique : window.TechnoStudio (décrit dans centrale.json → acces_javascript) ---------- */
   const TS = {
