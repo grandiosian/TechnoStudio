@@ -1074,6 +1074,15 @@ pre.code { white-space: pre-wrap; background: var(--surface-2); padding: 10px; b
 @media (max-width: 480px) { .ssb-lbl { display: none; } }
 @media print { .sous-barre { display: none !important; } }
 .sheetnav .btn:disabled { opacity: .65; cursor: not-allowed; }
+/* Pied de la feuille, ouvert depuis la Centrale (Centrale.navigation) : « Suivant » au-dessus de la suite */
+.sheetnav .btn-suite { flex-direction: column; align-items: flex-start; gap: 1px; padding-top: 5px; padding-bottom: 6px; }
+.sheetnav .btn-suite-k { font: 700 10.5px/1.1 var(--f-ui); letter-spacing: .05em; text-transform: uppercase; opacity: .82; }
+.sheetnav .btn-suite.fin { background: var(--ok); border-color: var(--ok); }
+.sheetnav .btn-suite:disabled { background: var(--surface-2); border-color: var(--ui-line); color: var(--ui-muted); opacity: 1; filter: none; }
+.sheetnav-attente { min-width: 120px; min-height: 36px; }
+.sheetnav-raison { flex-basis: 100%; margin: -4px 0 0; text-align: right; font: 500 12.5px/1.3 var(--f-ui); color: var(--ui-muted); }
+/* Vue Enseignant d'un essai : élève pas désanonymisé sur cet ordinateur */
+.tbid-nom.anonyme { font-family: var(--f-ui); font-style: italic; opacity: .75; }
 /* Barre élève : aperçu enseignant */
 .apercu-tag { flex: none; margin-left: 6px; padding: 2px 9px; border-radius: 99px; background: #F5C400; color: #3a2d00; font-size: 12px; font-weight: 700; }
 .onb-prof { margin-left: auto; }

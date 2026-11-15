@@ -379,7 +379,14 @@
     const Z = TL.centrale, on = Z.connecte(), st = on ? Z.status : 'local';
     const etatTxt = { online: 'enregistré', offline: 'hors ligne', syncing: 'enregistrement…', error: 'à vérifier' }[st] || 'sur cet appareil';
     moi.className = 'tbid-moi st-' + (st === 'indispo' ? 'local' : st);
-    moi.append(icone(ICO.personne), h('span.tbid-nom', on ? Z.user.name : 'Visiteur'), on ? h('span.sync-dot') : null);
+    // essai de l'enseignant, vue Enseignant : le nom de l'élève gardé sur cet ordinateur (Centrale.nomAffiche), ou
+    // « pas désanonymisé » en italique ; ailleurs l'identifiant
+    const M = window.Centrale;
+    let nom = on ? Z.user.name : 'Visiteur', anonyme = false;
+    if (on && M && typeof M.nomAffiche === 'function') {
+      try { nom = M.nomAffiche() || nom; anonyme = typeof M.nomEnseignant === 'function' && M.nomEnseignant() === ''; } catch (e) { /* module plus ancien */ }
+    }
+    moi.append(icone(ICO.personne), h('span.tbid-nom' + (anonyme ? '.anonyme' : ''), nom), on ? h('span.sync-dot') : null);
     moi.title = Z.message || (on ? 'Connecté à la Centrale ' + Z.serveur.replace(/^https?:\/\//, '').replace(/\/$/, '') + ' : travail ' + etatTxt + (Z.lastSync ? ' (' + TL.fmtDate(Z.lastSync) + ')' : '') + '. Clic : retour sur la Centrale.'
       : 'Visiteur : ton travail est enregistré sur cet appareil. Clique pour te connecter avec ton code élève (Mon code).');
     moi.setAttribute('aria-label', on ? 'Mon compte : ' + Z.user.name + ', travail ' + etatTxt : 'Visiteur : me connecter avec mon code');
@@ -388,9 +395,8 @@
     moi.onclick = (e) => {
       e.stopPropagation();
       if (!Z.connecte()) { app.connexion(); return; }
-      const C = window.Centrale;
-      if (C && C.allerPortail && C.allerPortail()) return;
-      const ouvert = C && C.menuEleve && C.menuEleve(moi, {
+      if (M && M.allerPortail && M.allerPortail()) return;
+      const ouvert = M && M.menuEleve && M.menuEleve(moi, {
         liens: [{ texte: 'Mon compte et mes réglages…', action: () => app.go('compte') },
           { texte: 'Se déconnecter', classe: 'cme-sortir', action: async () => { await Z.deconnexion(); TL.toast('Déconnecté : ton travail reste sur cet appareil.'); } }],
         deconnexion: false,
@@ -473,7 +479,7 @@
     const ok = !!(s && s.essai);
     if (ok && !ecouteVue && C() && C().surChangementVue) {   // vue changée ailleurs (portail, autre application, autre onglet)
       ecouteVue = true;
-      C().surChangementVue((v) => app.basculerVue(v === 'enseignant', true));
+      C().surChangementVue((v) => { app.basculerVue(v === 'enseignant', true); drawSync(); });   // drawSync : nom de l'élève (vue Enseignant)
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && app.essaiProf && C().actualiserVue) C().actualiserVue(); });
     }
     if (ok === app.essaiProf) return;
@@ -569,6 +575,7 @@
     b.onkeydown = (e) => { if (e.key === 'ArrowDown') { e.preventDefault(); ouvrir(true); } };
   }
   TL.on('hub', () => { app.verifierEssai(); drawSync(); renderMenus(); });
+  TL.on('nav-centrale', () => { if (app.majNav) app.majNav(); });   // navigation de la Centrale recalculée (js/centrale.js)
   TL.on('ressources', () => { const b = TL.$('.sous-barre .seul-res'); if (b) b.setAttribute('aria-pressed', String(TL.ressources.isOpen())); });
   function setTheme(k) { if (k === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = k; try { localStorage.setItem('tl-theme', k); } catch (e) { /* stockage indisponible */ } renderMenus(); drawTheme(); }
   function applyZoom() { TL.$$('.pasteboard .sheet').forEach((s) => (s.style.zoom = app.zoom)); }
@@ -588,6 +595,7 @@
     // #activite=<atelier> ou <atelier>/<feuille> : ouverture directe, même sans la Centrale
     if (/^activite=/.test(hash)) { let id = ''; try { id = decodeURIComponent(hash.slice(9).split('&')[0]); } catch (e) { /* adresse illisible */ } if (id) { await TL.centrale.ouvrirActivite(id); if (/^#activite=/.test(location.hash)) app.go('accueil'); return; } }
     app.barre = null;   // atelier en cours (centre de la barre) : renseigné par le lecteur
+    app.majNav = null; app.activiteOuverte = null;   // pied de la feuille et activité ouverte : renseignés par le lecteur
     hist.debrancher();  // annuler / rétablir : la nouvelle vue branche sa propre source (lecteur, éditeur)
     renderMenus();
     const st = stage();
@@ -709,21 +717,70 @@
       boiteChoix.hidden = max <= G.base;
       sousBarre.hidden = boiteChoix.hidden && !btnResG;
     };
+    /* Activité ouverte (« atelier/P2 ») : la Centrale en déduit la suite d'une carte d'atelier (Centrale.navigation). */
+    const activiteIci = () => { const a = TL.passerelle.activitesAtelier(w).find((x) => x.feuille === pg.step); return a ? a.id : TL.passerelle.idActivite(w, codes[pg.step] || ''); };
+    app.activiteOuverte = activiteIci;
+    const feuilleSeule = !!(demande && demande.feuille);   // le portail (ou l'étape du parcours) a demandé une seule feuille
     let nav = null, wasDone = null;
+    /* Pied de la feuille : « ← » / « Feuille n / N » / « Suivant → ». Ouvert depuis la Centrale (module avec
+       Centrale.navigation), la Centrale décide de la suite : activité suivante de l'atelier du calendrier (page
+       rechargée sur #activite=…), étape suivante du parcours, ou retour aux ateliers ; sinon, la feuille suivante. */
     const buildNav = () => {
       let prev, next;
       if (G) { const k = G.parcours.indexOf(pg.step); prev = k > G.base ? G.parcours[k - 1] : null; next = k >= 0 && k < G.parcours.length - 1 ? G.parcours[k + 1] : null; }
       else { prev = pg.step > 0 ? pg.step - 1 : null; next = pg.step < w.steps.length - 1 ? pg.step + 1 : null; }
       const bloque = G && next != null && !G.done(pg.step);
-      const el = h('nav.sheetnav',
-        prev != null ? h('button.btn.ghost', { type: 'button', onclick: () => show(prev) }, '← ' + w.steps[prev].title) : h('span'),
-        h('span.mono.small.muted', G ? 'Feuille ' + (G.parcours.indexOf(pg.step) - G.base + 1) + ' / ' + (G.parcours.length - G.base) : 'Feuille ' + (pg.step + 1) + ' / ' + w.steps.length),
-        next != null ? h('button.btn.primary', { type: 'button', disabled: bloque, title: bloque ? 'Réponds à toutes les questions de la feuille pour passer à la suivante' : '', onclick: () => show(next) }, bloque ? '🔒 ' + w.steps[next].title : w.steps[next].title + ' →')
-          : h('button.btn.primary', { type: 'button', onclick: () => finish(w, pg) }, 'Terminer l’atelier'));
+      const cn = app.seul ? null : TL.centrale.nav;
+      const feuilleTxt = G ? 'Feuille ' + (G.parcours.indexOf(pg.step) - G.base + 1) + ' / ' + (G.parcours.length - G.base) : 'Feuille ' + (pg.step + 1) + ' / ' + w.steps.length;
+      // ce que la Centrale prend à droite : la suite de la carte d'atelier, ou l'étape suivante du parcours (après la
+      // dernière feuille, ou tout de suite si l'étape ne demande qu'une feuille) ; ailleurs, la feuille suivante
+      let suite = null;
+      if (cn && cn.suivant) {
+        if (cn.contexte === 'atelier' && cn.position) suite = cn.suivant;
+        else if (cn.contexte === 'parcours' && (feuilleSeule || next == null)) suite = cn.suivant;
+      }
+      const attente = suite && cn.contexte === 'atelier' && TL.centrale.navActivite !== activiteIci();   // calculée pour une autre feuille
+      let raison = '';
+      const droite = () => {
+        if (attente) return h('span.sheetnav-attente', { 'aria-hidden': 'true' });
+        if (!suite) {
+          return next != null ? h('button.btn.primary', { type: 'button', disabled: bloque, title: bloque ? 'Réponds à toutes les questions de la feuille pour passer à la suivante' : '', onclick: () => show(next) }, bloque ? '🔒 ' + w.steps[next].title : w.steps[next].title + ' →')
+            : h('button.btn.primary', { type: 'button', onclick: () => finish(w, pg) }, 'Terminer l’atelier');
+        }
+        // carte d'atelier : la feuille doit aussi être finie sur ce poste (la Centrale le saura au prochain envoi)
+        const local = cn.contexte === 'atelier' && suite.cible !== 'portail' && G && !G.done(pg.step);
+        const verrou = !!suite.verrou || local;
+        raison = suite.verrou ? suite.raison || 'Pas encore ouvert' : local ? 'Réponds à toutes les questions de la feuille pour passer à la suite' : '';
+        const vers = suite.cible === 'portail';
+        const b = h('button.btn.primary.btn-suite' + (suite.fin ? '.fin' : ''), {
+          type: 'button', disabled: verrou, title: verrou ? raison : suite.titre || '',
+          onclick: async () => {
+            b.disabled = true;
+            const st = TL.workshopStats(w, pg);
+            if (!pg.completedAt && st.pct === 100) pg.completedAt = Date.now();
+            app.saveProgress(pg);
+            TL.centrale.rapport(w.id);   // avancement envoyé tout de suite (le module vide la file avant de partir)
+            let ok = false;
+            try { ok = await suite.aller(); } catch (e) { ok = false; }
+            if (ok === false) { b.disabled = false; TL.toast(suite.raison || 'Pas encore possible : réessaie dans un instant.', 'bad'); }
+          },
+        }, vers ? null : h('small.btn-suite-k', 'Suivant'), h('span.btn-suite-t', (verrou ? '🔒 ' : '') + suite.libelle + (vers || verrou ? '' : ' →')));
+        return b;
+      };
+      const gauche = prev != null ? h('button.btn.ghost', { type: 'button', onclick: () => show(prev) }, '← ' + w.steps[prev].title)
+        : cn && cn.precedent ? h('button.btn.ghost.btn-retour', { type: 'button', title: cn.precedent.titre || '', onclick: () => cn.precedent.aller() }, '← ' + cn.precedent.libelle)
+        : h('span');
+      const pos = cn && cn.position;
+      const centre = pos ? 'Étape ' + pos.numero + ' / ' + pos.total + (cn.contexte === 'parcours' && !feuilleSeule && G && G.parcours.length - G.base > 1 ? ' · ' + feuilleTxt : '') : feuilleTxt;
+      const d = droite();
+      const el = h('nav.sheetnav' + (cn ? '.sheetnav-centrale' : ''), { 'aria-label': 'Navigation' },
+        gauche, h('span.mono.small.muted', { title: pos && pos.titre ? pos.titre : '' }, centre), d,
+        raison ? h('p.sheetnav-raison', { role: 'note' }, raison) : null);
       if (nav) nav.replaceWith(el);
       nav = el;
       return el;
     };
+    app.majNav = () => { if (nav && nav.isConnected) buildNav(); };
     let sheet = null, suivi = null;
     const afterResult = () => {
       TL.panels.refresh('feuilles'); TL.panels.refresh('suivi'); paintNote(); drawAtelier();
@@ -751,6 +808,7 @@
       if (s.kind !== 'ressource') TL.ressources.linkify(sheet, { w, segpa: !!s.segpa, pg });
       nav = null;
       board.append(sheet, buildNav());
+      if (TL.centrale.majNavigation) TL.centrale.majNavigation();   // autre feuille : la Centrale recalcule la suite
       if (G) { G.lock(sheet, s); wasDone = G.done(pg.step); paintChoix(); }
       // Mesures (temps actif, questions vues, essais) : js/mesures.js
       if (suivi) suivi.stop();

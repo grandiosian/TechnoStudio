@@ -76,6 +76,9 @@
       api: Z.serveur + 'api/',
       app: Z.app,
       boutonRetour: false, // pas de bouton flottant : le « ← » est dans le widget de l'élève (barre du haut)
+      // navigation intégrée (pied de la feuille) : pas de bouton flottant « Étape suivante » non plus (sinon il peut
+      // être dessiné après l'appel à Centrale.navigation, qui ne retire que ceux déjà présents)
+      ...(typeof window.Centrale.navigation === 'function' ? { boutonSuivant: false } : {}),
       surEtat: (e) => {
         const map = { enregistre: 'online', enregistrement: 'syncing', modifie: 'syncing', 'hors-ligne': 'offline', erreur: 'error', conflit: 'error' };
         if (!Z.connecte()) return;
@@ -85,6 +88,7 @@
       },
       surDeconnexion: () => { etat('local', 'Session terminée : retape ton code pour enregistrer sur la Centrale.'); TL.toast('Session Centrale terminée : ton travail reste sur cet appareil.', ''); },
     });
+    brancherNavigation();
     if (avecJeton || window.Centrale.connecte()) {
       // Le module consomme le jeton passé par le portail (#centrale=…) via afficherConnexion
       const tampon = document.createElement('div');
@@ -316,6 +320,24 @@
     Z.precedent = window.Centrale.boutonPrecedent({ classe: 'tbid-ret mb-retour' });
     return Z.precedent;
   };
+
+  /** Navigation intégrée (« ← » / « Suivant → » au pied de la feuille, viewPlayer) : le module de la Centrale dit quoi
+      afficher (étape de parcours, carte d'atelier du calendrier ou portail) et retire ses boutons flottants.
+      Z.nav : la dernière réponse (null hors de la Centrale) ; Z.navActivite : l'activité pour laquelle elle a été
+      calculée ; événement « nav-centrale » à chaque changement. Module plus ancien : rien ne change. */
+  Z.nav = null; Z.navActivite = ''; Z.navCtl = null;
+  const activiteOuverte = () => (TL.app && TL.app.activiteOuverte ? TL.app.activiteOuverte() || '' : '');
+  function brancherNavigation() {
+    if (Z.navCtl || !window.Centrale || typeof window.Centrale.navigation !== 'function') return;
+    let calcul = '';   // activité lue par le module pendant le calcul (carte d'atelier)
+    Z.navCtl = window.Centrale.navigation((nav) => {
+      Z.nav = nav || null;
+      Z.navActivite = nav && nav.contexte === 'atelier' ? calcul : activiteOuverte();
+      TL.emit('nav-centrale', Z.nav);
+    }, { activite: () => (calcul = activiteOuverte()) }) || null;
+  }
+  /** L'élève a changé de feuille : la suite (carte d'atelier) est recalculée pour cette feuille. */
+  Z.majNavigation = () => { if (Z.navCtl && Z.navActivite !== activiteOuverte()) Z.navCtl.maj(); };
 
   /* ---------- Point d'accès unique : window.TechnoStudio (décrit dans centrale.json → acces_javascript) ---------- */
   const TS = {

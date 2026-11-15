@@ -62,7 +62,11 @@
    "afficherIdentifiant",
    "retour",
    "boutonPrecedent",
-   "menuEleve"
+   "menuEleve",
+   "navigation",
+   "nomAffiche",
+   "nomEnseignant",
+   "surChangementVue"
   ],
   "fonctions_non_utilisees": [
    "envoyerFichier",

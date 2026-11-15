@@ -18,12 +18,13 @@ contrat avec la Centrale : [PASSERELLE.md](PASSERELLE.md). Vue d'ensemble : [../
 ## Carte de `js/`
 - `app.js` : la coquille, avec :
   - la barre du haut :
-    - `drawSync()` : widget de l'élève ; au clic, `Centrale.menuEleve` quand l'élève est connecté ;
+    - `drawSync()` : widget de l'élève (`Centrale.nomAffiche()` : en vue Enseignant d'un essai, le nom de l'élève ou « pas désanonymisé » en italique ; redessiné par `Centrale.surChangementVue`) ; au clic, `Centrale.allerPortail`, en repli `Centrale.menuEleve` ;
     - `drawAtelier()` : pilule centrale, avec les libellés « Atelier » et « Feuille » ;
     - `placerCentre()` : place l'atelier au milieu, ou au plus près, et resserre la barre par paliers `serre-1…8` en commençant par masquer le nom (logo seul). Le titre de l'atelier reste jusqu'au palier 7 (coupé avec « … », la zone du centre est bornée à la place libre) ; le bouton de l'élève part avant lui ;
   - la sous-barre de la feuille (`.sous-barre` : choix de la feuille quand plusieurs sont ouvertes, 📚 Ressources) ;
   - **annuler / rétablir** (`TL.historique`) : chaque vue branche une source `lire()` / `ecrire()`, et les réponses de l'élève sont notées dans `app.saveProgress` ;
-  - le lecteur d'atelier (`viewPlayer`) et le choix du mode élève / enseignant.
+  - le lecteur d'atelier (`viewPlayer`) et le choix du mode élève / enseignant ;
+  - le **pied de la feuille** (`buildNav` dans `viewPlayer`) : « ← » / « Étape n / N » / « Suivant → ». Ouvert depuis la Centrale (`Centrale.navigation`, branché dans `centrale.js` : `TL.centrale.nav`, événement `nav-centrale`), la suite vient de la Centrale : carte d'atelier du calendrier (activité suivante, page rechargée sur `#activite=`, verrouillée avec la raison), étape de parcours (après la dernière feuille, ou tout de suite si l'étape ne demande qu'une feuille), sinon la feuille suivante. Hors de la Centrale ou module plus ancien : inchangé.
 - `centrale.js` (`TL.centrale` : connexion, `boutonPrecedent`, synchronisation), `panels.js`, `sheet.js` (feuilles), `editor2.js` (éditeur enseignant, avec annuler / rétablir branché sur `touch()`), `ressources.js`, `activities.js` / `demos*.js` (ateliers intégrés), `blocks.js` / `code.js` / `flash.js` / `mblock.js` / `robot.js` (programmation et cartes), `mesures.js` (suivi pendant l'atelier).
 - `css/app.css` : toute la feuille de style (barre du haut en tête de fichier).
 - `dist/technostudio-autonome.html` : version en un seul fichier, produite par `node tools/build.js`.

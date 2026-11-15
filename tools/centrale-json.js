@@ -71,7 +71,7 @@ const desc = {
       activite_directe: 'Centrale.activiteDemandee() : « <atelier>/<feuille> » ouvre la feuille, « <atelier> » ouvre l’atelier.',
       retour: 'Bouton « ← » au début du widget de l’élève : Centrale.boutonPrecedent() (« ← Étape précédente » dans un parcours, « ← Mes ateliers » sinon, caché hors de la Centrale) ; avec un module plus ancien, « ← Mes ateliers » (Centrale.retour). Pas de bouton flottant (boutonRetour: false).',
     },
-    fonctions_utilisees: ['init', 'afficherConnexion', 'connecte', 'session', 'deconnexion', 'charger', 'sauver', 'listeDonnees', 'progression', 'declarerActivites', 'activiteDemandee', 'listeRessources', 'chargerRessource', 'afficherIdentifiant', 'retour', 'boutonPrecedent', 'menuEleve'],
+    fonctions_utilisees: ['init', 'afficherConnexion', 'connecte', 'session', 'deconnexion', 'charger', 'sauver', 'listeDonnees', 'progression', 'declarerActivites', 'activiteDemandee', 'listeRessources', 'chargerRessource', 'afficherIdentifiant', 'retour', 'boutonPrecedent', 'menuEleve', 'navigation', 'nomAffiche', 'nomEnseignant', 'surChangementVue'],
     fonctions_non_utilisees: ['envoyerFichier', 'listeFichiers', 'chargerFichier', 'mesProgressions', 'etape', 'projet.*', 'parcours', 'ateliers', 'lien', 'ouvrir'],
   },
   activites: {
