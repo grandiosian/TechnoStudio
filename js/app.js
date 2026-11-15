@@ -461,15 +461,24 @@
       opt(false, 'Élève', ICO.personne, 'Vue élève : l’atelier comme le voit l’élève (fenêtres, fonctions et règles de l’atelier)'),
       opt(true, 'Enseignant', ICO.tableau, 'Vue enseignant : toute l’interface et tous les modes, toujours connecté comme l’élève'));
   }
+  // La vue est gardée par la Centrale avec la session (Centrale.vue / changerVue) : le portail et les autres applications
+  // la retrouvent. Module plus ancien : gardée pour l'onglet seulement (sessionStorage).
   const CLE_VUE = 'ts-essai-vue';
+  const C = () => window.Centrale;
+  const vueGardee = () => { if (C() && C().vue) return C().vue(); try { return sessionStorage.getItem(CLE_VUE) || 'eleve'; } catch (e) { return 'eleve'; } };
   app.essaiProf = false; app.vueProf = false;
+  let ecouteVue = false;
   app.verifierEssai = function () {
     const s = !app.seul && TL.centrale.session ? TL.centrale.session() : null;
     const ok = !!(s && s.essai);
+    if (ok && !ecouteVue && C() && C().surChangementVue) {   // vue changée ailleurs (portail, autre application, autre onglet)
+      ecouteVue = true;
+      C().surChangementVue((v) => app.basculerVue(v === 'enseignant', true));
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && app.essaiProf && C().actualiserVue) C().actualiserVue(); });
+    }
     if (ok === app.essaiProf) return;
     app.essaiProf = ok;
-    let garde = ''; try { garde = sessionStorage.getItem(CLE_VUE) || ''; } catch (e) { /* rien */ }
-    if (ok && garde === 'enseignant') app.basculerVue(true, true);
+    if (ok && vueGardee() === 'enseignant') app.basculerVue(true, true);
     else if (!ok && app.vueProf) app.basculerVue(false, true);
     else drawAtelier();
   };
@@ -477,6 +486,7 @@
     prof = !!prof && app.essaiProf;
     if (prof === app.vueProf) { drawAtelier(); return; }
     app.vueProf = prof;
+    if (C() && C().changerVue) C().changerVue(prof ? 'enseignant' : 'eleve');
     if (prof) { app.eleveAvantVue = app.eleveCentrale; app.eleveCentrale = false; app.enseignantCentrale = true; }
     else { app.eleveCentrale = app.eleveAvantVue !== undefined ? app.eleveAvantVue : app.eleveCentrale; app.enseignantCentrale = false; if (TL.panels.close) TL.panels.close(); }
     app.apercu = false;
