@@ -37,32 +37,30 @@
   app.loadWorkshops = async function () {
     app.workshops.clear();
     (TL.DEMOS || []).forEach((w) => app.workshops.set(w.id, w));
-    app.publies = new Map();   // gardés à part : « Abandonner mes modifications » fait revenir la version publiée
-    (await ateliersPublies()).forEach((w) => { app.publies.set(w.id, w); app.workshops.set(w.id, w); });
+    app.publies = new Map();   // ateliers transférés, gardés à part : « Abandonner mes modifications » fait revenir leur version
+    // ateliers transférés par la Centrale déjà ouverts sur ce poste (copies gardées pour les pannes du serveur, js/transferes.js)
+    await TL.transferes.reprendreAnciennesCopies();   // copies des anciens ateliers publiés avec l'appli (dossier ateliers/)
+    (await TL.transferes.copies()).forEach((c) => { const w = TL.transferes.preparer(c.w); app.publies.set(w.id, w); app.workshops.set(w.id, w); });
     (await TL.db.all('ws:')).forEach((w) => app.workshops.set(w.id, TL.normalizeWorkshop(w)));
   };
-  /* Ateliers publiés avec l'appli (dossier ateliers/, listés dans ateliers.json) : disponibles sans serveur.
-     Fichier unique (double-clic) : intégrés par tools/build.js. Sinon lus à côté de la page ; une copie est
-     gardée sur le poste pour la prochaine ouverture hors ligne. Ils se comportent comme les ateliers intégrés. */
-  async function ateliersPublies() {
-    const lire = (u, ms) => Promise.race([fetch(u, { cache: 'no-cache' }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
-      new Promise((_, ko) => setTimeout(() => ko(new Error('délai')), ms))]);
-    let liste = null;
-    if (Array.isArray(window.TL_ATELIERS_PUBLIES)) liste = window.TL_ATELIERS_PUBLIES;
-    else if (/^https?:$/.test(location.protocol)) {
-      try {
-        const base = new URL('ateliers.json', location.href), cat = await lire(base, 4000);
-        liste = [];
-        for (const e of (cat.ateliers || []).filter((x) => x && x.fichier)) {
-          const d = await lire(new URL(e.fichier, base), 4000);
-          (Array.isArray(d) ? d : d.workshops || [d]).forEach((w) => liste.push(Object.assign({}, w, { publie: e.fichier })));
-        }
-        TL.db.set('publies', liste).catch(() => {});
-      } catch (e) { liste = null; }
-    }
-    if (!liste) liste = (await TL.db.get('publies').catch(() => null)) || [];
-    return liste.filter((w) => TL.descriptor.validate('Workshop', w).ok).map((w) => Object.assign(TL.normalizeWorkshop(TL.clone(w)), { source: 'demo', publie: w.publie || true }));
-  }
+  /* Atelier transféré par la Centrale (js/transferes.js) : demandé à la Centrale, copie gardée sur le poste.
+     Une modification faite sur ce poste (ws:, éditeur) reste prioritaire. Renvoie l'atelier, ou null. */
+  app.atelierCentrale = async function (id, ms) {
+    const w = await TL.transferes.demander(id, ms);
+    if (!w) return null;
+    app.publies.set(w.id, w);
+    const cur = app.workshops.get(w.id);
+    if (!cur || cur.source === 'demo') app.workshops.set(w.id, w);
+    return app.workshops.get(w.id);
+  };
+  /** Atelier à ouvrir : celui du poste (un atelier transféré est d'abord redemandé, pour avoir sa dernière version,
+      la copie servant si la Centrale ne répond pas), sinon celui de la Centrale. */
+  app.trouverAtelier = async function (id) {
+    const w = app.workshops.get(id);
+    if (w && !w.transfere) return w;
+    return (await app.atelierCentrale(id, w ? 3000 : 8000)) || w || null;
+  };
+  app.majTransferes = (liste) => liste.forEach((w) => { app.publies.set(w.id, w); const c = app.workshops.get(w.id); if (!c || c.source === 'demo') app.workshops.set(w.id, w); });
   app.saveWorkshop = async function (w, source) {
     w = TL.normalizeWorkshop(w);
     w.source = source || w.source || 'local';
@@ -665,10 +663,25 @@
       grid.innerHTML = '';
       const list = all.filter((w) => (filt.level === 'all' || w.level === filt.level) && (!filt.q || TL.norm(w.title + ' ' + (w.summary || '') + ' ' + (w.problematique || '')).includes(TL.norm(filt.q))))
         .sort((a, b) => (a.seq || 99) - (b.seq || 99) || a.title.localeCompare(b.title));
-      if (!list.length) grid.append(h('p.muted', 'Aucun atelier ne correspond.'));
+      // Centrale joignable : ses ateliers pas encore sur ce poste (ils se téléchargent à l'ouverture)
+      const loin = (TL.transferes.liste || []).filter((a) => !app.workshops.has(a.id) && (filt.level === 'all' || (a.level || 'college') === filt.level)
+        && (!filt.q || TL.norm((a.titre || '') + ' ' + (a.resume || '') + ' ' + (a.problematique || '')).includes(TL.norm(filt.q))))
+        .sort((a, b) => (a.seq || 99) - (b.seq || 99) || String(a.titre).localeCompare(String(b.titre)));
+      if (!list.length && !loin.length) grid.append(h('p.muted', 'Aucun atelier ne correspond.'));
       for (const w of list) grid.append(await cover(w));
+      for (const a of loin) grid.append(coverCentrale(a));
     }
     await draw();
+  }
+  /** Atelier de la Centrale pas encore ouvert sur ce poste (fiche courte de la liste). */
+  function coverCentrale(a) {
+    const w = { id: a.id, title: a.titre || a.id, level: a.level || 'college', niveau: a.niveau || '' };
+    return h('a.cover.cover-loin', { href: '#at-' + a.id, title: 'Atelier de la Centrale : il sera gardé sur cet appareil après la première ouverture' },
+      h('div.cover-band', h('span.cover-title', TL.fr('ATELIER - ' + w.title)), TL.pastille(w)),
+      h('div.cover-body',
+        a.problematique ? h('p.cover-pb', h('b', 'Problématique : '), a.problematique) : a.resume ? h('p.cover-pb', a.resume) : null,
+        h('div.cover-meta', h('span.chip.lv-' + w.level, (TL.LEVELS[w.level] || {}).label || w.level), a.feuilles ? h('span.mono.small', a.feuilles + ' feuilles') : null, h('span.tag', 'Centrale')),
+        h('span.small.muted', 'Pas encore sur cet appareil')));
   }
   async function cover(w) {
     const pg = await app.getProgress(w.id);
@@ -685,8 +698,14 @@
 
   /* ================= Lecteur de feuilles ================= */
   async function viewPlayer(id) {
-    const w = app.workshops.get(id);
-    if (!w) { page().append(h('div.empty', h('h2', 'Atelier introuvable'), h('a.btn', { href: '#accueil' }, 'Bibliothèque'))); return; }
+    let w = app.workshops.get(id);
+    if (!w) {   // pas sur ce poste : atelier transféré par la Centrale ?
+      const attente = page(); attente.append(h('div.empty', h('h2', 'Chargement de l’atelier…'), h('p.muted', 'Il vient de la Centrale.')));
+      w = await app.atelierCentrale(id);
+      attente.parentNode.remove();
+      if (location.hash !== '#at-' + id) return;   // l'élève est parti ailleurs entre-temps
+    }
+    if (!w) { page().append(h('div.empty', h('h2', 'Atelier introuvable'), h('p', 'Ni sur ce poste, ni sur la Centrale (' + (TL.transferes.erreur || 'inconnu') + ').'), h('a.btn', { href: '#accueil' }, 'Bibliothèque'))); return; }
     const pg = await app.getProgress(id);
     pg.step = TL.clamp(pg.step || 0, 0, Math.max(0, w.steps.length - 1));
     const board = h('div.pasteboard.scroll');
@@ -941,13 +960,15 @@
   }
   // Lien « atelier seul » : l'élève n'a que l'atelier, rien n'est enregistré (essai en classe sans codes élèves)
   async function lienEssai(w) {
-    const u = location.origin + location.pathname + '?atelier=' + encodeURIComponent(w.id);
+    // atelier transféré, Centrale autre que celle par défaut (et pas celle qui sert cette page) : le lien la donne
+    const srv = TL.transferes.serveur(), autre = w.transfere && !/technoversailles\.alwaysdata\.net\/$/.test(srv) && !srv.startsWith(location.origin + '/');
+    const u = location.origin + location.pathname + '?atelier=' + encodeURIComponent(w.id) + (autre ? '&centrale=' + encodeURIComponent(srv) : '');
     const champ = h('input.field.mono', { type: 'text', readonly: true, value: u, onfocus: (e) => e.target.select() });
     TL.modal('Lien d’essai pour la classe', h('div',
       h('p', 'Ce lien ouvre seulement « ' + w.title + ' », avec le strict minimum : les feuilles, pas à pas. Pas de connexion, pas de profil, rien n’est enregistré (recharger la page repart de zéro).'),
       champ,
       h('p.small.muted', 'Pour ouvrir directement une feuille, ajoute « /P2 » (ou /R1…) après l’identifiant. Un raccourcisseur d’adresse peut en faire un lien court.'),
-      w.source !== 'demo' ? h('p.callout.warn', 'Cet atelier n’est que sur ce poste : publie-le avec l’application (dossier ateliers/) pour que le lien marche chez les élèves.') : null),
+      w.source !== 'demo' ? h('p.callout.warn', 'Cet atelier n’est que sur ce poste : publie-le dans la Centrale (Publier) pour que le lien marche chez les élèves.') : null),
     [{ label: 'Copier', primary: true, onClick: async () => { try { await navigator.clipboard.writeText(u); TL.toast('Lien copié.', 'ok'); } catch (e) { champ.select(); } } }, { label: 'Fermer' }]);
   }
   async function clearProgress() {
@@ -1364,6 +1385,11 @@
     await TL.panels.load();
     await app.loadWorkshops();
     const centrale = TL.centrale.init(); // en parallèle : l'appli s'affiche sans attendre le réseau
+    // Ateliers transférés par la Centrale, en parallèle aussi : copies plus anciennes remplacées, liste pour la bibliothèque
+    TL.transferes.actualiser().then((maj) => {
+      app.majTransferes(maj);
+      if ((maj.length || (TL.transferes.liste || []).length) && /^#?(accueil|bibliotheque)?$/.test(location.hash)) route();
+    });
     initBarre();
     drawSync();
     window.addEventListener('hashchange', route);
@@ -1382,12 +1408,13 @@
     app.layers.corr = false;
     await TL.panels.load();
     await app.loadWorkshops();
-    const w = app.workshops.get(app.seul.id);
+    const w = await app.trouverAtelier(app.seul.id);   // atelier transféré : demandé à la Centrale (ou sa copie)
     initBarre();
     drawSync();
     if (!w) {
       TL.$('#menus').append(h('span.seul-brand', TL.brandSvg()));
-      stage().append(h('div.pasteboard.scroll', h('div.desk', h('div.empty', h('h2', 'Atelier introuvable'), h('p', 'Le lien ne correspond à aucun atelier (« ' + app.seul.id + ' »). Vérifie l’adresse donnée par ton professeur.')))));
+      stage().append(h('div.pasteboard.scroll', h('div.desk', h('div.empty', h('h2', 'Atelier introuvable'), h('p', 'Le lien ne correspond à aucun atelier (« ' + app.seul.id + ' »). Vérifie l’adresse donnée par ton professeur.'
+        + (TL.transferes.erreur && TL.transferes.erreur !== 'pas sur la Centrale' ? ' (Centrale : ' + TL.transferes.erreur + '.)' : ''))))));
       return;
     }
     document.title = w.title + ' · TechnoStudio';

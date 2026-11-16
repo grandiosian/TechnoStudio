@@ -149,7 +149,7 @@
     const app = TL.app, w = app.workshops.get(id);
     if (!w) { location.replace('#creer'); return; }
     const copy = TL.clone(w);
-    ['publie', 'versionPubliee', 'empreintePubliee'].forEach((k) => delete copy[k]);
+    ['publie', 'transfere', 'versionPubliee', 'empreintePubliee'].forEach((k) => delete copy[k]);
     copy.title = w.title + ' (ma version)';
     copy.id = E.idPropose(copy.title);
     copy.author = (app.profile && app.profile.name) || '';
@@ -186,6 +186,7 @@
       // atelier publié avec l'application : on le modifie sous le MÊME identifiant (le travail des élèves y reste rattaché) ;
       // la copie de ce poste retient la version publiée, pour publier la suivante
       const copy = TL.clone(w);
+      delete copy.transfere;   // la copie modifiée est celle de ce poste ; la version de la Centrale reste à part (app.publies)
       copy.versionPubliee = w.version || 1;
       copy.empreintePubliee = E.empreinte(w);
       w = await app.saveWorkshop(copy, 'local');

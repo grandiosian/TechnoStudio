@@ -145,13 +145,14 @@ TechnoStudio utilise les codes du référentiel commun de la Centrale (`/passere
 
 Les couleurs des thèmes sont celles de la Centrale : T1 (OST) vert, T2 (SFC) rose, T3 (CCRI) jaune orangé.
 
-### Les ateliers publiés et le travail sans serveur
+### Ateliers intégrés, ateliers transférés par la Centrale, et travail sans serveur
 
-- **Dossier `ateliers/`** : un fichier `<id>.technostudio.json` par atelier créé par un enseignant (Mes ateliers → Publier). Ces ateliers sont lus au démarrage, sans serveur, et se comportent comme les ateliers intégrés ; une copie est gardée sur le poste (`publies`) pour l'ouverture hors ligne, et le fichier unique les contient.
-- **`ateliers.json`** (format `catalogue.ateliers` v1), produit par `node tools/centrale-json.js` avec `centrale.json` : ateliers intégrés et publiés, avec leurs feuilles notées et leurs compétences. La Centrale l'importe dans Ateliers → « Ateliers des applications ». La publication sur GitHub Pages refait ces fichiers à partir du dossier `ateliers/`.
+- **Ateliers intégrés** (`INTEGRES` dans `js/passerelle.js`) : les premiers pas, écrits dans `js/demos.js` et `js/demos2.js` ; ils s'ouvrent toujours, même sur un poste neuf sans serveur, et sont les seuls du fichier unique.
+- **Ateliers transférés par la Centrale** : un fichier `<id>.json` par atelier dans `ateliers/technostudio/` du dépôt de la Centrale (Mes ateliers → Publier). TechnoStudio les lit par l'API publique de la Centrale, `api/atelier-fichier.php?app=technostudio` (liste) et `&id=<id>` (fichier), sans jeton (`js/transferes.js`). Un atelier absent du poste est demandé à l'ouverture (`#activite=`, `?atelier=`, `#at-`) ; une copie est gardée (`transfere:<id>`, avec sa version) pour les pannes du serveur ; une version plus haute la remplace. Ils se comportent comme des ateliers publiés (« Modifier » garde l'identifiant) et leurs activités sont déclarées à la connexion. Les anciennes copies du dossier `ateliers/` de l'appli (clé `publies`) sont reprises comme copies.
+- **`ateliers.json`** (format `catalogue.ateliers` v1), produit par `node tools/centrale-json.js` avec `centrale.json` : les ateliers intégrés seulement, avec leurs feuilles notées et leurs compétences. La Centrale l'importe dans Ateliers → « Ateliers des applications » et y ajoute elle-même ses ateliers transférés.
 - **Ouvrir par l'adresse** : `#activite=<atelier>` ou `#activite=<atelier>/<feuille>` ouvre l'atelier ou la feuille, même sans la Centrale.
 - **Sauvegarde de secours** : Fichier → « Enregistrer mon travail (fichier) », « Ouvrir mon travail… » (fusion réponse par réponse) et « Déposer sur Nuage » : le travail est enregistré puis le dossier Nuage de la classe s'ouvre (lien de la Centrale, sinon lien collé une fois sur le poste par le professeur, `localStorage ts-nuage`).
-- Les ressources déposées dans la Centrale restent lues à la connexion, en attendant que les ateliers soient publiés avec l'appli.
+- Les ressources déposées dans la Centrale (« Ressources des ateliers ») restent lues à la connexion : un atelier pour une seule classe, sans attendre.
 
 Règles communes : [Données, bonnes pratiques et compatibilité](https://technoversailles.alwaysdata.net/passerelle/?doc=donnees).
 
@@ -186,7 +187,7 @@ Règles communes : [Données, bonnes pratiques et compatibilité](https://techno
 
 ## 4. Faire évoluer TechnoStudio sans casser la Centrale
 
-1. **Ajouter un atelier ou une feuille notée** : nouvel `id`, jamais réutilisé ; un atelier d'enseignant va dans `ateliers/`. Puis `node tools/centrale-json.js` (refait `centrale.json` et `ateliers.json`) et `node tools/build.js`.
+1. **Ajouter un atelier ou une feuille notée** : nouvel `id`, jamais réutilisé ; un atelier d'enseignant va dans la Centrale (`ateliers/technostudio/<id>.json` de son dépôt), jamais dans le code de l'appli. Puis `node tools/centrale-json.js` (refait `centrale.json` et `ateliers.json`) et `node tools/build.js`.
 2. **Changer la version** : modifier `VERSION` dans `js/passerelle.js`. Elle est reportée dans `atelier.version` et dans `TechnoStudio.version`.
 3. **Vérifier** : `node tools/verifier-ateliers.js` pour les ateliers, `node tools/centrale-json.js` pour régénérer le descripteur. La vérification GitHub valide `centrale.json` avec le schéma commun.
 4. **Changer la forme d'une donnée enregistrée** : mettre à jour `js/descriptor.js` (donc `$defs`) et garder la lecture de l'ancienne forme, puisque les élèves ont déjà du travail enregistré.

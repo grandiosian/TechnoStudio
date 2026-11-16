@@ -21,7 +21,7 @@ const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if (!c) process.e
   ok(true, 'connexion par code et réception de l’atelier déposé dans la Centrale');
   const badge = await p.textContent('[data-sync]'); ok(/4C-/.test(badge), 'badge : ' + badge.trim());
   await wait(800);
-  const covers = await p.$$eval('.cover', (l) => l.length); ok(covers >= 9, 'bibliothèque : ' + covers + ' ateliers affichés');
+  const covers = await p.$$eval('.cover', (l) => l.length); ok(covers >= 3, 'bibliothèque (ateliers intégrés, plus ceux de la Centrale) : ' + covers + ' ateliers affichés');
   await p.screenshot({ path: process.env.SHOTS + '/1-bibliotheque.png' });
   // 2. Répondre
   await p.evaluate(() => (location.hash = 'at-test-centrale')); await p.waitForSelector('.opt');

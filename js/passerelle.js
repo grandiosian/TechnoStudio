@@ -10,7 +10,11 @@
   'use strict';
 
   const APP = 'technostudio';
-  const VERSION = '3.5.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
+  const VERSION = '3.6.0'; // = atelier.version de centrale.json, augmentée à chaque changement du descripteur
+  /* Ateliers intégrés : les premiers pas, seuls à rester dans le code de l'appli (js/demos*.js) et dans ateliers.json.
+     Tous les autres sont transférés par la Centrale (dossier ateliers/technostudio/ de son dépôt, js/transferes.js).
+     Règle : Centrale, passerelle/ATELIERS-INTEGRES-ET-TRANSFERES.md. */
+  const INTEGRES = ['charte-lampe-de-poche', 'demo-eclairage-premier-programme', 'demo-circuits-serie-derivation'];
   const KIND = { feuille: 'P', ressource: 'R', synthese: 'S', evaluation: 'E', fiche: 'F' };
 
   /** Codes des feuilles d'un atelier, comme sur le papier : P1, P2, R1, S1, E1, S·P1 (SEGPA). */
@@ -80,7 +84,7 @@
      la bibliothèque (« Mes ateliers », Ctrl O) et le changement de niveau ; un atelier peut en rouvrir avec interface:{…}. */
   const INTERFACE_ATELIER = { menu: false, bibliotheque: false, niveau: false };
   function interfaceAtelier(w) { return Object.assign({}, INTERFACE_ATELIER, (w && w.interface) || {}); }
-  /** Un atelier du catalogue ; fichier : contenu publié avec l'appli (ateliers/…), vide pour un atelier du code. */
+  /** Un atelier du catalogue ; fichier : adresse d'un contenu séparé (vide pour un atelier du code, le cas des ateliers intégrés). */
   function atelierCatalogue(w, fichier) {
     const acts = activitesAtelier(w);
     const e = { id: w.id, titre: String(w.title).slice(0, 120), niveau: niveauCatalogue(w), resume: String(w.summary || w.problematique || '').slice(0, 600),
@@ -92,7 +96,7 @@
     if (w.author) e.auteur = String(w.author).slice(0, 80);
     return e;
   }
-  /** Contenu de ateliers.json. publies : { id atelier → fichier } pour les ateliers du dossier ateliers/. */
+  /** Contenu de ateliers.json. publies : { id atelier → fichier } pour un atelier qui a un fichier séparé (aucun aujourd'hui). */
   function catalogue(ateliers, publies) {
     publies = publies || {};
     return { format: 'catalogue.ateliers', version: 1, app: APP, app_version: VERSION, referentiel: 'technologie-c4-2024',
@@ -203,6 +207,6 @@
   const cleAtelier = (wid) => 'at/' + String(wid).replace(/[^A-Za-z0-9_\-.]/g, '-');
   const CLE_CODE = 'code/projet';
 
-  return { APP, VERSION, codesFeuilles, estNote, idActivite, activitesAtelier, activites, progression, mesures, cleAtelier, CLE_CODE, resume,
+  return { APP, VERSION, INTEGRES, codesFeuilles, estNote, idActivite, activitesAtelier, activites, progression, mesures, cleAtelier, CLE_CODE, resume,
     RE_REF, refsFiche, codesBloc, atelierCatalogue, catalogue, constats, niveauPart, interfaceAtelier };
 });

@@ -33,12 +33,12 @@
       h('div', h('span.howto-n.mono', '1'), h('strong', 'Numérise'), h('p', 'Importe le PDF de ta fiche ou des photos des pages. Le texte des PDF est récupéré automatiquement.')),
       h('div', h('span.howto-n.mono', '2'), h('strong', 'Convertis'), h('p', 'Colle ou corrige le texte : les questions au format GIFT de Moodle deviennent des exercices interactifs.')),
       h('div', h('span.howto-n.mono', '3'), h('strong', 'Enrichis'), h('p', 'Ajoute simulateur de circuits, programmation, chaînes info/énergie, schémas à légender.')),
-      h('div', h('span.howto-n.mono', '4'), h('strong', 'Publie'), h('p', 'Ajoute le fichier au dossier ateliers/ de TechnoStudio : l’atelier est disponible pour tous, même sans serveur.'))));
+      h('div', h('span.howto-n.mono', '4'), h('strong', 'Publie'), h('p', 'Dépose le fichier dans le dossier ateliers/technostudio/ de la Centrale : l’atelier est disponible pour tous, et chaque poste en garde une copie.'))));
     page.append(h('h2.sec', 'Mes ateliers'));
     if (!mine.length) page.append(h('p.muted', 'Aucun atelier personnel pour l’instant. Crée-en un, convertis une fiche ou duplique une démo ci-dessous.'));
     else page.append(h('div.rows', mine.map((w) => row(w))));
     if (publies.length) {
-      page.append(h('h2.sec', 'Ateliers publiés avec TechnoStudio'),
+      page.append(h('h2.sec', 'Ateliers de la Centrale'),
         h('p.small.muted', '« Modifier » garde l’identifiant de l’atelier : le travail des élèves reste rattaché. « Dupliquer » en fait un autre atelier.'),
         h('div.rows', publies.map((w) => row(w))));
     }
@@ -47,7 +47,7 @@
 
     function row(w) {
       const isDemo = w.source === 'demo', publie = isDemo && w.publie;
-      const etat = w.source === 'centrale' ? 'reçu de la Centrale' : publie ? 'publié · v' + (w.version || 1) : isDemo ? 'démo'
+      const etat = w.source === 'centrale' ? 'reçu de la Centrale' : w.transfere ? 'Centrale · v' + (w.version || 1) : publie ? 'publié · v' + (w.version || 1) : isDemo ? 'démo'
         : (w.publie ? 'modification de l’atelier publié (v' + (w.versionPubliee || w.version || 1) + '), pas encore publiée · ' : '') + 'modifié ' + TL.fmtDate(w.updatedAt);
       return h('div.wrow',
         h('div.wrow-main', h('span.chip.lv-' + w.level, (TL.LEVELS[w.level] || {}).short || w.level), h('a.wrow-title', { href: '#at-' + w.id }, w.title),
@@ -65,7 +65,7 @@
     }
   };
   /** Ce qui part dans le fichier : sans les marques propres à ce poste (source, publication). */
-  const exportable = (w) => { const c = TL.clone(w); ['source', 'publie', 'versionPubliee', 'empreintePubliee'].forEach((k) => delete c[k]); return c; };
+  const exportable = (w) => { const c = TL.clone(w); ['source', 'publie', 'transfere', 'versionPubliee', 'empreintePubliee'].forEach((k) => delete c[k]); return c; };
   E.exportable = exportable;
   /** Empreinte du contenu publié (sans version ni date) : dit si l'atelier a changé depuis sa dernière publication. */
   E.empreinte = function (w) {
@@ -75,8 +75,11 @@
     for (let i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0;
     return x.toString(36) + '-' + s.length;
   };
-  /** Nom du fichier d'un atelier : toujours d'après son identifiant (le même pour Exporter et Publier). */
+  /** Nom du fichier d'un atelier : toujours d'après son identifiant (Exporter). */
   E.nomFichier = (w) => String(w.id).replace(/[^A-Za-z0-9_-]/g, '-') + '.technostudio.json';
+  /** Nom du fichier publié dans la Centrale (dossier ateliers/technostudio/ de son dépôt) : <id>.json. */
+  E.nomFichierCentrale = (w) => String(w.id).replace(/[^A-Za-z0-9_-]/g, '-') + '.json';
+  E.DOSSIER_CENTRALE = 'https://github.com/grandiosian/centrale/tree/main/ateliers/technostudio';
   /** Identifiant lisible proposé d'après le titre (« radar-recul-robot-mbot »), libre sur ce poste. */
   E.idPropose = function (titre, sauf) {
     const base = slug(titre).slice(0, 48) || 'atelier';
@@ -88,12 +91,14 @@
   /** L'identifiant peut encore changer : l'atelier n'a jamais été publié (ni téléchargé pour l'être). */
   E.idModifiable = (w) => !w.publie && w.versionPubliee == null && w.source !== 'demo' && w.source !== 'centrale';
 
-  /** Publication : le fichier de l'atelier rejoint le dossier ateliers/ de l'appli (disponible sans serveur, importé
-      par la Centrale) ; en attendant, il peut encore être déposé dans « Ressources des ateliers » de la Centrale. */
+  /** Publication : le fichier de l'atelier (<id>.json) est déposé dans le dossier ateliers/technostudio/ du dépôt de la
+      Centrale, qui le sert à TechnoStudio (copie gardée sur chaque poste pour les pannes du serveur). Seuls les premiers pas
+      (TL.passerelle.INTEGRES) restent dans le code de l'appli. Pour une seule classe, sans attendre : « Ressources des ateliers ». */
   E.publish = function (w) {
     const v = TL.descriptor.validate('Workshop', exportable(w));
     const Z = TL.centrale;
-    const nom = E.nomFichier(w);
+    const nom = E.nomFichierCentrale(w);
+    const integre = ((TL.passerelle && TL.passerelle.INTEGRES) || []).includes(w.id);
     // déjà publié : la publication d'un contenu changé porte la version suivante (une seule fois, même si on retélécharge)
     const dejaPublie = w.versionPubliee != null || (w.source === 'demo' && w.publie);
     const emp = E.empreinte(w);
@@ -113,14 +118,16 @@
       /^at-/.test(w.id) && E.idModifiable(w) ? h('p.callout.warn', 'Son identifiant « ' + w.id + ' » a été tiré au hasard. Pour un identifiant lisible, change-le maintenant dans le panneau Fiche (Identifiant) : après la publication, il ne pourra plus changer.') : null,
       h('p.small.muted', 'Identifiant ', h('code', w.id), ' · version ', h('b', String(prochaine)),
         w.versionPubliee != null && prochaine > w.versionPubliee ? ' (la version publiée était la ' + w.versionPubliee + ')' : ''),
-      h('h3', 'Avec l’application (conseillé : disponible pour tous, sans serveur)'),
+      integre ? h('p.callout.warn', 'C’est un atelier intégré (premiers pas) : il est écrit dans le code de TechnoStudio (js/demos.js, js/demos2.js). '
+        + 'Pour le changer, il faut modifier ce code puis publier l’application. Pour en faire un autre atelier, « Dupliquer ».') : null,
+      h('h3', 'Dans la Centrale (pour tous les élèves)'),
       h('ol.steps',
         h('li', h('button.btn.small.primary', { type: 'button', disabled: !v.ok, onclick: telecharger }, 'Télécharger ' + nom)),
-        h('li', 'Sur GitHub, dans le dossier ', h('a', { href: 'https://github.com/grandiosian/TechnoStudio/tree/main/ateliers', target: '_blank', rel: 'noopener' }, 'ateliers/'), ' de TechnoStudio : Add file → Upload files, puis Commit changes.'
-          + (dejaPublie ? ' Le fichier a le même nom que la version publiée : il la remplace.' : '')),
-        h('li', 'Quelques minutes plus tard, l’atelier est dans la bibliothèque de TechnoStudio, pour tous les élèves.'),
-        h('li', 'Dans la Centrale : Ateliers → « Imports et disponibilité » → TechnoStudio → Mettre à jour, puis « Inspecter » l’atelier pour vérifier ses activités et ses compétences.')),
-      h('h3', 'Par la Centrale (en attendant)'),
+        h('li', 'Sur GitHub, dans le dépôt de la Centrale, dossier ', h('a', { href: E.DOSSIER_CENTRALE, target: '_blank', rel: 'noopener' }, 'ateliers/technostudio/'), ' : Add file → Upload files, puis Commit changes.'
+          + (dejaPublie ? ' Le fichier a le même nom que la version publiée : il la remplace (sa version doit être plus haute).' : '')),
+        h('li', 'Le déploiement de la Centrale (quelques minutes) le met en ligne : il entre tout seul dans le catalogue de la Centrale. Vérifie-le avec Ateliers → « Inspecter » (activités, compétences, fichier).'),
+        h('li', 'Les élèves l’ouvrent depuis la Centrale. TechnoStudio en garde une copie sur chaque poste : il s’ouvre même pendant une panne du serveur, et une version plus haute remplace la copie.')),
+      h('h3', 'Pour une seule classe, sans attendre'),
       h('ol.steps',
         h('li', 'Ouvre l’espace enseignant de la Centrale : ', h('a', { href: Z.serveur + 'admin/#ressources', target: '_blank', rel: 'noopener' }, Z.serveur.replace(/^https?:\/\//, '') + 'admin/')),
         h('li', 'Dans ', h('b', 'Ressources des ateliers'), ', dépose le fichier pour l’atelier ', h('code', Z.app), '.'),

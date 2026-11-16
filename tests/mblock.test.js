@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /* Simulateur « façon mBlock » (js/mblock.js), sans navigateur : mur, variables, « dire », opérations,
    et les tests automatiques des activités (attentes say / var), sur le programme du radar de recul (4e).
-   Vérifie aussi que les tests des ateliers publiés (dossier ateliers/) passent avec leur solution
-   quand l'activité en fournit une (champ solution, facultatif) et échouent avec le programme de départ.
+   Vérifie aussi que les tests des ateliers (intégrés, et transférés par la Centrale quand son dépôt est à côté :
+   ../centrale/ateliers/technostudio/) passent avec leur solution quand l'activité en fournit une (champ solution,
+   facultatif) et échouent avec le programme de départ.
    Utilisation : node tests/mblock.test.js */
 'use strict';
 const fs = require('fs');
@@ -62,11 +63,14 @@ assert.deepStrictEqual(Array.from(M.testNames(rebond)), [sansBoucle[0].name, 're
 assert.ok(M.runTests(rebond, rebond.solution).every((r) => r.ok), 'corrigé : tout passe');
 assert.deepStrictEqual(Array.from(M.blocsUtiles(rebond)), ['répéter indéfiniment']);
 
-// Les activités mblock des ateliers publiés : leurs tests tournent sans erreur sur le programme de départ
+// Ateliers vérifiés : les intégrés, et ceux de la Centrale si son dépôt est à côté
+const charger = require('../tools/charger-ateliers.js');
+const ATELIERS = charger().ateliers.map((w) => ({ f: w.id, w })).concat(charger.lireCentrale().map((x) => ({ f: path.basename(x.fichier), w: x.atelier })));
+const nCentrale = charger.lireCentrale().length;
+// Les activités mblock des ateliers : leurs tests tournent sans erreur sur le programme de départ
 let nAct = 0;
-for (const f of fs.readdirSync(path.join(ROOT, 'ateliers')).filter((x) => /\.json$/.test(x))) {
-  const d = JSON.parse(fs.readFileSync(path.join(ROOT, 'ateliers', f), 'utf8'));
-  for (const w of Array.isArray(d) ? d : d.workshops || [d]) for (const s of w.steps) for (const b of s.blocks) {
+for (const { f, w } of ATELIERS) {
+  for (const s of w.steps) for (const b of s.blocks) {
     if (b.type !== 'mblock' || !b.tests) continue;
     nAct++;
     const r = M.runTests(b, b.start || { blocks: { languageVersion: 0, blocks: [] } });
@@ -78,9 +82,8 @@ for (const f of fs.readdirSync(path.join(ROOT, 'ateliers')).filter((x) => /\.jso
 const CONNUS = new Set(Object.keys(M.DEFS).concat(['variables_get', 'variables_set', 'math_change', 'math_number', 'text']));
 let nProg = 0;
 const typesDe = (o, out) => { if (o && typeof o === 'object') { if (typeof o.type === 'string' && (o.fields || o.inputs || o.next || /^(mb|mbot|rb)_|^variables_|^math_|^text$/.test(o.type))) out.push(o.type); Object.values(o).forEach((v) => typesDe(v, out)); } return out; };
-for (const f of fs.readdirSync(path.join(ROOT, 'ateliers')).filter((x) => /\.json$/.test(x))) {
-  const d = JSON.parse(fs.readFileSync(path.join(ROOT, 'ateliers', f), 'utf8'));
-  for (const w of Array.isArray(d) ? d : d.workshops || [d]) for (const s of w.steps) for (const b of s.blocks) {
+for (const { f, w } of ATELIERS) {
+  for (const s of w.steps) for (const b of s.blocks) {
     if (!b.program) continue;
     nProg++;
     assert.ok(b.program.blocks && Array.isArray(b.program.blocks.blocks) && b.program.blocks.blocks.length, f + ' ' + b.id + ' : programme vide');
@@ -90,4 +93,4 @@ for (const f of fs.readdirSync(path.join(ROOT, 'ateliers')).filter((x) => /\.jso
     JSON.stringify(b.program).replace(/"VAR":\{"id":"([^"]+)"\}/g, (m, id) => { assert.ok(ids.has(id), f + ' ' + b.id + ' : variable ' + id + ' non déclarée'); return m; });
   }
 }
-console.log('✓ Simulateur mBlock : mur, variables, « dire », opérations et tests say/var conformes ; ' + nAct + ' activités des ateliers publiés exécutées ; ' + nProg + ' programmes dessinés vérifiés.');
+console.log('✓ Simulateur mBlock : mur, variables, « dire », opérations et tests say/var conformes ; ' + nAct + ' activités des ateliers exécutées (' + (nCentrale ? nCentrale + ' ateliers de la Centrale compris' : 'pas de dépôt de la Centrale à côté : ateliers intégrés seulement') + ') ; ' + nProg + ' programmes dessinés vérifiés.');

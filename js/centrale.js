@@ -334,8 +334,8 @@
   /** Le portail peut ouvrir directement une feuille : « atelier/P1 » ou un atelier entier. */
   async function ouvrirActivite(id) {
     const [wid, code] = String(id).split('/');
-    const w = TL.app.workshops.get(wid);
-    if (!w) { TL.toast('Activité « ' + id + ' » introuvable sur ce poste.', 'bad'); return; }
+    const w = await TL.app.trouverAtelier(wid);   // pas sur ce poste : demandé à la Centrale (atelier transféré)
+    if (!w) { TL.toast('Activité « ' + id + ' » introuvable sur ce poste ni sur la Centrale.', 'bad'); return; }
     TL.app.demande = { id: wid, feuille: code || '' };
     if (code) {
       const i = P.activitesAtelier(w).find((a) => a.id === P.idActivite(w, code) || a.id === id);
@@ -380,8 +380,8 @@
     descripteur: 'centrale.json',
     /** Liste envoyée à la Centrale : [{ id, titre, groupe, total }]. */
     activites: () => Z.activites(),
-    /** Catalogue des ateliers publiés avec l'appli (contenu de ateliers.json) : intégrés au code et dossier ateliers/. */
-    ateliers: () => P.catalogue([...TL.app.workshops.values()].filter((w) => w.source === 'demo'),
+    /** Catalogue des ateliers intégrés à l'appli (contenu de ateliers.json) ; les ateliers transférés sont au catalogue de la Centrale. */
+    ateliers: () => P.catalogue([...TL.app.workshops.values()].filter((w) => w.source === 'demo' && !w.transfere),
       Object.fromEntries([...TL.app.workshops.values()].filter((w) => w.publie).map((w) => [w.id, w.publie]))),
     /** Ateliers présents sur ce poste, avec leurs feuilles notées. */
     catalogue: () => [...TL.app.workshops.values()].map((w) => ({ id: w.id, titre: w.title, niveau: w.niveau || '', source: w.source, version: w.version || 1, feuilles: P.activitesAtelier(w).map((a) => ({ id: a.id, titre: a.titre, total: a.total })) })),

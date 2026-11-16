@@ -9,7 +9,13 @@ const fs = require('fs');
 const path = require('path');
 const D = require('../js/descriptor.js');
 const P = require('../js/passerelle.js');
-const { ateliers, LEVELS, publies } = require('./charger-ateliers.js')();
+const { ateliers: tous, LEVELS } = require('./charger-ateliers.js')();
+// Seuls les ateliers intégrés (premiers pas, P.INTEGRES) sont publiés par l'appli ; les autres sont au catalogue de la Centrale
+const ateliers = tous.filter((w) => P.INTEGRES.includes(w.id));
+const manquants = P.INTEGRES.filter((id) => !ateliers.some((w) => w.id === id));
+if (manquants.length) { console.error('✗ ateliers intégrés absents du code : ' + manquants.join(', ')); process.exit(1); }
+const ignores = tous.filter((w) => !P.INTEGRES.includes(w.id)).map((w) => w.id);
+if (ignores.length) console.warn('! pas publiés (ce ne sont pas des ateliers intégrés, ils vont dans la Centrale) : ' + ignores.join(', '));
 
 const URL_APP = 'https://grandiosian.github.io/TechnoStudio/';
 
@@ -75,7 +81,7 @@ const desc = {
     fonctions_non_utilisees: ['envoyerFichier', 'listeFichiers', 'chargerFichier', 'mesProgressions', 'etape', 'projet.*', 'parcours', 'ateliers', 'lien', 'ouvrir'],
   },
   activites: {
-    declaration: 'Centrale.declarerActivites(TechnoStudio.activites()) après chaque connexion : la liste ci-dessous (ateliers intégrés et publiés dans ateliers/), suivie des activités des ateliers reçus en ressources.',
+    declaration: 'Centrale.declarerActivites(TechnoStudio.activites()) après chaque connexion : la liste ci-dessous (ateliers intégrés), puis celles des ateliers transférés par la Centrale ouverts sur le poste, puis celles des ateliers reçus en ressources.',
     champs_envoyes: ['id', 'titre', 'groupe', 'total', 'competences'],
     competences: 'Codes du référentiel de la Centrale (/passerelle/competences.json) des champs notés de la feuille : pastille « comp » reliée au référentiel par « ref » (compétence ou sous-compétence de la fiche) ou code du référentiel ; sans pastille, les capacités de l’atelier (« referentiel »).',
     identifiants_stables: true,
@@ -131,7 +137,15 @@ const desc = {
   },
   ateliers: {
     catalogue: 'ateliers.json',
-    note: 'Ateliers intégrés au code (js/demos*.js) et ateliers publiés avec l’appli dans le dossier ateliers/ (un fichier .technostudio.json par atelier, lus au démarrage sans serveur). Un atelier = un atelier du catalogue ; ses activités = ses feuilles notées.',
+    note: 'Seulement les ateliers intégrés au code (js/demos*.js) : les premiers pas. Les autres ateliers sont transférés par la Centrale (fichiers ateliers/technostudio/<id>.json de son dépôt, à son catalogue) ; un atelier = un atelier du catalogue ; ses activités = ses feuilles notées.',
+    integres: P.INTEGRES,
+    transferes: {
+      api: 'api/atelier-fichier.php?app=technostudio (liste : format ateliers.centrale v1) et ?app=technostudio&id=<id> (fichier de l’atelier, format Atelier), sans jeton, CORS ouvert.',
+      ouverture: '#activite=<id>, ?atelier=<id> ou #at-<id> sur un atelier absent du poste : demandé à la Centrale, puis ouvert.',
+      copie: 'Copie gardée sur le poste (stockage_local « transfere:<id> », avec sa version) : l’atelier s’ouvre pendant une panne du serveur ; une version plus haute sur la Centrale remplace la copie.',
+      bibliotheque: 'Centrale joignable : la bibliothèque montre aussi ses ateliers pas encore sur le poste ; hors connexion, les intégrés et les copies.',
+      regle: 'Centrale : passerelle/ATELIERS-INTEGRES-ET-TRANSFERES.md',
+    },
   },
   stockage_local: {
     description: 'Copies dans le navigateur de l’élève (IndexedDB « technostudio », magasin kv), utilisées sans connexion.',
@@ -141,7 +155,7 @@ const desc = {
       'code:projet': { contenu: 'programme libre de l’atelier Code', format: { $ref: '#/$defs/ProjetCode' } },
       profile: { contenu: 'profil local (nom affiché, rôle) ; jamais envoyé à la Centrale' },
       'ui:panels': { contenu: 'disposition des panneaux ; jamais envoyée' },
-      publies: { contenu: 'copie des ateliers publiés (dossier ateliers/), pour une ouverture hors ligne' },
+      'transfere:<atelier>': { contenu: 'copie d’un atelier transféré par la Centrale { w: atelier, version, recu, serveur }, pour une ouverture hors ligne', format: { $ref: '#/$defs/Atelier' } },
       'localStorage ts-centrale, ts-app, ts-compilateur': { contenu: 'réglages de connexion du poste' },
       'localStorage ts-nuage': { contenu: 'lien du dossier Nuage de la classe, collé par le professeur sur ce poste (Fichier → Déposer sur Nuage)' },
     },
@@ -153,7 +167,7 @@ const desc = {
       version: 'Version de TechnoStudio (identique à atelier.version).',
       descripteur: 'Chemin de ce fichier : "centrale.json".',
       'activites()': 'Liste envoyée à la Centrale : [{id, titre, groupe, total, competences}].',
-      'ateliers()': 'Catalogue des ateliers publiés avec l’appli (contenu de ateliers.json).',
+      'ateliers()': 'Catalogue des ateliers intégrés à l’appli (contenu de ateliers.json).',
       'catalogue()': 'Ateliers du poste avec leurs feuilles notées.',
       'progression(id)': '{titre, faites, total, statut, score, score_max, details} ou null.',
       'donnees()': 'Promesse : { "at/<atelier>": travail, "code/projet": programme }.',
@@ -185,6 +199,6 @@ fs.writeFileSync(sortie, JSON.stringify(desc, null, 1) + '\n');
 console.log('centrale.json : ' + liste.length + ' activités, ' + Object.keys(desc.donnees).length + ' clés de données, version ' + P.VERSION + '.');
 
 // Catalogue des ateliers, importé par la Centrale (Ateliers → « Ateliers des applications »)
-const cat = P.catalogue(ateliers, publies);
+const cat = P.catalogue(ateliers, {});
 fs.writeFileSync(path.join(__dirname, '..', 'ateliers.json'), JSON.stringify(cat, null, 2) + '\n');
-console.log('ateliers.json : ' + cat.ateliers.length + ' ateliers dont ' + Object.keys(publies).length + ' publiés dans ateliers/.');
+console.log('ateliers.json : ' + cat.ateliers.length + ' ateliers intégrés (' + P.INTEGRES.join(', ') + ').');
