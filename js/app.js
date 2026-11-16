@@ -1399,7 +1399,22 @@
     route();
     centrale.then(() => { app.verifierEssai(); drawSync(); renderMenus(); });
     if (modeDemande === 'enseignant' && !vraiProf()) setTimeout(() => app.modeEnseignant(), 300);
-    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/claude/.test(location.hostname) && !window.TL_NO_SW) navigator.serviceWorker.register('sw.js').catch(() => {});
+    app.installerSW();
+  };
+  // Service worker. Après une mise à jour, la page ouverte tourne encore sur l'ancienne version (servie par le cache), qui peut ne
+  // pas connaître un atelier récent. Dès que la nouvelle version prend la main : rechargement tout de suite si la page vient de
+  // s'ouvrir (moins de 20 s), sinon un message (pour ne pas couper un élève au milieu de son travail).
+  app.installerSW = function () {
+    if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol) || /claude/.test(location.hostname) || window.TL_NO_SW) return;
+    const avait = !!navigator.serviceWorker.controller;   // première visite : pas d'ancienne version à remplacer
+    let fait = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!avait || fait) return;
+      fait = true;
+      if (performance.now() < 20000) location.reload();
+      else TL.toast('Nouvelle version de TechnoStudio installée : rechargez la page (F5) pour l’avoir.', 'ok');
+    });
+    navigator.serviceWorker.register('sw.js').catch(() => {});
   };
   // Atelier seul : ni profil ni Centrale ; l'élève arrive directement sur la feuille demandée
   async function startSeul() {
@@ -1422,6 +1437,6 @@
     // les réponses ne sont gardées que dans la page : on prévient avant de la quitter
     window.addEventListener('beforeunload', (e) => { const pg = app.progress.get(w.id); if (pg && Object.keys(pg.answers).length) { e.preventDefault(); e.returnValue = ''; } });
     route();
-    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/claude/.test(location.hostname) && !window.TL_NO_SW) navigator.serviceWorker.register('sw.js').catch(() => {});
+    app.installerSW();
   }
 })();
