@@ -141,7 +141,7 @@
     if (exo) {
       const tag = b.tag || (['circuit', 'blocks', 'code', 'mblock', 'robot'].includes(b.type) ? 'ordi' : 'papier');
       const head = h('div.sb-head',
-        o.sheetKind === 'evaluation' || b.tag === 'none' ? null : h('span.tagbox.' + tag, tag === 'ordi' ? 'ORDI' : 'PAPIER'),
+        o.sheetKind === 'evaluation' || tag !== 'ordi' ? null : h('span.tagbox.ordi', 'ORDI'),   // plus de pastille PAPIER (demande du 22/11/2026)
         h('div.bandq', o.num ? h('b.bandq-n', o.num + ' ') : null, h('span', { html: TL.inlineMd(b.question || (TL.activities[b.type] || {}).label || '') })),
         b.bareme ? h('span.bareme', { title: b.bonus ? 'Bonus' : 'Barème' }, (b.bonus ? '+' : '/') + b.bareme) : null);
       box.append(head);
@@ -613,6 +613,59 @@
       el.insertBefore(bankBand(words), el.querySelector('.cloze'));
     }
     return el;
+  };
+
+  /* ----- Barre à colorier (répartition d'une grandeur : énergie utile / perdue…) -----
+     L'élève choisit une couleur puis clique (ou glisse) sur des demi-compartiments de la barre ; un 2e clic avec la même
+     couleur efface. Juste si chaque couleur couvre sa valeur. Bloc : total (100), unite (J), cases (10), demi (true),
+     couleurs [{ nom, couleur, valeur }]. */
+  A.barre = {
+    label: 'Barre à colorier', icon: '▥', graded: true,
+    render(b, ctx) {
+      const total = +b.total || 100, nCases = Math.max(1, +b.cases || 10), demi = b.demi !== false;
+      const n = nCases * (demi ? 2 : 1), pas = total / n, unite = b.unite || '';
+      const cols = (b.couleurs || []).filter((c) => c && c.couleur);
+      const saved = ctx.answer && Array.isArray(ctx.answer.value) ? ctx.answer.value : [];
+      const val = Array.from({ length: n }, (_, i) => (Number.isInteger(saved[i]) && saved[i] < cols.length ? saved[i] : -1));
+      let choix = 0, peint = null;
+      const fmt = (v) => TL.fmtNum(v, 2) + (unite ? ' ' + unite : '');
+      const palette = h('div.barre-pal', { role: 'radiogroup', 'aria-label': 'Couleur' }, cols.map((c, k) => h('button.barre-coul', {
+        type: 'button', role: 'radio', 'aria-checked': String(k === 0),
+        onclick: (e) => { choix = k; palette.querySelectorAll('.barre-coul').forEach((x, j) => x.setAttribute('aria-checked', String(j === k))); e.currentTarget.blur(); },
+      }, h('span.barre-pastille'), c.nom || c.couleur)));
+      palette.querySelectorAll('.barre-coul').forEach((x, k) => x.style.setProperty('--c', cols[k].couleur));
+      const cells = val.map((v, i) => h('button.barre-c' + (demi && i % 2 ? '.d2' : ''), { type: 'button', 'aria-label': 'Compartiment ' + fmt(i * pas) + ' à ' + fmt((i + 1) * pas) }));
+      const bar = h('div.barre', cells);
+      bar.style.setProperty('--n', n);
+      const reg = h('div.barre-reg', { 'aria-hidden': 'true' }, Array.from({ length: nCases + 1 }, (_, k) => h('span', { style: { left: (k / nCases * 100) + '%' } }, TL.fmtNum(k * total / nCases, 2))));
+      const draw = () => cells.forEach((c, i) => { c.style.background = val[i] >= 0 ? cols[val[i]].couleur : ''; c.classList.toggle('on', val[i] >= 0); });
+      const save = () => { bar.classList.remove('is-ok', 'is-bad'); ctx.save({ value: val.slice() }); };
+      const poser = (i) => { val[i] = peint; draw(); };
+      cells.forEach((c, i) => {
+        c.addEventListener('pointerdown', (e) => { if (ctx.readonly) return; e.preventDefault(); peint = val[i] === choix ? -1 : choix; poser(i); });
+        c.addEventListener('pointerenter', () => { if (peint !== null) poser(i); });
+        c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); peint = val[i] === choix ? -1 : choix; poser(i); peint = null; save(); } });
+      });
+      const fin = () => { if (peint !== null) { peint = null; save(); } };
+      window.addEventListener('pointerup', fin);
+      const compte = () => cols.map((c, k) => val.filter((v) => v === k).length * pas);
+      const okCol = () => { const q = compte(); return cols.map((c, k) => Math.abs(q[k] - (+c.valeur || 0)) < 1e-9); };
+      const paint = () => { const ok = okCol().every(Boolean); bar.classList.toggle('is-ok', ok); bar.classList.toggle('is-bad', !ok); };
+      const barre = TL.checkBar(ctx, {
+        check() {
+          if (val.every((v) => v < 0)) { TL.toast('Colorie d’abord la barre.'); return null; }
+          paint();
+          const q = compte(), oks = okCol(), good = oks.filter(Boolean).length;
+          return { value: val.slice(), correct: good === cols.length, score: cols.length ? good / cols.length : 0,
+            msg: cols.map((c, k) => (c.nom || 'couleur') + ' : ' + fmt(q[k]) + (oks[k] ? ' ✓' : '')).join(' · ') };
+        },
+        reveal() { let i = 0; cols.forEach((c, k) => { for (let m = Math.round((+c.valeur || 0) / pas); m > 0 && i < n; m--) val[i++] = k; }); while (i < n) val[i++] = -1; draw(); paint(); },
+        reset() { val.fill(-1); draw(); bar.classList.remove('is-ok', 'is-bad'); },
+      });
+      draw();
+      if (ctx.answer && ctx.answer.attempts) paint();
+      return h('div.act', qhead(b), ctx.readonly ? null : palette, h('div.barre-wrap', bar, reg), h('p.small.muted', 'Une case = ' + fmt(total / nCases) + (demi ? ' ; une demi-case = ' + fmt(pas) : '') + '. Clique ou glisse ; reclique pour effacer.'), barre);
+    },
   };
 
   /* ================= Étiquettes à placer (au lieu d'écrire) =================

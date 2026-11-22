@@ -1134,6 +1134,20 @@ pre.code { white-space: pre-wrap; background: var(--surface-2); padding: 10px; b
 .rbt-prebox { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 110px; }
 .rbt-prebox > .rbt-pre { flex: 1 1 auto; max-height: none; }
 .rbt-inner:not(.rbt-avance) .rbt-colB { justify-content: flex-start; }
+/* Barre à colorier (A.barre) */
+.barre-pal { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.barre-coul { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: 2px solid var(--sh-band); border-radius: 999px; background: #fff; color: var(--sh-ink); font: 600 14px var(--f-body); cursor: pointer; }
+.barre-coul[aria-checked="true"] { border-color: var(--c); box-shadow: 0 0 0 2px var(--c) inset; }
+.barre-pastille { width: 16px; height: 16px; border-radius: 4px; background: var(--c); }
+.barre-wrap { padding-bottom: 22px; position: relative; }
+.barre { display: grid; grid-template-columns: repeat(var(--n), 1fr); height: 46px; border: 2.5px solid var(--sh-ink); border-radius: 4px; overflow: hidden; touch-action: none; user-select: none; }
+.barre-c { border: 0; border-left: 1.5px solid var(--sh-ink); background: #fff; padding: 0; cursor: pointer; min-width: 0; }
+.barre-c:first-child { border-left: 0; }
+.barre-c.d2 { border-left: 1px dashed #9aa6bf; }
+.barre-c:hover:not(.on) { background: #EEF2FC; }
+.barre.is-ok { border-color: var(--ok); } .barre.is-bad { border-color: var(--bad); }
+.barre-reg { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; font: 11px var(--f-mono); color: var(--muted); }
+.barre-reg span { position: absolute; transform: translateX(-50%); }
 
 </style>
 </head>
@@ -4344,6 +4358,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     bits: { family: 'exercice', graded: true, fields: { weights: arr(num()), rows: arr(obj({ label: str(), bits: str({ pattern: '^[01]+$' }) }, ['label', 'bits'])), decimal: bool, showCard: bool }, required: ['rows'], answer: arr(obj({ bits: str(), dec: str() })) },
     graph: { family: 'exercice', graded: true, fields: { xmax: num(), ymax: num(), step: num(), unit: str(), tolerance: num(), connect: bool, showTable: bool, points: arr(obj({ name: str(), x: num(), y: num() }, ['name', 'x', 'y'])) }, required: ['points'], answer: arr(obj({ x: num(), y: num() })) },
     draw: { family: 'exercice', graded: true, review: true, fields: { bg: str(), ratio: num(), colors: arr(str()), straight: bool, grid: bool }, answer: obj({ strokes: arr(obj({ c: str(), w: num(), p: arr(arr(num())) })), png: str() }) },
+    barre: { family: 'exercice', graded: true, fields: { total: num(), unite: str(), cases: num(), demi: bool, couleurs: arr(obj({ nom: str(), couleur: str(), valeur: num() }, ['couleur', 'valeur'])) }, required: ['couleurs'], answer: arr(num()) },
     mindmap: { family: 'exercice', graded: true, fields: { center: str(), branches: arr(obj({ label: str(), n: num(), answers: arr(str()) }, ['label'])) }, required: ['branches'], answer: obj({}) },
     procedure: { family: 'exercice', graded: true, fields: { items: arr(obj({ text: str(), detail: md, image: str(), warn: str() }, ['text'])) }, required: ['items'], answer: obj({}) },
     questions: { family: 'exercice', graded: true, review: true, fields: { title: str(), mode: str({ enum: ['saisie', 'cahier'] }), items: arr({ anyOf: [str(), obj({ q: str(), corr: str(), n: str() }, ['q'])] }) }, required: ['items'], answer: obj({}) },
@@ -6581,7 +6596,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     if (exo) {
       const tag = b.tag || (['circuit', 'blocks', 'code', 'mblock', 'robot'].includes(b.type) ? 'ordi' : 'papier');
       const head = h('div.sb-head',
-        o.sheetKind === 'evaluation' || b.tag === 'none' ? null : h('span.tagbox.' + tag, tag === 'ordi' ? 'ORDI' : 'PAPIER'),
+        o.sheetKind === 'evaluation' || tag !== 'ordi' ? null : h('span.tagbox.ordi', 'ORDI'),   // plus de pastille PAPIER (demande du 22/11/2026)
         h('div.bandq', o.num ? h('b.bandq-n', o.num + ' ') : null, h('span', { html: TL.inlineMd(b.question || (TL.activities[b.type] || {}).label || '') })),
         b.bareme ? h('span.bareme', { title: b.bonus ? 'Bonus' : 'Barème' }, (b.bonus ? '+' : '/') + b.bareme) : null);
       box.append(head);
@@ -7055,6 +7070,59 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     return el;
   };
 
+  /* ----- Barre à colorier (répartition d'une grandeur : énergie utile / perdue…) -----
+     L'élève choisit une couleur puis clique (ou glisse) sur des demi-compartiments de la barre ; un 2e clic avec la même
+     couleur efface. Juste si chaque couleur couvre sa valeur. Bloc : total (100), unite (J), cases (10), demi (true),
+     couleurs [{ nom, couleur, valeur }]. */
+  A.barre = {
+    label: 'Barre à colorier', icon: '▥', graded: true,
+    render(b, ctx) {
+      const total = +b.total || 100, nCases = Math.max(1, +b.cases || 10), demi = b.demi !== false;
+      const n = nCases * (demi ? 2 : 1), pas = total / n, unite = b.unite || '';
+      const cols = (b.couleurs || []).filter((c) => c && c.couleur);
+      const saved = ctx.answer && Array.isArray(ctx.answer.value) ? ctx.answer.value : [];
+      const val = Array.from({ length: n }, (_, i) => (Number.isInteger(saved[i]) && saved[i] < cols.length ? saved[i] : -1));
+      let choix = 0, peint = null;
+      const fmt = (v) => TL.fmtNum(v, 2) + (unite ? ' ' + unite : '');
+      const palette = h('div.barre-pal', { role: 'radiogroup', 'aria-label': 'Couleur' }, cols.map((c, k) => h('button.barre-coul', {
+        type: 'button', role: 'radio', 'aria-checked': String(k === 0),
+        onclick: (e) => { choix = k; palette.querySelectorAll('.barre-coul').forEach((x, j) => x.setAttribute('aria-checked', String(j === k))); e.currentTarget.blur(); },
+      }, h('span.barre-pastille'), c.nom || c.couleur)));
+      palette.querySelectorAll('.barre-coul').forEach((x, k) => x.style.setProperty('--c', cols[k].couleur));
+      const cells = val.map((v, i) => h('button.barre-c' + (demi && i % 2 ? '.d2' : ''), { type: 'button', 'aria-label': 'Compartiment ' + fmt(i * pas) + ' à ' + fmt((i + 1) * pas) }));
+      const bar = h('div.barre', cells);
+      bar.style.setProperty('--n', n);
+      const reg = h('div.barre-reg', { 'aria-hidden': 'true' }, Array.from({ length: nCases + 1 }, (_, k) => h('span', { style: { left: (k / nCases * 100) + '%' } }, TL.fmtNum(k * total / nCases, 2))));
+      const draw = () => cells.forEach((c, i) => { c.style.background = val[i] >= 0 ? cols[val[i]].couleur : ''; c.classList.toggle('on', val[i] >= 0); });
+      const save = () => { bar.classList.remove('is-ok', 'is-bad'); ctx.save({ value: val.slice() }); };
+      const poser = (i) => { val[i] = peint; draw(); };
+      cells.forEach((c, i) => {
+        c.addEventListener('pointerdown', (e) => { if (ctx.readonly) return; e.preventDefault(); peint = val[i] === choix ? -1 : choix; poser(i); });
+        c.addEventListener('pointerenter', () => { if (peint !== null) poser(i); });
+        c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); peint = val[i] === choix ? -1 : choix; poser(i); peint = null; save(); } });
+      });
+      const fin = () => { if (peint !== null) { peint = null; save(); } };
+      window.addEventListener('pointerup', fin);
+      const compte = () => cols.map((c, k) => val.filter((v) => v === k).length * pas);
+      const okCol = () => { const q = compte(); return cols.map((c, k) => Math.abs(q[k] - (+c.valeur || 0)) < 1e-9); };
+      const paint = () => { const ok = okCol().every(Boolean); bar.classList.toggle('is-ok', ok); bar.classList.toggle('is-bad', !ok); };
+      const barre = TL.checkBar(ctx, {
+        check() {
+          if (val.every((v) => v < 0)) { TL.toast('Colorie d’abord la barre.'); return null; }
+          paint();
+          const q = compte(), oks = okCol(), good = oks.filter(Boolean).length;
+          return { value: val.slice(), correct: good === cols.length, score: cols.length ? good / cols.length : 0,
+            msg: cols.map((c, k) => (c.nom || 'couleur') + ' : ' + fmt(q[k]) + (oks[k] ? ' ✓' : '')).join(' · ') };
+        },
+        reveal() { let i = 0; cols.forEach((c, k) => { for (let m = Math.round((+c.valeur || 0) / pas); m > 0 && i < n; m--) val[i++] = k; }); while (i < n) val[i++] = -1; draw(); paint(); },
+        reset() { val.fill(-1); draw(); bar.classList.remove('is-ok', 'is-bad'); },
+      });
+      draw();
+      if (ctx.answer && ctx.answer.attempts) paint();
+      return h('div.act', qhead(b), ctx.readonly ? null : palette, h('div.barre-wrap', bar, reg), h('p.small.muted', 'Une case = ' + fmt(total / nCases) + (demi ? ' ; une demi-case = ' + fmt(pas) : '') + '. Clique ou glisse ; reclique pour effacer.'), barre);
+    },
+  };
+
   /* ================= Étiquettes à placer (au lieu d'écrire) =================
      Dans les textes à trous, tableaux, cases reliées et schémas en saisie, les réponses en mots ne se tapent plus :
      l'élève clique sur une case, puis sur une étiquette (ou la glisse). Les étiquettes = les réponses + quelques
@@ -7307,7 +7375,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
 
   /** Feuilles ressources de la série (normale ou SEGPA) ; toutes s'il n'y en a pas dans la série. */
   Rs.steps = function (w, segpa) {
-    const all = w.steps.map((s, i) => ({ s, i })).filter((x) => x.s.kind === 'ressource');
+    const all = w.steps.map((s, i) => ({ s, i })).filter((x) => x.s.kind === 'ressource' && !(TL.evalCachee && TL.evalCachee(w, x.s)));
     const serie = all.filter((x) => !!x.s.segpa === !!segpa);
     return serie.length ? serie : all;
   };
@@ -11906,6 +11974,7 @@ Actionneurs = moteur, lampe`;
     bits: () => ({ type: 'bits', question: 'Numérise la carte : trou = 1, pas de trou = 0. Écris les 8 bits puis la valeur décimale.', tag: 'papier', rows: [{ label: 'L1', bits: '10000011' }, { label: 'L2', bits: '01001001' }] }),
     graph: () => ({ type: 'graph', question: 'Place les points dans l’ordre et relie-les.', tag: 'papier', xmax: 60, ymax: 60, step: 10, unit: 'mm', points: [{ name: 'A', x: 0, y: 0 }, { name: 'B', x: 40, y: 0 }, { name: 'C', x: 40, y: 30 }] }),
     draw: () => ({ type: 'draw', question: 'Dessine le schéma électrique.', tag: 'papier' }),
+    barre: () => ({ type: 'barre', question: 'Colorie la partie utile en orange et la partie perdue en rouge.', total: 100, unite: 'J', cases: 10, demi: true, couleurs: [{ nom: 'utile', couleur: '#F0A030', valeur: 65 }, { nom: 'perdue', couleur: '#E53935', valeur: 35 }] }),
     mindmap: () => ({ type: 'mindmap', question: 'Complète la carte mentale.', center: 'NOTION', branches: [{ label: 'Branche 1', answers: ['', ''] }, { label: 'Branche 2', n: 2 }] }),
     autoeval: () => ({ type: 'autoeval', question: 'Je fais le point : je colorie un rond par ligne.', items: ['Je sais nommer les constituants.', 'Je sais décrire la chaîne d’énergie.'] }),
     code: () => ({ type: 'code', question: 'Programme la carte.', tag: 'ordi', board: 'uno' }),
@@ -11933,6 +12002,7 @@ Actionneurs = moteur, lampe`;
     boxes: [Q, { k: 'items', kind: 'boxItems', label: 'Cases (« haut | bas » par case ; « ? » = à compléter)', help: 'Exemple : ?Alimenter | ?piles' }, { k: 'topLabel', kind: 'text', label: 'Légende rangée du haut' }, { k: 'bottomLabel', kind: 'text', label: 'Légende rangée du bas' }, { k: 'bank', kind: 'check', label: 'Afficher une banque de mots' }, HINT, EXPL],
     bits: [Q, { k: 'rows', kind: 'bitsRows', label: 'Lignes (« L1 | 10000011 »)' }, { k: 'decimal', kind: 'checkInv', label: 'Sans valeur décimale' }, { k: 'showCard', kind: 'checkInv', label: 'Sans dessin de la carte perforée' }, HINT, EXPL],
     graph: [Q, { k: 'points', kind: 'ptsItems', label: 'Points (« A | 0 | 0 »)' }, { k: 'xmax', kind: 'number', label: 'x max' }, { k: 'ymax', kind: 'number', label: 'y max' }, { k: 'step', kind: 'number', label: 'Pas de graduation' }, { k: 'unit', kind: 'text', label: 'Unité' }, { k: 'connect', kind: 'checkInv', label: 'Ne pas relier les points' }, HINT, EXPL],
+    barre: [Q, { k: 'total', kind: 'number', label: 'Total (100 par défaut)' }, { k: 'unite', kind: 'text', label: 'Unité (J, W…)' }, { k: 'cases', kind: 'number', label: 'Nombre de cases (10 par défaut)' }, { k: 'demi', kind: 'checkInv', label: 'Cases entières (sinon par demi-case)' }, { k: 'couleurs', kind: 'barreCouleurs', label: 'Couleurs (« nom | #couleur | valeur », une par ligne)' }, HINT, EXPL],
     draw: [Q, { k: 'bg', kind: 'image', label: 'Image de fond (facultatif)' }, { k: 'ratio', kind: 'number', label: 'Hauteur / largeur (0,45 par défaut)' }, { k: 'straight', kind: 'check', label: 'Traits droits par défaut' }],
     mindmap: [Q, { k: 'center', kind: 'text', label: 'Centre' }, { k: 'branches', kind: 'brItems', label: 'Branches (« Titre : réponse ; réponse » ou « Titre : 2 » pour 2 cases libres)' }, HINT],
     autoeval: [Q, { k: 'items', kind: 'lines', label: 'Critères (un par ligne)', rows: 4 }, { k: 'scale', kind: 'csv', label: 'Échelle (oui, un peu, pas encore)' }],
@@ -11969,6 +12039,7 @@ Actionneurs = moteur, lampe`;
         voir();
         return wrap(h('div', ta, err, apercu));
       }
+      case 'barreCouleurs': return area((b.couleurs || []).map((c) => [c.nom || '', c.couleur || '', c.valeur != null ? c.valeur : ''].join(' | ')).join('\n'), (v) => (b.couleurs = lines(v).map((l) => { const [nom, couleur, valeur] = l.split('|').map((x) => x.trim()); return { nom, couleur: couleur || '#F0A030', valeur: parseFloat(String(valeur || '0').replace(',', '.')) || 0 }; })), 3);
       case 'motsItems': return area((b.items || []).map((i) => i.mot + ' : ' + i.def).join('\n'), (v) => (b.items = lines(v).map((l) => { const i = l.indexOf(':'); return i < 0 ? { mot: l, def: '' } : { mot: l.slice(0, i).trim(), def: l.slice(i + 1).trim() }; })));
       case 'qItems': return area((b.items || []).map((q) => (typeof q === 'string' ? q : q.q + (q.corr ? ' || ' + q.corr : ''))).join('\n'), (v) => (b.items = lines(v).map((l) => { const [q, c] = l.split('||'); return c ? { q: q.trim(), corr: c.trim() } : { q: q.trim() }; })));
       case 'vfItems': return area((b.items || []).map((i) => (i.v ? 'V' : 'F') + ' | ' + i.text).join('\n'), (v) => (b.items = lines(v).map((l) => { const m = l.match(/^([VF])\s*\|\s*(.*)$/i); return m ? { text: m[2], v: m[1].toUpperCase() === 'V' } : { text: l, v: true }; })));
@@ -12016,7 +12087,7 @@ Actionneurs = moteur, lampe`;
   const GROUPS = [
     ['Mise en page', ['objectif', 'decoupe', 'filet', 'questions', 'retenir']],
     ['Contenus', ['text', 'ressource', 'mots', 'image', 'programme', 'scan', 'svg', 'link']],
-    ['Comme sur papier', ['label', 'table', 'vraifaux', 'qcm', 'cloze', 'match', 'boxes', 'order', 'sort', 'numeric', 'bits', 'graph', 'draw', 'mindmap', 'procedure', 'report', 'autoeval']],
+    ['Comme sur papier', ['label', 'table', 'vraifaux', 'qcm', 'cloze', 'match', 'boxes', 'order', 'sort', 'numeric', 'bits', 'graph', 'draw', 'barre', 'mindmap', 'procedure', 'report', 'autoeval']],
     ['Numérique (ORDI)', ['circuit', 'blocks', 'mblock', 'code', 'robot', 'chain']],
   ];
   let ctx = null; // { w, s, sel, insert(type) }
@@ -12482,6 +12553,22 @@ Actionneurs = moteur, lampe`;
   const cur = () => { const m = location.hash.match(/^#(at|ed|fiche)-(.+)$/); return m ? app.workshops.get(m[2]) : null; };
   /* Mode atelier (SPECIFICATION de la Centrale §2.6) : ouvert depuis le portail, l'élève reste sur son atelier. Règles de
      l'atelier (TL.passerelle.interfaceAtelier, publiées dans ateliers.json) : menu du logo, bibliothèque, niveau. */
+  /* Évaluation d'un atelier (feuilles E et « Ressource évaluation ») : cachée à l'élève tant que l'enseignant ne l'a pas
+     ouverte sur la Centrale (page Ateliers : tout de suite ou à une date, api/ateliers.php → evaluations_ouvertes).
+     Sans Centrale (atelier seul, hors ligne) : cachée. Enseignant : toujours visible. */
+  app.evalOuvertes = null;
+  const estEval = (s) => !!s && (s.kind === 'evaluation' || (s.kind === 'ressource' && /[ée]valuation/i.test(s.title || '')));
+  TL.evalCachee = (w, s) => estEval(s) && eleveUI() && !(w && w.evaluationOuverte === true) && !(w && app.evalOuvertes && app.evalOuvertes.has(w.id));
+  app.chargerEvaluations = async () => {
+    const attendre = (ms) => new Promise((ok) => setTimeout(ok, ms));
+    if (app.centralePrete) await Promise.race([app.centralePrete, attendre(6000)]);   // connexion (jeton du portail) d'abord
+    const C = window.Centrale;
+    if (!C || C.horsLigne || typeof C.ateliers !== 'function' || !TL.centrale.connecte()) return;
+    try {
+      const l = await Promise.race([C.ateliers(), new Promise((_, non) => setTimeout(() => non(new Error('délai')), 5000))]);
+      app.evalOuvertes = new Set((l || []).flatMap((a) => (Array.isArray(a.evaluations_ouvertes) ? a.evaluations_ouvertes : [])));
+    } catch (e) { /* Centrale muette : on garde ce qu'on savait */ }
+  };
   app.regleAtelier = (cle) => {
     if (!app.eleveCentrale || app.seul || app.apercu) return true;
     const P = TL.passerelle;
@@ -12729,7 +12816,7 @@ Actionneurs = moteur, lampe`;
   /* Feuilles comptées dans l'avancement : celles de la série en cours (normale ou SEGPA), sans les ressources. */
   function feuillesAtelier(w, pg) {
     const s0 = pg && w.steps[pg.step], segpa = !!(s0 && s0.segpa);
-    let idx = w.steps.map((s, i) => i).filter((i) => w.steps[i].kind !== 'ressource');
+    let idx = w.steps.map((s, i) => i).filter((i) => w.steps[i].kind !== 'ressource' && !TL.evalCachee(w, w.steps[i]));
     if (idx.some((i) => !!w.steps[i].segpa === segpa)) idx = idx.filter((i) => !!w.steps[i].segpa === segpa);
     return idx.map((i) => ({ fait: !!TL.stepDone(w.steps[i], pg), ici: !!pg && i === pg.step }));
   }
@@ -13017,6 +13104,7 @@ Actionneurs = moteur, lampe`;
     if (!w) { page().append(h('div.empty', h('h2', 'Atelier introuvable'), h('p', 'Ni sur ce poste, ni sur la Centrale (' + (TL.transferes.erreur || 'inconnu') + ').'), h('a.btn', { href: '#accueil' }, 'Bibliothèque'))); return; }
     const pg = await app.getProgress(id);
     pg.step = TL.clamp(pg.step || 0, 0, Math.max(0, w.steps.length - 1));
+    if (eleveUI()) await app.chargerEvaluations();   // l'évaluation a-t-elle été ouverte par l'enseignant ?
     const board = h('div.pasteboard.scroll');
     stage().append(board);
     const codes = TL.sheetCodes(w);
@@ -13220,7 +13308,7 @@ Actionneurs = moteur, lampe`;
     const segpa = !!(o.segpa || /^(s·|s\.|sp)/i.test(fx) || (!fx && w.steps[pg.step] && w.steps[pg.step].segpa));
     let serie = w.steps.map((s, i) => i).filter((i) => !!w.steps[i].segpa === segpa);
     if (!serie.length) serie = w.steps.map((s, i) => i);
-    const parcours = serie.filter((i) => w.steps[i].kind !== 'ressource');
+    const parcours = serie.filter((i) => w.steps[i].kind !== 'ressource' && !TL.evalCachee(w, w.steps[i]));
     const hasRes = TL.ressources.steps(w, segpa).length > 0;
     let base = 0;
     if (o.feuille) {
@@ -13696,6 +13784,7 @@ Actionneurs = moteur, lampe`;
     await TL.panels.load();
     await app.loadWorkshops();
     const centrale = TL.centrale.init(); // en parallèle : l'appli s'affiche sans attendre le réseau
+    app.centralePrete = centrale;
     // Ateliers transférés par la Centrale, en parallèle aussi : copies plus anciennes remplacées, liste pour la bibliothèque
     TL.transferes.actualiser().then((maj) => {
       app.majTransferes(maj);

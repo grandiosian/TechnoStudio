@@ -24,6 +24,7 @@
     bits: () => ({ type: 'bits', question: 'Numérise la carte : trou = 1, pas de trou = 0. Écris les 8 bits puis la valeur décimale.', tag: 'papier', rows: [{ label: 'L1', bits: '10000011' }, { label: 'L2', bits: '01001001' }] }),
     graph: () => ({ type: 'graph', question: 'Place les points dans l’ordre et relie-les.', tag: 'papier', xmax: 60, ymax: 60, step: 10, unit: 'mm', points: [{ name: 'A', x: 0, y: 0 }, { name: 'B', x: 40, y: 0 }, { name: 'C', x: 40, y: 30 }] }),
     draw: () => ({ type: 'draw', question: 'Dessine le schéma électrique.', tag: 'papier' }),
+    barre: () => ({ type: 'barre', question: 'Colorie la partie utile en orange et la partie perdue en rouge.', total: 100, unite: 'J', cases: 10, demi: true, couleurs: [{ nom: 'utile', couleur: '#F0A030', valeur: 65 }, { nom: 'perdue', couleur: '#E53935', valeur: 35 }] }),
     mindmap: () => ({ type: 'mindmap', question: 'Complète la carte mentale.', center: 'NOTION', branches: [{ label: 'Branche 1', answers: ['', ''] }, { label: 'Branche 2', n: 2 }] }),
     autoeval: () => ({ type: 'autoeval', question: 'Je fais le point : je colorie un rond par ligne.', items: ['Je sais nommer les constituants.', 'Je sais décrire la chaîne d’énergie.'] }),
     code: () => ({ type: 'code', question: 'Programme la carte.', tag: 'ordi', board: 'uno' }),
@@ -51,6 +52,7 @@
     boxes: [Q, { k: 'items', kind: 'boxItems', label: 'Cases (« haut | bas » par case ; « ? » = à compléter)', help: 'Exemple : ?Alimenter | ?piles' }, { k: 'topLabel', kind: 'text', label: 'Légende rangée du haut' }, { k: 'bottomLabel', kind: 'text', label: 'Légende rangée du bas' }, { k: 'bank', kind: 'check', label: 'Afficher une banque de mots' }, HINT, EXPL],
     bits: [Q, { k: 'rows', kind: 'bitsRows', label: 'Lignes (« L1 | 10000011 »)' }, { k: 'decimal', kind: 'checkInv', label: 'Sans valeur décimale' }, { k: 'showCard', kind: 'checkInv', label: 'Sans dessin de la carte perforée' }, HINT, EXPL],
     graph: [Q, { k: 'points', kind: 'ptsItems', label: 'Points (« A | 0 | 0 »)' }, { k: 'xmax', kind: 'number', label: 'x max' }, { k: 'ymax', kind: 'number', label: 'y max' }, { k: 'step', kind: 'number', label: 'Pas de graduation' }, { k: 'unit', kind: 'text', label: 'Unité' }, { k: 'connect', kind: 'checkInv', label: 'Ne pas relier les points' }, HINT, EXPL],
+    barre: [Q, { k: 'total', kind: 'number', label: 'Total (100 par défaut)' }, { k: 'unite', kind: 'text', label: 'Unité (J, W…)' }, { k: 'cases', kind: 'number', label: 'Nombre de cases (10 par défaut)' }, { k: 'demi', kind: 'checkInv', label: 'Cases entières (sinon par demi-case)' }, { k: 'couleurs', kind: 'barreCouleurs', label: 'Couleurs (« nom | #couleur | valeur », une par ligne)' }, HINT, EXPL],
     draw: [Q, { k: 'bg', kind: 'image', label: 'Image de fond (facultatif)' }, { k: 'ratio', kind: 'number', label: 'Hauteur / largeur (0,45 par défaut)' }, { k: 'straight', kind: 'check', label: 'Traits droits par défaut' }],
     mindmap: [Q, { k: 'center', kind: 'text', label: 'Centre' }, { k: 'branches', kind: 'brItems', label: 'Branches (« Titre : réponse ; réponse » ou « Titre : 2 » pour 2 cases libres)' }, HINT],
     autoeval: [Q, { k: 'items', kind: 'lines', label: 'Critères (un par ligne)', rows: 4 }, { k: 'scale', kind: 'csv', label: 'Échelle (oui, un peu, pas encore)' }],
@@ -87,6 +89,7 @@
         voir();
         return wrap(h('div', ta, err, apercu));
       }
+      case 'barreCouleurs': return area((b.couleurs || []).map((c) => [c.nom || '', c.couleur || '', c.valeur != null ? c.valeur : ''].join(' | ')).join('\n'), (v) => (b.couleurs = lines(v).map((l) => { const [nom, couleur, valeur] = l.split('|').map((x) => x.trim()); return { nom, couleur: couleur || '#F0A030', valeur: parseFloat(String(valeur || '0').replace(',', '.')) || 0 }; })), 3);
       case 'motsItems': return area((b.items || []).map((i) => i.mot + ' : ' + i.def).join('\n'), (v) => (b.items = lines(v).map((l) => { const i = l.indexOf(':'); return i < 0 ? { mot: l, def: '' } : { mot: l.slice(0, i).trim(), def: l.slice(i + 1).trim() }; })));
       case 'qItems': return area((b.items || []).map((q) => (typeof q === 'string' ? q : q.q + (q.corr ? ' || ' + q.corr : ''))).join('\n'), (v) => (b.items = lines(v).map((l) => { const [q, c] = l.split('||'); return c ? { q: q.trim(), corr: c.trim() } : { q: q.trim() }; })));
       case 'vfItems': return area((b.items || []).map((i) => (i.v ? 'V' : 'F') + ' | ' + i.text).join('\n'), (v) => (b.items = lines(v).map((l) => { const m = l.match(/^([VF])\s*\|\s*(.*)$/i); return m ? { text: m[2], v: m[1].toUpperCase() === 'V' } : { text: l, v: true }; })));
@@ -134,7 +137,7 @@
   const GROUPS = [
     ['Mise en page', ['objectif', 'decoupe', 'filet', 'questions', 'retenir']],
     ['Contenus', ['text', 'ressource', 'mots', 'image', 'programme', 'scan', 'svg', 'link']],
-    ['Comme sur papier', ['label', 'table', 'vraifaux', 'qcm', 'cloze', 'match', 'boxes', 'order', 'sort', 'numeric', 'bits', 'graph', 'draw', 'mindmap', 'procedure', 'report', 'autoeval']],
+    ['Comme sur papier', ['label', 'table', 'vraifaux', 'qcm', 'cloze', 'match', 'boxes', 'order', 'sort', 'numeric', 'bits', 'graph', 'draw', 'barre', 'mindmap', 'procedure', 'report', 'autoeval']],
     ['Numérique (ORDI)', ['circuit', 'blocks', 'mblock', 'code', 'robot', 'chain']],
   ];
   let ctx = null; // { w, s, sel, insert(type) }

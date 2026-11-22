@@ -184,6 +184,22 @@
   const cur = () => { const m = location.hash.match(/^#(at|ed|fiche)-(.+)$/); return m ? app.workshops.get(m[2]) : null; };
   /* Mode atelier (SPECIFICATION de la Centrale §2.6) : ouvert depuis le portail, l'élève reste sur son atelier. Règles de
      l'atelier (TL.passerelle.interfaceAtelier, publiées dans ateliers.json) : menu du logo, bibliothèque, niveau. */
+  /* Évaluation d'un atelier (feuilles E et « Ressource évaluation ») : cachée à l'élève tant que l'enseignant ne l'a pas
+     ouverte sur la Centrale (page Ateliers : tout de suite ou à une date, api/ateliers.php → evaluations_ouvertes).
+     Sans Centrale (atelier seul, hors ligne) : cachée. Enseignant : toujours visible. */
+  app.evalOuvertes = null;
+  const estEval = (s) => !!s && (s.kind === 'evaluation' || (s.kind === 'ressource' && /[ée]valuation/i.test(s.title || '')));
+  TL.evalCachee = (w, s) => estEval(s) && eleveUI() && !(w && w.evaluationOuverte === true) && !(w && app.evalOuvertes && app.evalOuvertes.has(w.id));
+  app.chargerEvaluations = async () => {
+    const attendre = (ms) => new Promise((ok) => setTimeout(ok, ms));
+    if (app.centralePrete) await Promise.race([app.centralePrete, attendre(6000)]);   // connexion (jeton du portail) d'abord
+    const C = window.Centrale;
+    if (!C || C.horsLigne || typeof C.ateliers !== 'function' || !TL.centrale.connecte()) return;
+    try {
+      const l = await Promise.race([C.ateliers(), new Promise((_, non) => setTimeout(() => non(new Error('délai')), 5000))]);
+      app.evalOuvertes = new Set((l || []).flatMap((a) => (Array.isArray(a.evaluations_ouvertes) ? a.evaluations_ouvertes : [])));
+    } catch (e) { /* Centrale muette : on garde ce qu'on savait */ }
+  };
   app.regleAtelier = (cle) => {
     if (!app.eleveCentrale || app.seul || app.apercu) return true;
     const P = TL.passerelle;
@@ -431,7 +447,7 @@
   /* Feuilles comptées dans l'avancement : celles de la série en cours (normale ou SEGPA), sans les ressources. */
   function feuillesAtelier(w, pg) {
     const s0 = pg && w.steps[pg.step], segpa = !!(s0 && s0.segpa);
-    let idx = w.steps.map((s, i) => i).filter((i) => w.steps[i].kind !== 'ressource');
+    let idx = w.steps.map((s, i) => i).filter((i) => w.steps[i].kind !== 'ressource' && !TL.evalCachee(w, w.steps[i]));
     if (idx.some((i) => !!w.steps[i].segpa === segpa)) idx = idx.filter((i) => !!w.steps[i].segpa === segpa);
     return idx.map((i) => ({ fait: !!TL.stepDone(w.steps[i], pg), ici: !!pg && i === pg.step }));
   }
@@ -719,6 +735,7 @@
     if (!w) { page().append(h('div.empty', h('h2', 'Atelier introuvable'), h('p', 'Ni sur ce poste, ni sur la Centrale (' + (TL.transferes.erreur || 'inconnu') + ').'), h('a.btn', { href: '#accueil' }, 'Bibliothèque'))); return; }
     const pg = await app.getProgress(id);
     pg.step = TL.clamp(pg.step || 0, 0, Math.max(0, w.steps.length - 1));
+    if (eleveUI()) await app.chargerEvaluations();   // l'évaluation a-t-elle été ouverte par l'enseignant ?
     const board = h('div.pasteboard.scroll');
     stage().append(board);
     const codes = TL.sheetCodes(w);
@@ -922,7 +939,7 @@
     const segpa = !!(o.segpa || /^(s·|s\.|sp)/i.test(fx) || (!fx && w.steps[pg.step] && w.steps[pg.step].segpa));
     let serie = w.steps.map((s, i) => i).filter((i) => !!w.steps[i].segpa === segpa);
     if (!serie.length) serie = w.steps.map((s, i) => i);
-    const parcours = serie.filter((i) => w.steps[i].kind !== 'ressource');
+    const parcours = serie.filter((i) => w.steps[i].kind !== 'ressource' && !TL.evalCachee(w, w.steps[i]));
     const hasRes = TL.ressources.steps(w, segpa).length > 0;
     let base = 0;
     if (o.feuille) {
@@ -1398,6 +1415,7 @@
     await TL.panels.load();
     await app.loadWorkshops();
     const centrale = TL.centrale.init(); // en parallèle : l'appli s'affiche sans attendre le réseau
+    app.centralePrete = centrale;
     // Ateliers transférés par la Centrale, en parallèle aussi : copies plus anciennes remplacées, liste pour la bibliothèque
     TL.transferes.actualiser().then((maj) => {
       app.majTransferes(maj);

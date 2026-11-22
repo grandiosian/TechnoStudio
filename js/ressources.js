@@ -18,7 +18,7 @@
 
   /** Feuilles ressources de la série (normale ou SEGPA) ; toutes s'il n'y en a pas dans la série. */
   Rs.steps = function (w, segpa) {
-    const all = w.steps.map((s, i) => ({ s, i })).filter((x) => x.s.kind === 'ressource');
+    const all = w.steps.map((s, i) => ({ s, i })).filter((x) => x.s.kind === 'ressource' && !(TL.evalCachee && TL.evalCachee(w, x.s)));
     const serie = all.filter((x) => !!x.s.segpa === !!segpa);
     return serie.length ? serie : all;
   };
