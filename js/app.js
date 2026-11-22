@@ -46,7 +46,7 @@
       const q = new URLSearchParams(location.search), v = (q.get('revue') || '').trim();
       if (!v) return null;
       const [id, feuille] = v.split('/');
-      return { id, feuille: (feuille || '').trim(), eleve: (q.get('eleve') || '').trim() };
+      return { id, feuille: (feuille || '').trim(), eleve: (q.get('eleve') || '').trim(), comp: (q.get('comp') || '').trim() };
     } catch (e) { return null; }
   })();
 
@@ -1473,8 +1473,8 @@
     const board = h('div.pasteboard.scroll'); stage().innerHTML = ''; stage().append(board);
     const message = (titre, texte) => board.append(h('div.desk', h('div.empty', h('h2', titre), h('p', texte))));
     if (!w) return message('Atelier introuvable', 'Aucun atelier « ' + R.id + ' » sur ce poste ni sur la Centrale.');
-    let rep = null;
-    try {
+    let rep = { ok: true, eleve: null, travail: null };   // sans élève : aperçu de l'atelier (Progression des compétences)
+    if (R.eleve) try {
       const base = baseCentrale() || '../../';
       const r = await fetch(base + 'api/revue.php?' + new URLSearchParams({ eleve: R.eleve, app: 'technostudio', atelier: w.id }), { credentials: 'same-origin', cache: 'no-store' });
       rep = await r.json();
@@ -1484,14 +1484,18 @@
     pg.answers = pg.answers || {};
     const codes = TL.sheetCodes(w);
     const court = (x) => String(x || '').toLowerCase().replace(/^([a-z·]+)0*/, '$1');
+    // ?comp=<code> : les questions qui travaillent cette capacité sont surlignées
+    const P = TL.passerelle, refs = P && P.refsFiche ? P.refsFiche(w) : {};
+    const abordeComp = (b) => !!R.comp && TL.isGraded(b) && P && P.codesBloc && P.codesBloc(w, b, refs).includes(R.comp);
     let si = codes.findIndex((c, i) => court(c) === court(R.feuille) || w.steps[i].id === R.feuille);
+    if (si < 0 && R.comp) si = w.steps.findIndex((s) => s.kind !== 'ressource' && s.blocks.some(abordeComp));
     if (si < 0) si = Math.max(0, w.steps.findIndex((s) => s.kind !== 'ressource'));
     let corr = false;
     const resume = h('div.revue-resume');
     const choix = h('select.field.seul-feuille', { 'aria-label': 'Feuille', onchange: () => { si = +choix.value; montrer(); } },
       w.steps.map((s, i) => (s.kind === 'ressource' ? null : h('option', { value: i }, codes[i] + ' · ' + s.title))));
     const btnCorr = h('button.btn.small', { type: 'button', 'aria-pressed': 'false', onclick: () => { corr = !corr; btnCorr.setAttribute('aria-pressed', String(corr)); montrer(); } }, 'Montrer la correction');
-    const eleve = rep.eleve ? rep.eleve.classe + ' n° ' + rep.eleve.numero : '';
+    const eleve = rep.eleve ? rep.eleve.classe + ' n° ' + rep.eleve.numero : R.comp ? 'Passages ' + R.comp : 'Aperçu';
     board.before(h('div.sous-barre.revue-barre', h('div.ssb-in', h('b', eleve), choix, btnCorr, resume)));
     document.title = 'Revue · ' + eleve + ' · ' + w.title;
     // État d'une question : juste, faux, corrigé (correction affichée), rendu (à corriger par l'enseignant), sans réponse
@@ -1510,16 +1514,21 @@
       const s = w.steps[si];
       const page = TL.renderSheet(w, s, si, { pg, readonly: true, layers: { corr } });
       const n = { ok: 0, bad: 0, corrige: 0, rendu: 0, vide: 0 };
+      let premier = null, nComp = 0;
       s.blocks.forEach((b) => {
         if (!TL.isGraded(b)) return;
         const box = page.querySelector('section.sb[data-id="' + CSS.escape(b.id) + '"]'); if (!box) return;
+        if (abordeComp(b)) { box.classList.add('rv-comp'); box.prepend(h('div.rv-etat.rv-comp', 'Aborde ' + R.comp)); premier = premier || box; nComp++; }
+        if (!R.eleve) return;
         const [k, txt] = etat(b); n[k]++;
         box.classList.add('rv', 'rv-' + k);
         box.prepend(h('div.rv-etat.rv-' + k, txt));
       });
-      resume.textContent = [n.ok && n.ok + ' juste', n.bad && n.bad + ' faux', n.corrige && n.corrige + ' corrigé', n.rendu && n.rendu + ' rendu', n.vide && n.vide + ' sans réponse'].filter(Boolean).join(' · ');
+      resume.textContent = R.eleve ? [n.ok && n.ok + ' juste', n.bad && n.bad + ' faux', n.corrige && n.corrige + ' corrigé', n.rendu && n.rendu + ' rendu', n.vide && n.vide + ' sans réponse'].filter(Boolean).join(' · ')
+        : R.comp ? (nComp ? nComp + ' question(s) de cette feuille abordent ' + R.comp : 'Aucune question de cette feuille n’aborde ' + R.comp) : '';
       board.innerHTML = '';
       board.append(h('div.desk', page));
+      if (premier) requestAnimationFrame(() => premier.scrollIntoView({ block: 'center' }));
     }
     montrer();
   }

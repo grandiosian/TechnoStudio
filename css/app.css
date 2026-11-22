@@ -1153,3 +1153,5 @@ pre.code { white-space: pre-wrap; background: var(--surface-2); padding: 10px; b
 .rv-etat { display: inline-block; margin: 0 0 4px; padding: 2px 10px; border-radius: 999px; font: 700 12px var(--f-body); }
 .rv-etat.rv-ok { background: var(--ok-soft); color: var(--ok); } .rv-etat.rv-bad { background: var(--bad-soft); color: var(--bad); }
 .rv-etat.rv-corrige { background: #FFE8CD; color: #9a5300; } .rv-etat.rv-rendu { background: #EEF2FC; color: var(--sh-blue); } .rv-etat.rv-vide { background: #eef0f4; color: #687089; }
+.sb.rv-comp { outline: 3px solid #F0A030; outline-offset: 4px; border-radius: 6px; }
+.rv-etat.rv-comp { background: #FFE8CD; color: #9a5300; margin-right: 6px; }
