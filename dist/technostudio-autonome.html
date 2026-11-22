@@ -599,6 +599,12 @@ svg.graph { width: 100%; max-width: 520px; height: auto; display: block; cursor:
 .tok { padding: 6px 11px; border-radius: 8px; border: 2px solid var(--sh-blue); background: #fff; color: var(--sh-ink); font: 600 14px/1.2 var(--f-body); cursor: grab; }
 .tok.picked { background: var(--sh-blue); color: #fff; transform: translateY(-2px); }
 .tok.is-ok { border-color: var(--ok); background: var(--ok-soft); } .tok.is-bad { border-color: var(--bad); background: var(--bad-soft); }
+.pool.etiq { min-height: 0; margin: 4px 0 10px; padding: 8px; gap: 6px; }
+.pool.etiq .tok { cursor: pointer; }
+.pool.etiq .tok.used { opacity: .45; border-style: dashed; }
+.field.slot, .case.slot { cursor: pointer; caret-color: transparent; }
+.field.slot.armed, .case.slot.armed { outline: 3px solid var(--sh-blue); outline-offset: 1px; background: #EEF2FC; }
+.field.slot.over, .case.slot.over { background: #E3E9F8; }
 .zones { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
 .zone { border: 2.5px solid var(--sh-blue); border-radius: 12px; padding: 10px; background: #fff; min-height: 96px; }
 .zone-title { font: 700 15px var(--f-body); margin-bottom: 8px; text-align: center; background: var(--sh-band); border-radius: 8px; padding: 2px; }
@@ -7048,6 +7054,122 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     }
     return el;
   };
+
+  /* ================= Étiquettes à placer (au lieu d'écrire) =================
+     Dans les textes à trous, tableaux, cases reliées et schémas en saisie, les réponses en mots ne se tapent plus :
+     l'élève clique sur une case, puis sur une étiquette (ou la glisse). Les étiquettes = les réponses + quelques
+     leurres probables, mélangés (graine de l'élève). Les réponses en nombre et les calculs posés restent à taper.
+     Pour garder la saisie : `saisie: true` sur le bloc. Leurres choisis par l'auteur : `leurres: [...]`. */
+  const FAMILLES = [
+    ['électrique', 'mécanique', 'lumineuse', 'thermique', 'chimique', 'sonore'],
+    ['énergie', 'information'], ['capteur', 'actionneur', 'carte de commande'], ['analogique', 'logique', 'numérique'],
+    ['avance', 'recule', 'tourne', 'arrête'], ['courte', 'longue'], ['rapprochés', 'espacés'], ['proche', 'loin'],
+    ['vraie', 'fausse'], ['vrai', 'faux'], ['fermé', 'ouvert'], ['forte', 'faible'], ['rouge', 'orange', 'vert'],
+    ['condition', 'boucle', 'variable', 'attente', 'événement'], ['si', 'sinon', 'répéter', 'attendre'],
+    ['générateur', 'récepteur', 'interrupteur', 'conducteur', 'résistance', 'moteur', 'lampe'],
+    ['boîte', 'nom', 'valeur'], ['bip', 'bips', 'silence', 'son continu'], ['mettre', 'ajouter', 'dire'],
+    ['algorithme', 'programme', 'schéma'], ['téléversé', 'effacé', 'imprimé'], ['piles', 'secteur', 'panneau solaire'],
+    ['change', 'reste fixe'], ['losange', 'rectangle', 'ovale'], ['flèche du haut', 'flèche du bas', 'espace'],
+    ['position x', 'position y', 'direction'], ['une règle', 'une balance', 'un chronomètre'],
+    ['courant dans le moteur', 'nombre de roues'], ['distance', 'vitesse', 'durée'], ['données', 'images'],
+    ['répéter indéfiniment', 'répéter 10 fois'], ['mCore', 'micro:bit'],
+  ];
+  // À taper : un nombre (mesure) ou un calcul posé (« 200 − 120 = 80 ») — c'est ce qui est évalué.
+  const nombreSeul = (a) => /^[-−]?[\d.,]+\s*[^\s\d]{0,3}$/.test(String(a).trim()) || /^[-−]?[\d.,]+\s+fois$/.test(String(a).trim()) || (/=/.test(a) && /\d/.test(a));
+  const sansArticle = (s) => TL.norm(s).replace(/^(le |la |les |l'|un |une |des |du )/, '').replace(/\s*\(.*\)$/, '');
+  const varianteOperateur = (a) => {
+    const ops = ['×', '÷', '+', '-', '/', '*'], inv = { '×': '÷', '÷': '×', '+': '-', '-': '+', '/': '×', '*': '/' };
+    for (const o of ops) { const i = a.lastIndexOf(' ' + o + ' '); if (i > 0) return a.slice(0, i + 1) + inv[o] + a.slice(i + 2); }
+    return null;
+  };
+  function leurresProbables(champs, b, seed) {
+    const tous = champs.flatMap((c) => c.answers);
+    const deja = (x) => tous.some((a) => same(x, a)) || champs.some((c) => c.answers.some((a) => sansArticle(a) === sansArticle(x)));
+    const voulu = TL.clamp(Math.ceil(champs.length / 2) + (champs.length === 1 ? 1 : 0), 2, 4);
+    const out = [];
+    const prendre = (x) => { if (x && out.length < voulu + 2 && !deja(x) && !out.some((o) => TL.norm(o) === TL.norm(x))) out.push(x); };
+    (b.leurres || b.distractors || b.bankExtra || []).forEach(prendre);
+    if (out.length >= voulu) return out;
+    const candidats = [];
+    champs.forEach((c) => {
+      const cles = c.answers.map(sansArticle);
+      FAMILLES.forEach((f) => { if (f.some((m) => cles.includes(sansArticle(m)))) TL.shuffle(f, seed + f.length).forEach((m) => candidats.push(m)); });
+      const v = varianteOperateur(c.answers[0]); if (v) candidats.push(v);
+    });
+    TL.shuffle([...new Set(candidats)], seed).forEach((x) => { if (out.length < voulu) prendre(x); });
+    return out;
+  }
+  /* champs : [{ el: <input>, answers: [...] }] dans l'ordre de la page */
+  function etiquettes(root, champs, b, ctx) {
+    champs = champs.filter((c) => c.el && c.answers.length && c.answers[0] !== '' && !nombreSeul(c.answers[0]));
+    if (!champs.length || b.saisie === true || ctx.readonly) return null;
+    const mots = [...new Set(champs.map((c) => c.answers[0]))];
+    const liste = TL.shuffle(mots.concat(leurresProbables(champs, b, ctx.seed)), ctx.seed + 7);
+    const large = Math.min(Math.max(6, ...liste.map((m) => m.length)) + 2, 30) + 'ch';
+    champs.forEach((c) => { if (c.el.matches('.field')) c.el.style.width = large; });
+    let arme = null;
+    const armer = (el) => { arme = el; champs.forEach((c) => c.el.classList.toggle('armed', c.el === el)); };
+    const suivant = () => (champs.find((c) => !c.el.value) || {}).el || null;
+    const toks = liste.map((mot) => {
+      const t = h('button.tok', { type: 'button', draggable: true }, mot);
+      t.onclick = () => poser(arme || suivant(), mot);
+      t.ondragstart = (e) => { e.dataTransfer.setData('text/plain', mot); };
+      return { mot, t };
+    });
+    const pool = h('div.pool.etiq', { 'aria-label': 'Étiquettes à placer' }, toks.map((x) => x.t));
+    const marquer = () => toks.forEach((x) => x.t.classList.toggle('used', champs.some((c) => c.el.value === x.mot)));
+    function poser(el, mot) {
+      if (!el) { TL.toast('Toutes les cases sont remplies : clique sur une case pour la changer.'); return; }
+      el.value = mot; el.dispatchEvent(new Event('input', { bubbles: true }));
+      marquer(); armer(suivant());
+    }
+    champs.forEach((c) => {
+      const el = c.el;
+      el.readOnly = true; el.setAttribute('inputmode', 'none'); el.classList.add('slot'); el.placeholder = '…';
+      el.title = 'Clique ici puis sur une étiquette. Clique à nouveau pour vider.';
+      el.addEventListener('click', () => {
+        if (arme === el && el.value) { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); marquer(); }
+        armer(el);
+      });
+      el.addEventListener('keydown', (e) => { if ((e.key === 'Backspace' || e.key === 'Delete') && el.value) { e.preventDefault(); el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); marquer(); } });
+      el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('over'); });
+      el.addEventListener('dragleave', () => el.classList.remove('over'));
+      el.addEventListener('drop', (e) => { e.preventDefault(); el.classList.remove('over'); const m = e.dataTransfer.getData('text/plain'); if (m) poser(el, m); });
+    });
+    // Recommencer / Voir la correction changent les cases sans événement : on remet les étiquettes à jour après chaque clic.
+    root.addEventListener('click', () => setTimeout(() => { marquer(); if (!arme || !root.contains(arme)) armer(suivant()); }, 0));
+    marquer(); armer(suivant());
+    root.querySelectorAll(':scope > .banque').forEach((x) => x.remove());   // l'ancienne banque fixe fait doublon
+    return pool;
+  }
+  TL.etiquettes = etiquettes;
+  const avecEtiquettes = (def, champsDe, avant) => {
+    const r = def.render;
+    def.render = function (b, ctx) {
+      const el = r.call(this, b, ctx);
+      try {
+        const pool = etiquettes(el, champsDe(b, el), b, ctx);
+        if (pool) { const ref = avant(el); if (ref) el.insertBefore(pool, ref); else el.prepend(pool); }
+      } catch (e) { console.error(e); }
+      return el;
+    };
+  };
+  avecEtiquettes(A.cloze, (b, el) => {
+    const specs = (String(b.text || '').match(/\[\[(.+?)\]\]/g) || []).map((m) => m.slice(2, -2)).filter((x) => !x.startsWith('!'));
+    const ins = [...el.querySelectorAll('.cloze input.field')];
+    return specs.map((s, i) => ({ el: ins[i], answers: s.split('|') }));
+  }, (el) => el.querySelector('.cloze'));
+  avecEtiquettes(A.table, (b, el) => {
+    const ins = [...el.querySelectorAll('input.case')]; const cells = [];
+    (b.rows || []).forEach((row) => row.forEach((c) => { if (c && typeof c === 'object' && c.check == null && !c.choices) cells.push(c); }));
+    return cells.map((c, i) => ({ el: ins[i], answers: answersOf(c.a == null ? '' : c.a) }));
+  }, (el) => el.querySelector('.tablewrap'));
+  avecEtiquettes(A.boxes, (b, el) => {
+    const ins = [...el.querySelectorAll('input.case')]; const specs = [];
+    (b.items || []).forEach((it) => [it.top, it.bottom].forEach((s) => { if (s && typeof s === 'object') specs.push(s); }));
+    return specs.map((s, i) => ({ el: ins[i], answers: answersOf(s.a == null ? '' : s.a) }));
+  }, (el) => el.querySelector('.bx-legend') || el.querySelector('.bx-wrap'));
+  avecEtiquettes(A.label, (b, el) => (b.mode === 'saisie' ? [...el.querySelectorAll('input.case')].map((x, i) => ({ el: x, answers: answersOf(b.points[i].answer) })) : []), (el) => el.querySelector('.lbl'));
 })();
 
 ;
@@ -7936,13 +8058,43 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     murDroite: { name: 'Mur rouge (x = 200)', lines: [], mur: 200 },
     murGauche: { name: 'Mur rouge (x = −200)', lines: [], mur: -200 },
   };
+  /* Ce que l'exercice utilise (son corrigé, sinon ses blocs de départ et sa palette, et ses tests) : le panneau n'affiche
+     que cela. Robot : s'il bouge, parle, ou s'il y a un mur ou des lignes ; compteurs x, y, direction : s'ils servent ;
+     touches : celles du programme ; drapeau, stop, « Replacer » : s'ils servent. Les variables sont toujours affichées. */
+  const MOUVEMENT = ['mb_move', 'mb_turn_right', 'mb_turn_left', 'mb_point', 'mb_goto', 'mb_setx', 'mb_sety', 'mb_bounce'];
+  const TOURNE = ['mb_point', 'mb_turn_right', 'mb_turn_left', 'mb_dir', 'mb_bounce'];
+  M.besoins = (cfg) => {
+    const progs = (cfg.solution ? [cfg.solution, cfg.start] : [cfg.start]).filter(Boolean);
+    const t = new Set();
+    progs.forEach((p) => typesIn(p).forEach((x) => t.add(x)));
+    if (!cfg.solution) (cfg.toolbox || []).forEach((x) => t.add(x));
+    const has = (...l) => l.some((x) => t.has(x));
+    const tests = cfg.tests || [], steps = [].concat(...tests.map((x) => x.steps || [])), attendus = [].concat(...tests.map((x) => x.expect || []));
+    const touches = new Set();
+    JSON.stringify(progs).replace(/"KEY":"([a-z]+)"/g, (m, k) => { touches.add(k); return m; });
+    steps.forEach((x) => { if (x.key) touches.add(x.key); });
+    const decor = DECORS[cfg.decor] || DECORS.libre, vus = attendus.map((e) => e.v);
+    const bouge = has(...MOUVEMENT) || steps.some((x) => x.set);
+    const parle = has('mb_say', 'mb_say_t') || vus.includes('say');
+    const tourne = has(...TOURNE) || vus.includes('dir');
+    return {
+      robot: bouge || parle || decor.mur != null || decor.lines.length > 0,
+      x: has('mb_x', 'mb_setx', 'mb_move', 'mb_goto', 'mb_bounce') || vus.includes('x') || decor.mur != null || decor.lines.some((l) => l.x != null),
+      y: has('mb_y', 'mb_sety', 'mb_goto') || (has('mb_move') && tourne) || vus.includes('y') || decor.lines.some((l) => l.y != null),
+      dir: tourne,
+      touches: has('mb_key') ? ['left', 'up', 'down', 'right'].filter((k) => !touches.size || touches.has(k)) : [],
+      drapeau: has('mb_flag') || steps.some((x) => x.flag),
+      stop: has('mb_forever', 'mb_repeat', 'mb_wait', 'mb_wait_v', 'mb_say_t'),
+      replacer: bouge,
+    };
+  };
   const normDir = (d) => { d = ((((d + 180) % 360) + 360) % 360) - 180; return d === -180 ? 180 : d; };
   const statKeys = ['x', 'y', 'dir'];
 
   function spriteWorld(cfg) {
     const decor = DECORS[cfg.decor] || DECORS.libre;
     const init = Object.assign({ x: -100, y: 0, dir: 90 }, cfg.init);
-    const W = { kind: 'sprite', decor, r: 24, events: [], said: '', bubble: '', varMon: [] };
+    const W = { kind: 'sprite', decor, r: 24, events: [], said: '', bubble: '', varMon: [], voir: M.besoins(cfg) };
     W.reset = () => { Object.assign(W, { x: init.x, y: init.y, dir: init.dir, said: '', bubble: '', touche: false }); W.events = []; W.resetStats(); };
     // « dire » : bulle au-dessus du robot ; W.said garde le dernier texte (tests)
     // « dire » vide (silence) efface la bulle et ce que dit le robot ; la fin d'un « dire … pendant » n'efface que la bulle
@@ -7986,7 +8138,8 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
       W.x = clamp(W.x, -240 + r, 240 - r); W.y = clamp(W.y, -180 + r, 180 - r);
     };
     W.step = () => {};
-    W.monitors = () => [['Robot : position x', fmt(W.x)], ['Robot : direction', fmt(W.dir)], ['Robot : position y', fmt(W.y)]];
+    W.monitors = () => [W.voir.x ? ['Robot : position x', fmt(W.x)] : null, W.voir.dir ? ['Robot : direction', fmt(W.dir)] : null,
+      W.voir.y ? ['Robot : position y', fmt(W.y)] : null].filter(Boolean);
     W.draw = (g, s) => {
       g.fillStyle = '#ffffff'; g.fillRect(0, 0, 480, 360);
       g.strokeStyle = '#e53935'; g.lineWidth = 4; g.lineCap = 'round';
@@ -8005,9 +8158,12 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
         g.fillStyle = '#e53935'; g.font = '600 11px Helvetica, Arial, sans-serif'; g.textAlign = e > 0 ? 'right' : 'left';
         g.fillText('mur x = ' + decor.mur, X - e * 6, 352); g.textAlign = 'left';
       }
-      drawSpriteRobot(g, 240 + W.x, 180 - W.y, W.dir);
+      // robot caché quand l'exercice n'en a pas besoin, sauf s'il parle quand même (bloc « dire » ajouté par l'élève)
+      if (W.voir.robot || W.bubble !== '') drawSpriteRobot(g, 240 + W.x, 180 - W.y, W.dir);
       if (W.bubble !== '') drawBubble(g, 240 + W.x, 180 - W.y - 30, W.bubble);
-      drawMonitors(g, W.monitors().concat(W.varMon));
+      // pas de robot (exercice sur les variables) : les variables en grand, au centre de la scène
+      if (!W.voir.robot && W.bubble === '' && !W.monitors().length) drawGrandesVariables(g, W.varMon);
+      else drawMonitors(g, W.monitors().concat(W.varMon));
     };
     W.reset();
     return W;
@@ -8029,6 +8185,23 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     roundRect(g, x, y, w, hh, 10); g.fill(); g.stroke();
     g.beginPath(); g.moveTo(clamp(X, x + 12, x + w - 12), y + hh); g.lineTo(clamp(X, x + 12, x + w - 12) - 8, y + hh - 1); g.lineTo(clamp(X, x + 12, x + w - 12) - 2, y + hh + 9); g.closePath(); g.fill();
     g.fillStyle = '#575E75'; g.textBaseline = 'middle'; g.fillText(txt.length > 30 ? txt.slice(0, 29) + '…' : txt, x + 10, y + hh / 2 + 1); g.textBaseline = 'alphabetic';
+  }
+  function drawGrandesVariables(g, rows) {
+    if (!rows.length) return;
+    const hh = 64, gap = 16, top = 180 - (rows.length * hh + (rows.length - 1) * gap) / 2;
+    g.textBaseline = 'middle';
+    rows.forEach(([k, v], i) => {
+      const y = top + i * (hh + gap);
+      g.font = '600 22px Helvetica, Arial, sans-serif';
+      const wk = g.measureText(k).width;
+      g.font = '700 30px Helvetica, Arial, sans-serif';
+      const wv = Math.max(70, g.measureText(v).width + 32), w = wk + wv + 52, x = 240 - w / 2;
+      g.fillStyle = '#E6F0FF'; g.strokeStyle = '#C3D5F5'; g.lineWidth = 2; roundRect(g, x, y, w, hh, 12); g.fill(); g.stroke();
+      g.fillStyle = '#575E75'; g.font = '600 22px Helvetica, Arial, sans-serif'; g.fillText(k, x + 18, y + hh / 2 + 1);
+      g.fillStyle = '#FF8C1A'; roundRect(g, x + wk + 34, y + 12, wv, hh - 24, 10); g.fill();
+      g.fillStyle = '#fff'; g.font = '700 30px Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.fillText(v, x + wk + 34 + wv / 2, y + hh / 2 + 2); g.textAlign = 'left';
+    });
+    g.textBaseline = 'alphabetic';
   }
   function drawMonitors(g, rows) {
     g.font = '600 10.5px Helvetica, Arial, sans-serif'; g.textBaseline = 'middle';
@@ -8166,7 +8339,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
       this.monVars();
     }
     varId(name) { const v = ((this._state && this._state.variables) || []).find((x) => x.name === name); return v ? v.id : null; }
-    monVars() { if (this.world.kind === 'sprite') this.world.varMon = Object.keys(this.varNames || {}).map((id) => ['Robot : ' + this.varNames[id], typeof this.vars[id] === 'number' ? fmt(this.vars[id]) : String(this.vars[id])]); }
+    monVars() { if (this.world.kind === 'sprite') this.world.varMon = Object.keys(this.varNames || {}).map((id) => [(this.world.voir && !this.world.voir.robot ? '' : 'Robot : ') + this.varNames[id], typeof this.vars[id] === 'number' ? fmt(this.vars[id]) : String(this.vars[id])]); }
     fire(kind, key) {
       if (kind !== 'key') this.stopAll();
       const type = { flag: 'mb_flag', start: 'mb_start', key: 'mb_key' }[kind];
@@ -8273,7 +8446,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     if (R.error) return { name: t.name, ok: false, why: 'Erreur : ' + R.error };
     for (const e of t.expect || []) {
       if (e.v === 'say') {
-        if (!egal(W.said, e.eq)) return { name: t.name, ok: false, why: e.why || (W.said ? `Le robot dit « ${W.said} » : il devrait dire « ${e.eq} ».` : `Le robot ne dit rien : il devrait dire « ${e.eq} ».`) };
+        if (!memeMessage(W.said, e.eq)) return { name: t.name, ok: false, why: e.why || (W.said ? `Le robot dit « ${W.said} » : il devrait dire « ${e.eq} ».` : `Le robot ne dit rien : il devrait dire « ${e.eq} ».`) };
         continue;
       }
       if (e.var) {
@@ -8295,6 +8468,18 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const norm = (v) => String(v == null ? '' : v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
   const egal = (a, b) => { const na = Number(String(a).replace(',', '.')), nb = Number(String(b).replace(',', '.')); return String(a).trim() !== '' && isFinite(na) && isFinite(nb) ? Math.abs(na - nb) < 1e-6 : norm(a) === norm(b); };
+  /* « dire » : un nombre est comparé exactement ; un texte est juste s'il contient les mots importants attendus, dans
+     n'importe quel ordre, sans tenir compte des majuscules, accents ni ponctuation : « Attention au mur ! » vaut
+     « Attention, mur ! » (mots de 3 lettres ou plus ; « murs » vaut « mur »). Silence attendu : rien ne doit être dit. */
+  const mots = (v) => norm(v).replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  const memeMessage = (dit, attendu) => {
+    if (egal(dit, attendu)) return true;
+    if (norm(attendu) === '' || norm(dit) === '') return false;
+    if (isFinite(Number(String(attendu).replace(',', '.')))) return false;
+    const a = mots(attendu), d = mots(dit), utiles = a.filter((m) => m.length >= 3);
+    return (utiles.length ? utiles : a).every((m) => d.some((x) => x === m || (x.startsWith(m) && x.length - m.length <= 2)));
+  };
+  M.memeMessage = memeMessage;
   const typesIn = (state) => { const out = new Set(); const walk = (x) => { if (!x) return; out.add(x.type); Object.values(x.inputs || {}).forEach((i) => walk(i.block)); walk(x.next && x.next.block); }; tops(state).forEach(walk); return out; };
   const STRUCT = { mb_forever: 'répéter indéfiniment', mb_repeat: 'répéter … fois', mb_ifelse: 'si … alors … sinon', mb_if: 'si … alors', variables_set: 'mettre … à', math_change: 'ajouter … à', mb_say: 'dire', mb_say_t: 'dire … pendant … secondes', mb_arith: 'opération (+ − × ÷)' };
   /** Blocs de structure du corrigé, dans l'ordre de STRUCT (affichés sous la consigne). */
@@ -8342,14 +8527,18 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     P.host.style.setProperty('--mbk-w', Math.round(clamp(px, 460, Math.max(460, max))) + 'px');
   }
   function onKey(e) {
-    const c = P.cur; if (!c || !P.focus || c.cfg.mode === 'mbot') return;
-    const k = KEYS[e.key]; if (!k) return;
+    // panneau ouvert : les flèches pilotent le robot même si l'on a cliqué dans la feuille (la feuille ne change plus avec
+    // elles, js/app.js) ; l'espace seulement après un clic dans le panneau (sinon il garde son rôle : boutons, défilement)
+    const c = P.cur; if (!c || c.cfg.mode === 'mbot') return;
+    const k = KEYS[e.key]; if (!k || (k === 'space' && !P.focus)) return;
     const t = e.target;
-    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(t.tagName) || (t.closest && t.closest('.blocklyWidgetDiv,.blocklyDropDownDiv')))) return;
     e.preventDefault();
     c.press(k);
   }
 
+  /** Panneau mBlock ouvert : les flèches du clavier sont pour le robot (touches « quand la touche … »), pas pour changer de feuille. */
+  M.ouvert = () => !!P.cur;
   M.close = function () {
     const c = P.cur; if (!c) return;
     c.flush(); cancelAnimationFrame(P.raf);
@@ -8383,7 +8572,7 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     // En-tête
     const top = h('header.mbk-top',
       h('span.mbk-logo', 'mBlock'),
-      h('span.mbk-mode', mode === 'mbot' ? 'mBot · simulation' : (DECORS[cfg.decor] || DECORS.libre).name),
+      mode === 'mbot' || (DECORS[cfg.decor] && cfg.decor !== 'libre') ? h('span.mbk-mode', mode === 'mbot' ? 'mBot · simulation' : DECORS[cfg.decor].name) : null,
       h('span.mbk-sp'),
       h('button.mbk-x', { type: 'button', title: 'Replier l’environnement', 'aria-label': 'Fermer', onclick: () => M.close() }, '✕'));
     const utiles = M.blocsUtiles(cfg);
@@ -8397,7 +8586,9 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
     btnGo.onclick = () => { R.error = null; R.fire(mode === 'mbot' ? 'start' : 'flag'); };
     btnStop.onclick = () => R.stopAll();
     btnReset.onclick = () => { R.stopAll(); W.reset(); };
-    const bar = h('div.mbk-stagebar', btnGo, btnStop, h('span.mbk-sp'), btnReset);
+    const voir = W.voir || { drapeau: true, stop: true, replacer: true, touches: ['left', 'up', 'down', 'right'] };   // mBot : tout
+    const bar = voir.drapeau || voir.stop || voir.replacer
+      ? h('div.mbk-stagebar', voir.drapeau ? btnGo : null, voir.stop ? btnStop : null, h('span.mbk-sp'), voir.replacer ? btnReset : null) : null;
     let pad = null;
     if (mode === 'sprite') {
       const key = (k, label, aria) => {
@@ -8408,7 +8599,8 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
         ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => bt.addEventListener(ev, stop));
         return bt;
       };
-      pad = h('div.mbk-pad', h('span.small.muted', 'Touches :'), key('left', '←', 'flèche gauche'), key('up', '↑', 'flèche du haut'), key('down', '↓', 'flèche du bas'), key('right', '→', 'flèche droite'), h('span.small.muted.mbk-hint', 'ou le clavier, après un clic sur la scène'));
+      const FL = { left: ['←', 'flèche gauche'], up: ['↑', 'flèche du haut'], down: ['↓', 'flèche du bas'], right: ['→', 'flèche droite'] };
+      if (voir.touches.length) pad = h('div.mbk-pad', h('span.small.muted', voir.touches.length > 1 ? 'Touches :' : 'Touche :'), voir.touches.map((k) => key(k, FL[k][0], FL[k][1])), h('span.small.muted.mbk-hint', 'ou le clavier'));
     }
     const logBox = h('div.mbk-log', { 'aria-live': 'polite' });
     // Tests
@@ -8445,6 +8637,19 @@ window.esptoolJs={ESPLoader:Re,ROM:fe,Transport:Ce,classicReset:_e,customReset:Q
       zoom: { controls: true, wheel: true, startScale: 0.68, maxScale: 1.6, minScale: 0.35, scaleSpeed: 1.15 },
       move: { scrollbars: true, drag: true, wheel: true }, grid: { spacing: 24, length: 2, colour: '#ddd', snap: false }, readOnly: !!b.demo,
     }));
+    // Palette Variables : Blockly donne « mettre … à » sans case pour la valeur (impossible d'y taper 0) ; on ajoute une case
+    // nombre (0), comme « ajouter … à » qui a déjà la sienne
+    if (allowed.includes('variables') && Bl.Variables && Bl.Variables.flyoutCategory) {
+      ws.registerToolboxCategoryCallback('VARIABLE', (w) => {
+        const liste = Bl.Variables.flyoutCategory(w);
+        liste.forEach((el) => {
+          if (el && el.getAttribute && el.getAttribute('type') === 'variables_set' && !el.querySelector('value')) {
+            el.appendChild(Bl.utils.xml.textToDom('<value name="VALUE"><shadow type="math_number"><field name="NUM">0</field></shadow></value>'));
+          }
+        });
+        return liste;
+      });
+    }
     const start = (ctx.answer && ctx.answer.value && ctx.answer.value.workspace) || cfg.start || { blocks: { languageVersion: 0, blocks: [] } };
     try { Bl.serialization.workspaces.load(start, ws); } catch (e) { console.warn(e); }
     function save() { return c.ws ? Bl.serialization.workspaces.save(c.ws) : start; }
@@ -12111,6 +12316,11 @@ Actionneurs = moteur, lampe`;
   const vraiProf = () => !app.eleveCentrale && (!!app.enseignantCentrale || !!(app.profile && app.profile.role === 'prof'));
   const isProf = () => vraiProf() && !app.apercu;
   const eleveUI = () => !!app.seul || !isProf();
+  /* Atelier hors ligne préparé par la Centrale (fichier ouvert sur un portable sans internet, module local
+     Centrale.horsLigne) : ouvert comme depuis le portail (mode atelier élève) ; en plus, ni bibliothèque ni page Compte :
+     l'élève reste dans son atelier, la fin propose « Rendre mon travail » (pied de la feuille, Centrale.navigation). */
+  const horsLigne = () => !!(window.Centrale && window.Centrale.horsLigne);
+  app.horsLigne = horsLigne;
   app.eleveUI = eleveUI; app.vraiProf = vraiProf;
 
   /* Mode « atelier seul » : ?atelier=<id> (ou <id>/<feuille>, ou &feuille=P2). Pour un lien court donné en classe :
@@ -12312,7 +12522,7 @@ Actionneurs = moteur, lampe`;
       { head: 'Thème' },
       ...[['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => ({ label: l, check: theme === k, action: () => setTheme(k) })),
       { sep: true },
-      { label: 'Profil et connexion…', action: () => app.go('compte') },
+      { label: 'Profil et connexion…', hidden: horsLigne(), action: () => app.go('compte') },
       ...mode,
       { sep: true },
       { label: 'À propos de TechnoStudio', action: about },
@@ -12548,7 +12758,7 @@ Actionneurs = moteur, lampe`;
       const portail = !app.seul && app.eleveCentrale;
       const versPortail = app.versPortail;
       const attrs = { style: '--cl:' + TL.niveauColor(w), title: resume + (app.seul ? '' : portail ? ' · retour à mes ateliers, sur la Centrale' : ' · voir mes ateliers'), 'aria-label': resume };
-      pill = app.seul ? h('div.tbres.tb-at', attrs, ...kids) : h('button.tbres.tb-at', Object.assign({ type: 'button', onclick: portail ? versPortail : () => app.go('accueil') }, attrs), ...kids);
+      pill = app.seul || horsLigne() ? h('div.tbres.tb-at', attrs, ...kids) : h('button.tbres.tb-at', Object.assign({ type: 'button', onclick: portail ? versPortail : () => app.go('accueil') }, attrs), ...kids);
     }
     const old = zone.querySelector('.tb-at');
     if (old && pill) old.replaceWith(pill); else if (old) old.remove(); else if (pill) zone.prepend(pill);
@@ -12692,6 +12902,11 @@ Actionneurs = moteur, lampe`;
     return routing;
   }
   async function routeNow() {
+    if (horsLigne()) {   // atelier hors ligne : tout autre écran (bibliothèque, compte…) ramène à l'atelier ouvert
+      const m = /^#at-(.+)$/.exec(location.hash || '');
+      if (m) app.dernierHorsLigne = m[1];
+      else if (app.dernierHorsLigne && !/^#(activite|centrale)=/.test(location.hash || '')) history.replaceState(null, '', location.pathname + location.search + '#at-' + app.dernierHorsLigne);
+    }
     if (app.seul && location.hash !== '#at-' + app.seul.id) history.replaceState(null, '', location.pathname + location.search + '#at-' + app.seul.id);
     let hash = (location.hash || '#accueil').slice(1);
     if (!app.seul && eleveUI() && /^(ed-|fiche-|creer$|passerelle$|code$|circuit$|maquettes$)/.test(hash)) { history.replaceState(null, '', location.pathname + location.search + '#accueil'); hash = 'accueil'; }
@@ -12725,6 +12940,7 @@ Actionneurs = moteur, lampe`;
   }
   app.route = route;
   app.go = (hash) => {
+    if (horsLigne() && app.dernierHorsLigne && !/^at-/.test(hash)) hash = 'at-' + app.dernierHorsLigne;   // atelier hors ligne : on y reste
     if (hash === 'accueil' && !app.regleAtelier('bibliotheque')) { app.versPortail(); return; }   // mode atelier : retour au portail plutôt que la bibliothèque
     if (location.hash === '#' + hash) route(); else location.hash = hash;
   };
@@ -13420,7 +13636,9 @@ Actionneurs = moteur, lampe`;
       return;
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o' && !app.seul) { e.preventDefault(); app.go('accueil'); }
-    if (app.step && !e.ctrlKey && !e.metaKey && !e.altKey) { if (e.key === 'ArrowRight') app.step(1); if (e.key === 'ArrowLeft') app.step(-1); }
+    // flèches : feuille précédente / suivante, sauf panneau mBlock ouvert (elles servent alors au robot : « quand la touche … »)
+    const mblock = (TL.mblock && TL.mblock.ouvert && TL.mblock.ouvert()) || (e.target.closest && e.target.closest('.mbk-side'));
+    if (app.step && !mblock && !e.defaultPrevented && !e.ctrlKey && !e.metaKey && !e.altKey) { if (e.key === 'ArrowRight') app.step(1); if (e.key === 'ArrowLeft') app.step(-1); }
   });
 
   // compatibilité avec l'ancienne API (aperçus de l'éditeur, tableau de bord)

@@ -94,3 +94,20 @@ for (const { f, w } of ATELIERS) {
   }
 }
 console.log('✓ Simulateur mBlock : mur, variables, « dire », opérations et tests say/var conformes ; ' + nAct + ' activités des ateliers exécutées (' + (nCentrale ? nCentrale + ' ateliers de la Centrale compris' : 'pas de dépôt de la Centrale à côté : ateliers intégrés seulement') + ') ; ' + nProg + ' programmes dessinés vérifiés.');
+
+// « dire » : un texte équivalent est accepté (mots importants, ordre libre, ponctuation et accents ignorés) ; un nombre, non
+{
+  const ok = (a, b) => assert.ok(M.memeMessage(a, b), `« ${a} » devrait valoir « ${b} »`);
+  const ko = (a, b) => assert.ok(!M.memeMessage(a, b), `« ${a} » ne devrait pas valoir « ${b} »`);
+  ok('Attention, mur !', 'Attention, mur !');
+  ok('Attention au mur !', 'Attention, mur !');
+  ok('attention aux murs', 'Attention, mur !');
+  ok('MUR ! attention', 'Attention, mur !');
+  ok('Bip', 'bip');
+  ok('50', '50'); ok('50,0', '50');
+  ko('Attention !', 'Attention, mur !');
+  ko('Stop', 'Attention, mur !');
+  ko('51', '50'); ko('50 cm', '50');
+  ko('', 'bip'); ko('bip', '');
+  console.log('✓ « dire » : messages équivalents acceptés, nombres exacts');
+}

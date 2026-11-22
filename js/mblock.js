@@ -131,13 +131,43 @@
     murDroite: { name: 'Mur rouge (x = 200)', lines: [], mur: 200 },
     murGauche: { name: 'Mur rouge (x = −200)', lines: [], mur: -200 },
   };
+  /* Ce que l'exercice utilise (son corrigé, sinon ses blocs de départ et sa palette, et ses tests) : le panneau n'affiche
+     que cela. Robot : s'il bouge, parle, ou s'il y a un mur ou des lignes ; compteurs x, y, direction : s'ils servent ;
+     touches : celles du programme ; drapeau, stop, « Replacer » : s'ils servent. Les variables sont toujours affichées. */
+  const MOUVEMENT = ['mb_move', 'mb_turn_right', 'mb_turn_left', 'mb_point', 'mb_goto', 'mb_setx', 'mb_sety', 'mb_bounce'];
+  const TOURNE = ['mb_point', 'mb_turn_right', 'mb_turn_left', 'mb_dir', 'mb_bounce'];
+  M.besoins = (cfg) => {
+    const progs = (cfg.solution ? [cfg.solution, cfg.start] : [cfg.start]).filter(Boolean);
+    const t = new Set();
+    progs.forEach((p) => typesIn(p).forEach((x) => t.add(x)));
+    if (!cfg.solution) (cfg.toolbox || []).forEach((x) => t.add(x));
+    const has = (...l) => l.some((x) => t.has(x));
+    const tests = cfg.tests || [], steps = [].concat(...tests.map((x) => x.steps || [])), attendus = [].concat(...tests.map((x) => x.expect || []));
+    const touches = new Set();
+    JSON.stringify(progs).replace(/"KEY":"([a-z]+)"/g, (m, k) => { touches.add(k); return m; });
+    steps.forEach((x) => { if (x.key) touches.add(x.key); });
+    const decor = DECORS[cfg.decor] || DECORS.libre, vus = attendus.map((e) => e.v);
+    const bouge = has(...MOUVEMENT) || steps.some((x) => x.set);
+    const parle = has('mb_say', 'mb_say_t') || vus.includes('say');
+    const tourne = has(...TOURNE) || vus.includes('dir');
+    return {
+      robot: bouge || parle || decor.mur != null || decor.lines.length > 0,
+      x: has('mb_x', 'mb_setx', 'mb_move', 'mb_goto', 'mb_bounce') || vus.includes('x') || decor.mur != null || decor.lines.some((l) => l.x != null),
+      y: has('mb_y', 'mb_sety', 'mb_goto') || (has('mb_move') && tourne) || vus.includes('y') || decor.lines.some((l) => l.y != null),
+      dir: tourne,
+      touches: has('mb_key') ? ['left', 'up', 'down', 'right'].filter((k) => !touches.size || touches.has(k)) : [],
+      drapeau: has('mb_flag') || steps.some((x) => x.flag),
+      stop: has('mb_forever', 'mb_repeat', 'mb_wait', 'mb_wait_v', 'mb_say_t'),
+      replacer: bouge,
+    };
+  };
   const normDir = (d) => { d = ((((d + 180) % 360) + 360) % 360) - 180; return d === -180 ? 180 : d; };
   const statKeys = ['x', 'y', 'dir'];
 
   function spriteWorld(cfg) {
     const decor = DECORS[cfg.decor] || DECORS.libre;
     const init = Object.assign({ x: -100, y: 0, dir: 90 }, cfg.init);
-    const W = { kind: 'sprite', decor, r: 24, events: [], said: '', bubble: '', varMon: [] };
+    const W = { kind: 'sprite', decor, r: 24, events: [], said: '', bubble: '', varMon: [], voir: M.besoins(cfg) };
     W.reset = () => { Object.assign(W, { x: init.x, y: init.y, dir: init.dir, said: '', bubble: '', touche: false }); W.events = []; W.resetStats(); };
     // « dire » : bulle au-dessus du robot ; W.said garde le dernier texte (tests)
     // « dire » vide (silence) efface la bulle et ce que dit le robot ; la fin d'un « dire … pendant » n'efface que la bulle
@@ -181,7 +211,8 @@
       W.x = clamp(W.x, -240 + r, 240 - r); W.y = clamp(W.y, -180 + r, 180 - r);
     };
     W.step = () => {};
-    W.monitors = () => [['Robot : position x', fmt(W.x)], ['Robot : direction', fmt(W.dir)], ['Robot : position y', fmt(W.y)]];
+    W.monitors = () => [W.voir.x ? ['Robot : position x', fmt(W.x)] : null, W.voir.dir ? ['Robot : direction', fmt(W.dir)] : null,
+      W.voir.y ? ['Robot : position y', fmt(W.y)] : null].filter(Boolean);
     W.draw = (g, s) => {
       g.fillStyle = '#ffffff'; g.fillRect(0, 0, 480, 360);
       g.strokeStyle = '#e53935'; g.lineWidth = 4; g.lineCap = 'round';
@@ -200,9 +231,12 @@
         g.fillStyle = '#e53935'; g.font = '600 11px Helvetica, Arial, sans-serif'; g.textAlign = e > 0 ? 'right' : 'left';
         g.fillText('mur x = ' + decor.mur, X - e * 6, 352); g.textAlign = 'left';
       }
-      drawSpriteRobot(g, 240 + W.x, 180 - W.y, W.dir);
+      // robot caché quand l'exercice n'en a pas besoin, sauf s'il parle quand même (bloc « dire » ajouté par l'élève)
+      if (W.voir.robot || W.bubble !== '') drawSpriteRobot(g, 240 + W.x, 180 - W.y, W.dir);
       if (W.bubble !== '') drawBubble(g, 240 + W.x, 180 - W.y - 30, W.bubble);
-      drawMonitors(g, W.monitors().concat(W.varMon));
+      // pas de robot (exercice sur les variables) : les variables en grand, au centre de la scène
+      if (!W.voir.robot && W.bubble === '' && !W.monitors().length) drawGrandesVariables(g, W.varMon);
+      else drawMonitors(g, W.monitors().concat(W.varMon));
     };
     W.reset();
     return W;
@@ -224,6 +258,23 @@
     roundRect(g, x, y, w, hh, 10); g.fill(); g.stroke();
     g.beginPath(); g.moveTo(clamp(X, x + 12, x + w - 12), y + hh); g.lineTo(clamp(X, x + 12, x + w - 12) - 8, y + hh - 1); g.lineTo(clamp(X, x + 12, x + w - 12) - 2, y + hh + 9); g.closePath(); g.fill();
     g.fillStyle = '#575E75'; g.textBaseline = 'middle'; g.fillText(txt.length > 30 ? txt.slice(0, 29) + '…' : txt, x + 10, y + hh / 2 + 1); g.textBaseline = 'alphabetic';
+  }
+  function drawGrandesVariables(g, rows) {
+    if (!rows.length) return;
+    const hh = 64, gap = 16, top = 180 - (rows.length * hh + (rows.length - 1) * gap) / 2;
+    g.textBaseline = 'middle';
+    rows.forEach(([k, v], i) => {
+      const y = top + i * (hh + gap);
+      g.font = '600 22px Helvetica, Arial, sans-serif';
+      const wk = g.measureText(k).width;
+      g.font = '700 30px Helvetica, Arial, sans-serif';
+      const wv = Math.max(70, g.measureText(v).width + 32), w = wk + wv + 52, x = 240 - w / 2;
+      g.fillStyle = '#E6F0FF'; g.strokeStyle = '#C3D5F5'; g.lineWidth = 2; roundRect(g, x, y, w, hh, 12); g.fill(); g.stroke();
+      g.fillStyle = '#575E75'; g.font = '600 22px Helvetica, Arial, sans-serif'; g.fillText(k, x + 18, y + hh / 2 + 1);
+      g.fillStyle = '#FF8C1A'; roundRect(g, x + wk + 34, y + 12, wv, hh - 24, 10); g.fill();
+      g.fillStyle = '#fff'; g.font = '700 30px Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.fillText(v, x + wk + 34 + wv / 2, y + hh / 2 + 2); g.textAlign = 'left';
+    });
+    g.textBaseline = 'alphabetic';
   }
   function drawMonitors(g, rows) {
     g.font = '600 10.5px Helvetica, Arial, sans-serif'; g.textBaseline = 'middle';
@@ -361,7 +412,7 @@
       this.monVars();
     }
     varId(name) { const v = ((this._state && this._state.variables) || []).find((x) => x.name === name); return v ? v.id : null; }
-    monVars() { if (this.world.kind === 'sprite') this.world.varMon = Object.keys(this.varNames || {}).map((id) => ['Robot : ' + this.varNames[id], typeof this.vars[id] === 'number' ? fmt(this.vars[id]) : String(this.vars[id])]); }
+    monVars() { if (this.world.kind === 'sprite') this.world.varMon = Object.keys(this.varNames || {}).map((id) => [(this.world.voir && !this.world.voir.robot ? '' : 'Robot : ') + this.varNames[id], typeof this.vars[id] === 'number' ? fmt(this.vars[id]) : String(this.vars[id])]); }
     fire(kind, key) {
       if (kind !== 'key') this.stopAll();
       const type = { flag: 'mb_flag', start: 'mb_start', key: 'mb_key' }[kind];
@@ -468,7 +519,7 @@
     if (R.error) return { name: t.name, ok: false, why: 'Erreur : ' + R.error };
     for (const e of t.expect || []) {
       if (e.v === 'say') {
-        if (!egal(W.said, e.eq)) return { name: t.name, ok: false, why: e.why || (W.said ? `Le robot dit « ${W.said} » : il devrait dire « ${e.eq} ».` : `Le robot ne dit rien : il devrait dire « ${e.eq} ».`) };
+        if (!memeMessage(W.said, e.eq)) return { name: t.name, ok: false, why: e.why || (W.said ? `Le robot dit « ${W.said} » : il devrait dire « ${e.eq} ».` : `Le robot ne dit rien : il devrait dire « ${e.eq} ».`) };
         continue;
       }
       if (e.var) {
@@ -490,6 +541,18 @@
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const norm = (v) => String(v == null ? '' : v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
   const egal = (a, b) => { const na = Number(String(a).replace(',', '.')), nb = Number(String(b).replace(',', '.')); return String(a).trim() !== '' && isFinite(na) && isFinite(nb) ? Math.abs(na - nb) < 1e-6 : norm(a) === norm(b); };
+  /* « dire » : un nombre est comparé exactement ; un texte est juste s'il contient les mots importants attendus, dans
+     n'importe quel ordre, sans tenir compte des majuscules, accents ni ponctuation : « Attention au mur ! » vaut
+     « Attention, mur ! » (mots de 3 lettres ou plus ; « murs » vaut « mur »). Silence attendu : rien ne doit être dit. */
+  const mots = (v) => norm(v).replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  const memeMessage = (dit, attendu) => {
+    if (egal(dit, attendu)) return true;
+    if (norm(attendu) === '' || norm(dit) === '') return false;
+    if (isFinite(Number(String(attendu).replace(',', '.')))) return false;
+    const a = mots(attendu), d = mots(dit), utiles = a.filter((m) => m.length >= 3);
+    return (utiles.length ? utiles : a).every((m) => d.some((x) => x === m || (x.startsWith(m) && x.length - m.length <= 2)));
+  };
+  M.memeMessage = memeMessage;
   const typesIn = (state) => { const out = new Set(); const walk = (x) => { if (!x) return; out.add(x.type); Object.values(x.inputs || {}).forEach((i) => walk(i.block)); walk(x.next && x.next.block); }; tops(state).forEach(walk); return out; };
   const STRUCT = { mb_forever: 'répéter indéfiniment', mb_repeat: 'répéter … fois', mb_ifelse: 'si … alors … sinon', mb_if: 'si … alors', variables_set: 'mettre … à', math_change: 'ajouter … à', mb_say: 'dire', mb_say_t: 'dire … pendant … secondes', mb_arith: 'opération (+ − × ÷)' };
   /** Blocs de structure du corrigé, dans l'ordre de STRUCT (affichés sous la consigne). */
@@ -537,14 +600,18 @@
     P.host.style.setProperty('--mbk-w', Math.round(clamp(px, 460, Math.max(460, max))) + 'px');
   }
   function onKey(e) {
-    const c = P.cur; if (!c || !P.focus || c.cfg.mode === 'mbot') return;
-    const k = KEYS[e.key]; if (!k) return;
+    // panneau ouvert : les flèches pilotent le robot même si l'on a cliqué dans la feuille (la feuille ne change plus avec
+    // elles, js/app.js) ; l'espace seulement après un clic dans le panneau (sinon il garde son rôle : boutons, défilement)
+    const c = P.cur; if (!c || c.cfg.mode === 'mbot') return;
+    const k = KEYS[e.key]; if (!k || (k === 'space' && !P.focus)) return;
     const t = e.target;
-    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(t.tagName) || (t.closest && t.closest('.blocklyWidgetDiv,.blocklyDropDownDiv')))) return;
     e.preventDefault();
     c.press(k);
   }
 
+  /** Panneau mBlock ouvert : les flèches du clavier sont pour le robot (touches « quand la touche … »), pas pour changer de feuille. */
+  M.ouvert = () => !!P.cur;
   M.close = function () {
     const c = P.cur; if (!c) return;
     c.flush(); cancelAnimationFrame(P.raf);
@@ -578,7 +645,7 @@
     // En-tête
     const top = h('header.mbk-top',
       h('span.mbk-logo', 'mBlock'),
-      h('span.mbk-mode', mode === 'mbot' ? 'mBot · simulation' : (DECORS[cfg.decor] || DECORS.libre).name),
+      mode === 'mbot' || (DECORS[cfg.decor] && cfg.decor !== 'libre') ? h('span.mbk-mode', mode === 'mbot' ? 'mBot · simulation' : DECORS[cfg.decor].name) : null,
       h('span.mbk-sp'),
       h('button.mbk-x', { type: 'button', title: 'Replier l’environnement', 'aria-label': 'Fermer', onclick: () => M.close() }, '✕'));
     const utiles = M.blocsUtiles(cfg);
@@ -592,7 +659,9 @@
     btnGo.onclick = () => { R.error = null; R.fire(mode === 'mbot' ? 'start' : 'flag'); };
     btnStop.onclick = () => R.stopAll();
     btnReset.onclick = () => { R.stopAll(); W.reset(); };
-    const bar = h('div.mbk-stagebar', btnGo, btnStop, h('span.mbk-sp'), btnReset);
+    const voir = W.voir || { drapeau: true, stop: true, replacer: true, touches: ['left', 'up', 'down', 'right'] };   // mBot : tout
+    const bar = voir.drapeau || voir.stop || voir.replacer
+      ? h('div.mbk-stagebar', voir.drapeau ? btnGo : null, voir.stop ? btnStop : null, h('span.mbk-sp'), voir.replacer ? btnReset : null) : null;
     let pad = null;
     if (mode === 'sprite') {
       const key = (k, label, aria) => {
@@ -603,7 +672,8 @@
         ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => bt.addEventListener(ev, stop));
         return bt;
       };
-      pad = h('div.mbk-pad', h('span.small.muted', 'Touches :'), key('left', '←', 'flèche gauche'), key('up', '↑', 'flèche du haut'), key('down', '↓', 'flèche du bas'), key('right', '→', 'flèche droite'), h('span.small.muted.mbk-hint', 'ou le clavier, après un clic sur la scène'));
+      const FL = { left: ['←', 'flèche gauche'], up: ['↑', 'flèche du haut'], down: ['↓', 'flèche du bas'], right: ['→', 'flèche droite'] };
+      if (voir.touches.length) pad = h('div.mbk-pad', h('span.small.muted', voir.touches.length > 1 ? 'Touches :' : 'Touche :'), voir.touches.map((k) => key(k, FL[k][0], FL[k][1])), h('span.small.muted.mbk-hint', 'ou le clavier'));
     }
     const logBox = h('div.mbk-log', { 'aria-live': 'polite' });
     // Tests
@@ -640,6 +710,19 @@
       zoom: { controls: true, wheel: true, startScale: 0.68, maxScale: 1.6, minScale: 0.35, scaleSpeed: 1.15 },
       move: { scrollbars: true, drag: true, wheel: true }, grid: { spacing: 24, length: 2, colour: '#ddd', snap: false }, readOnly: !!b.demo,
     }));
+    // Palette Variables : Blockly donne « mettre … à » sans case pour la valeur (impossible d'y taper 0) ; on ajoute une case
+    // nombre (0), comme « ajouter … à » qui a déjà la sienne
+    if (allowed.includes('variables') && Bl.Variables && Bl.Variables.flyoutCategory) {
+      ws.registerToolboxCategoryCallback('VARIABLE', (w) => {
+        const liste = Bl.Variables.flyoutCategory(w);
+        liste.forEach((el) => {
+          if (el && el.getAttribute && el.getAttribute('type') === 'variables_set' && !el.querySelector('value')) {
+            el.appendChild(Bl.utils.xml.textToDom('<value name="VALUE"><shadow type="math_number"><field name="NUM">0</field></shadow></value>'));
+          }
+        });
+        return liste;
+      });
+    }
     const start = (ctx.answer && ctx.answer.value && ctx.answer.value.workspace) || cfg.start || { blocks: { languageVersion: 0, blocks: [] } };
     try { Bl.serialization.workspaces.load(start, ws); } catch (e) { console.warn(e); }
     function save() { return c.ws ? Bl.serialization.workspaces.save(c.ws) : start; }

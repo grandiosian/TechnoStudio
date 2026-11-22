@@ -614,4 +614,120 @@
     }
     return el;
   };
+
+  /* ================= Étiquettes à placer (au lieu d'écrire) =================
+     Dans les textes à trous, tableaux, cases reliées et schémas en saisie, les réponses en mots ne se tapent plus :
+     l'élève clique sur une case, puis sur une étiquette (ou la glisse). Les étiquettes = les réponses + quelques
+     leurres probables, mélangés (graine de l'élève). Les réponses en nombre et les calculs posés restent à taper.
+     Pour garder la saisie : `saisie: true` sur le bloc. Leurres choisis par l'auteur : `leurres: [...]`. */
+  const FAMILLES = [
+    ['électrique', 'mécanique', 'lumineuse', 'thermique', 'chimique', 'sonore'],
+    ['énergie', 'information'], ['capteur', 'actionneur', 'carte de commande'], ['analogique', 'logique', 'numérique'],
+    ['avance', 'recule', 'tourne', 'arrête'], ['courte', 'longue'], ['rapprochés', 'espacés'], ['proche', 'loin'],
+    ['vraie', 'fausse'], ['vrai', 'faux'], ['fermé', 'ouvert'], ['forte', 'faible'], ['rouge', 'orange', 'vert'],
+    ['condition', 'boucle', 'variable', 'attente', 'événement'], ['si', 'sinon', 'répéter', 'attendre'],
+    ['générateur', 'récepteur', 'interrupteur', 'conducteur', 'résistance', 'moteur', 'lampe'],
+    ['boîte', 'nom', 'valeur'], ['bip', 'bips', 'silence', 'son continu'], ['mettre', 'ajouter', 'dire'],
+    ['algorithme', 'programme', 'schéma'], ['téléversé', 'effacé', 'imprimé'], ['piles', 'secteur', 'panneau solaire'],
+    ['change', 'reste fixe'], ['losange', 'rectangle', 'ovale'], ['flèche du haut', 'flèche du bas', 'espace'],
+    ['position x', 'position y', 'direction'], ['une règle', 'une balance', 'un chronomètre'],
+    ['courant dans le moteur', 'nombre de roues'], ['distance', 'vitesse', 'durée'], ['données', 'images'],
+    ['répéter indéfiniment', 'répéter 10 fois'], ['mCore', 'micro:bit'],
+  ];
+  // À taper : un nombre (mesure) ou un calcul posé (« 200 − 120 = 80 ») — c'est ce qui est évalué.
+  const nombreSeul = (a) => /^[-−]?[\d.,]+\s*[^\s\d]{0,3}$/.test(String(a).trim()) || /^[-−]?[\d.,]+\s+fois$/.test(String(a).trim()) || (/=/.test(a) && /\d/.test(a));
+  const sansArticle = (s) => TL.norm(s).replace(/^(le |la |les |l'|un |une |des |du )/, '').replace(/\s*\(.*\)$/, '');
+  const varianteOperateur = (a) => {
+    const ops = ['×', '÷', '+', '-', '/', '*'], inv = { '×': '÷', '÷': '×', '+': '-', '-': '+', '/': '×', '*': '/' };
+    for (const o of ops) { const i = a.lastIndexOf(' ' + o + ' '); if (i > 0) return a.slice(0, i + 1) + inv[o] + a.slice(i + 2); }
+    return null;
+  };
+  function leurresProbables(champs, b, seed) {
+    const tous = champs.flatMap((c) => c.answers);
+    const deja = (x) => tous.some((a) => same(x, a)) || champs.some((c) => c.answers.some((a) => sansArticle(a) === sansArticle(x)));
+    const voulu = TL.clamp(Math.ceil(champs.length / 2) + (champs.length === 1 ? 1 : 0), 2, 4);
+    const out = [];
+    const prendre = (x) => { if (x && out.length < voulu + 2 && !deja(x) && !out.some((o) => TL.norm(o) === TL.norm(x))) out.push(x); };
+    (b.leurres || b.distractors || b.bankExtra || []).forEach(prendre);
+    if (out.length >= voulu) return out;
+    const candidats = [];
+    champs.forEach((c) => {
+      const cles = c.answers.map(sansArticle);
+      FAMILLES.forEach((f) => { if (f.some((m) => cles.includes(sansArticle(m)))) TL.shuffle(f, seed + f.length).forEach((m) => candidats.push(m)); });
+      const v = varianteOperateur(c.answers[0]); if (v) candidats.push(v);
+    });
+    TL.shuffle([...new Set(candidats)], seed).forEach((x) => { if (out.length < voulu) prendre(x); });
+    return out;
+  }
+  /* champs : [{ el: <input>, answers: [...] }] dans l'ordre de la page */
+  function etiquettes(root, champs, b, ctx) {
+    champs = champs.filter((c) => c.el && c.answers.length && c.answers[0] !== '' && !nombreSeul(c.answers[0]));
+    if (!champs.length || b.saisie === true || ctx.readonly) return null;
+    const mots = [...new Set(champs.map((c) => c.answers[0]))];
+    const liste = TL.shuffle(mots.concat(leurresProbables(champs, b, ctx.seed)), ctx.seed + 7);
+    const large = Math.min(Math.max(6, ...liste.map((m) => m.length)) + 2, 30) + 'ch';
+    champs.forEach((c) => { if (c.el.matches('.field')) c.el.style.width = large; });
+    let arme = null;
+    const armer = (el) => { arme = el; champs.forEach((c) => c.el.classList.toggle('armed', c.el === el)); };
+    const suivant = () => (champs.find((c) => !c.el.value) || {}).el || null;
+    const toks = liste.map((mot) => {
+      const t = h('button.tok', { type: 'button', draggable: true }, mot);
+      t.onclick = () => poser(arme || suivant(), mot);
+      t.ondragstart = (e) => { e.dataTransfer.setData('text/plain', mot); };
+      return { mot, t };
+    });
+    const pool = h('div.pool.etiq', { 'aria-label': 'Étiquettes à placer' }, toks.map((x) => x.t));
+    const marquer = () => toks.forEach((x) => x.t.classList.toggle('used', champs.some((c) => c.el.value === x.mot)));
+    function poser(el, mot) {
+      if (!el) { TL.toast('Toutes les cases sont remplies : clique sur une case pour la changer.'); return; }
+      el.value = mot; el.dispatchEvent(new Event('input', { bubbles: true }));
+      marquer(); armer(suivant());
+    }
+    champs.forEach((c) => {
+      const el = c.el;
+      el.readOnly = true; el.setAttribute('inputmode', 'none'); el.classList.add('slot'); el.placeholder = '…';
+      el.title = 'Clique ici puis sur une étiquette. Clique à nouveau pour vider.';
+      el.addEventListener('click', () => {
+        if (arme === el && el.value) { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); marquer(); }
+        armer(el);
+      });
+      el.addEventListener('keydown', (e) => { if ((e.key === 'Backspace' || e.key === 'Delete') && el.value) { e.preventDefault(); el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); marquer(); } });
+      el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('over'); });
+      el.addEventListener('dragleave', () => el.classList.remove('over'));
+      el.addEventListener('drop', (e) => { e.preventDefault(); el.classList.remove('over'); const m = e.dataTransfer.getData('text/plain'); if (m) poser(el, m); });
+    });
+    // Recommencer / Voir la correction changent les cases sans événement : on remet les étiquettes à jour après chaque clic.
+    root.addEventListener('click', () => setTimeout(() => { marquer(); if (!arme || !root.contains(arme)) armer(suivant()); }, 0));
+    marquer(); armer(suivant());
+    root.querySelectorAll(':scope > .banque').forEach((x) => x.remove());   // l'ancienne banque fixe fait doublon
+    return pool;
+  }
+  TL.etiquettes = etiquettes;
+  const avecEtiquettes = (def, champsDe, avant) => {
+    const r = def.render;
+    def.render = function (b, ctx) {
+      const el = r.call(this, b, ctx);
+      try {
+        const pool = etiquettes(el, champsDe(b, el), b, ctx);
+        if (pool) { const ref = avant(el); if (ref) el.insertBefore(pool, ref); else el.prepend(pool); }
+      } catch (e) { console.error(e); }
+      return el;
+    };
+  };
+  avecEtiquettes(A.cloze, (b, el) => {
+    const specs = (String(b.text || '').match(/\[\[(.+?)\]\]/g) || []).map((m) => m.slice(2, -2)).filter((x) => !x.startsWith('!'));
+    const ins = [...el.querySelectorAll('.cloze input.field')];
+    return specs.map((s, i) => ({ el: ins[i], answers: s.split('|') }));
+  }, (el) => el.querySelector('.cloze'));
+  avecEtiquettes(A.table, (b, el) => {
+    const ins = [...el.querySelectorAll('input.case')]; const cells = [];
+    (b.rows || []).forEach((row) => row.forEach((c) => { if (c && typeof c === 'object' && c.check == null && !c.choices) cells.push(c); }));
+    return cells.map((c, i) => ({ el: ins[i], answers: answersOf(c.a == null ? '' : c.a) }));
+  }, (el) => el.querySelector('.tablewrap'));
+  avecEtiquettes(A.boxes, (b, el) => {
+    const ins = [...el.querySelectorAll('input.case')]; const specs = [];
+    (b.items || []).forEach((it) => [it.top, it.bottom].forEach((s) => { if (s && typeof s === 'object') specs.push(s); }));
+    return specs.map((s, i) => ({ el: ins[i], answers: answersOf(s.a == null ? '' : s.a) }));
+  }, (el) => el.querySelector('.bx-legend') || el.querySelector('.bx-wrap'));
+  avecEtiquettes(A.label, (b, el) => (b.mode === 'saisie' ? [...el.querySelectorAll('input.case')].map((x, i) => ({ el: x, answers: answersOf(b.points[i].answer) })) : []), (el) => el.querySelector('.lbl'));
 })();

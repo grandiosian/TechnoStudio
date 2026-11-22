@@ -18,6 +18,11 @@
   const vraiProf = () => !app.eleveCentrale && (!!app.enseignantCentrale || !!(app.profile && app.profile.role === 'prof'));
   const isProf = () => vraiProf() && !app.apercu;
   const eleveUI = () => !!app.seul || !isProf();
+  /* Atelier hors ligne préparé par la Centrale (fichier ouvert sur un portable sans internet, module local
+     Centrale.horsLigne) : ouvert comme depuis le portail (mode atelier élève) ; en plus, ni bibliothèque ni page Compte :
+     l'élève reste dans son atelier, la fin propose « Rendre mon travail » (pied de la feuille, Centrale.navigation). */
+  const horsLigne = () => !!(window.Centrale && window.Centrale.horsLigne);
+  app.horsLigne = horsLigne;
   app.eleveUI = eleveUI; app.vraiProf = vraiProf;
 
   /* Mode « atelier seul » : ?atelier=<id> (ou <id>/<feuille>, ou &feuille=P2). Pour un lien court donné en classe :
@@ -219,7 +224,7 @@
       { head: 'Thème' },
       ...[['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => ({ label: l, check: theme === k, action: () => setTheme(k) })),
       { sep: true },
-      { label: 'Profil et connexion…', action: () => app.go('compte') },
+      { label: 'Profil et connexion…', hidden: horsLigne(), action: () => app.go('compte') },
       ...mode,
       { sep: true },
       { label: 'À propos de TechnoStudio', action: about },
@@ -455,7 +460,7 @@
       const portail = !app.seul && app.eleveCentrale;
       const versPortail = app.versPortail;
       const attrs = { style: '--cl:' + TL.niveauColor(w), title: resume + (app.seul ? '' : portail ? ' · retour à mes ateliers, sur la Centrale' : ' · voir mes ateliers'), 'aria-label': resume };
-      pill = app.seul ? h('div.tbres.tb-at', attrs, ...kids) : h('button.tbres.tb-at', Object.assign({ type: 'button', onclick: portail ? versPortail : () => app.go('accueil') }, attrs), ...kids);
+      pill = app.seul || horsLigne() ? h('div.tbres.tb-at', attrs, ...kids) : h('button.tbres.tb-at', Object.assign({ type: 'button', onclick: portail ? versPortail : () => app.go('accueil') }, attrs), ...kids);
     }
     const old = zone.querySelector('.tb-at');
     if (old && pill) old.replaceWith(pill); else if (old) old.remove(); else if (pill) zone.prepend(pill);
@@ -599,6 +604,11 @@
     return routing;
   }
   async function routeNow() {
+    if (horsLigne()) {   // atelier hors ligne : tout autre écran (bibliothèque, compte…) ramène à l'atelier ouvert
+      const m = /^#at-(.+)$/.exec(location.hash || '');
+      if (m) app.dernierHorsLigne = m[1];
+      else if (app.dernierHorsLigne && !/^#(activite|centrale)=/.test(location.hash || '')) history.replaceState(null, '', location.pathname + location.search + '#at-' + app.dernierHorsLigne);
+    }
     if (app.seul && location.hash !== '#at-' + app.seul.id) history.replaceState(null, '', location.pathname + location.search + '#at-' + app.seul.id);
     let hash = (location.hash || '#accueil').slice(1);
     if (!app.seul && eleveUI() && /^(ed-|fiche-|creer$|passerelle$|code$|circuit$|maquettes$)/.test(hash)) { history.replaceState(null, '', location.pathname + location.search + '#accueil'); hash = 'accueil'; }
@@ -632,6 +642,7 @@
   }
   app.route = route;
   app.go = (hash) => {
+    if (horsLigne() && app.dernierHorsLigne && !/^at-/.test(hash)) hash = 'at-' + app.dernierHorsLigne;   // atelier hors ligne : on y reste
     if (hash === 'accueil' && !app.regleAtelier('bibliotheque')) { app.versPortail(); return; }   // mode atelier : retour au portail plutôt que la bibliothèque
     if (location.hash === '#' + hash) route(); else location.hash = hash;
   };
@@ -1327,7 +1338,9 @@
       return;
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o' && !app.seul) { e.preventDefault(); app.go('accueil'); }
-    if (app.step && !e.ctrlKey && !e.metaKey && !e.altKey) { if (e.key === 'ArrowRight') app.step(1); if (e.key === 'ArrowLeft') app.step(-1); }
+    // flèches : feuille précédente / suivante, sauf panneau mBlock ouvert (elles servent alors au robot : « quand la touche … »)
+    const mblock = (TL.mblock && TL.mblock.ouvert && TL.mblock.ouvert()) || (e.target.closest && e.target.closest('.mbk-side'));
+    if (app.step && !mblock && !e.defaultPrevented && !e.ctrlKey && !e.metaKey && !e.altKey) { if (e.key === 'ArrowRight') app.step(1); if (e.key === 'ArrowLeft') app.step(-1); }
   });
 
   // compatibilité avec l'ancienne API (aperçus de l'éditeur, tableau de bord)
