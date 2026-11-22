@@ -1138,3 +1138,18 @@ pre.code { white-space: pre-wrap; background: var(--surface-2); padding: 10px; b
 .barre.is-ok { border-color: var(--ok); } .barre.is-bad { border-color: var(--bad); }
 .barre-reg { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; font: 11px var(--f-mono); color: var(--muted); }
 .barre-reg span { position: absolute; transform: translateX(-50%); }
+/* Mode revue (enseignant, ?revue=…) : la feuille de l'élève en lecture seule, état de chaque question */
+.mode-revue .sheet .act { pointer-events: none; }
+.mode-revue .sheet .checkbar .btn { display: none; }
+.revue-barre { height: auto; min-height: 40px; padding-top: 5px; padding-bottom: 5px; }
+.revue-barre .ssb-in { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.revue-barre .btn { height: 30px; min-height: 30px; padding: 0 12px; border-radius: 999px; font-size: 13px; }
+.mode-revue .tb-hist, .mode-revue #widgetCentrale, .mode-revue #tbAtelier, .mode-revue .mb-right { display: none !important; }
+.revue-barre .btn[aria-pressed="true"] { background: var(--sh-blue); color: #fff; }
+.revue-resume { font-size: .9rem; color: var(--muted); }
+.sb.rv { border-left: 5px solid transparent; padding-left: 8px; }
+.sb.rv-ok { border-left-color: var(--ok); } .sb.rv-bad { border-left-color: var(--bad); }
+.sb.rv-corrige { border-left-color: #F08C14; } .sb.rv-rendu { border-left-color: var(--sh-blue); } .sb.rv-vide { border-left-color: #c3c9d6; }
+.rv-etat { display: inline-block; margin: 0 0 4px; padding: 2px 10px; border-radius: 999px; font: 700 12px var(--f-body); }
+.rv-etat.rv-ok { background: var(--ok-soft); color: var(--ok); } .rv-etat.rv-bad { background: var(--bad-soft); color: var(--bad); }
+.rv-etat.rv-corrige { background: #FFE8CD; color: #9a5300; } .rv-etat.rv-rendu { background: #EEF2FC; color: var(--sh-blue); } .rv-etat.rv-vide { background: #eef0f4; color: #687089; }

@@ -38,6 +38,18 @@
     } catch (e) { return null; }
   })();
 
+  /* Mode « revue » (enseignant) : ?revue=<atelier>/<feuille>&eleve=<id>, ouvert par le Suivi de la Centrale dans une
+     fenêtre. Montre la feuille avec les réponses de l'élève (api/revue.php, session de l'espace enseignant), en lecture
+     seule : juste, faux, corrigé ou sans réponse pour chaque question. Rien n'est enregistré. */
+  app.revue = (() => {
+    try {
+      const q = new URLSearchParams(location.search), v = (q.get('revue') || '').trim();
+      if (!v) return null;
+      const [id, feuille] = v.split('/');
+      return { id, feuille: (feuille || '').trim(), eleve: (q.get('eleve') || '').trim() };
+    } catch (e) { return null; }
+  })();
+
   /* ================= Données ================= */
   app.loadWorkshops = async function () {
     app.workshops.clear();
@@ -1396,6 +1408,7 @@
 
   app.start = async function () {
     try { const t = localStorage.getItem('tl-theme'); if (t && t !== 'auto') document.documentElement.dataset.theme = t; } catch (e) { /* rien */ }
+    if (app.revue) return startRevue();
     if (app.seul) return startSeul();
     // Lancé depuis la Centrale : ?mode=enseignant (session de l'espace enseignant) ou ?mode=eleve (présentation des élèves)
     let modeDemande = ''; try { modeDemande = new URLSearchParams(location.search).get('mode') || ''; } catch (e) { /* rien */ }
@@ -1448,6 +1461,69 @@
     navigator.serviceWorker.register('sw.js').catch(() => {});
   };
   // Atelier seul : ni profil ni Centrale ; l'élève arrive directement sur la feuille demandée
+  async function startRevue() {
+    const R = app.revue;
+    document.body.classList.add('mode-seul', 'mode-revue');
+    app.profile = { name: 'Enseignant', role: 'eleve', classe: '' };   // en mémoire seulement
+    app.saveProgress = async () => {};                                   // revue : jamais d'enregistrement
+    await TL.panels.load();
+    await app.loadWorkshops();
+    const w = await app.trouverAtelier(R.id);
+    const menus = TL.$('#menus'); menus.innerHTML = ''; menus.append(h('span.seul-brand', TL.brandSvg()));
+    const board = h('div.pasteboard.scroll'); stage().innerHTML = ''; stage().append(board);
+    const message = (titre, texte) => board.append(h('div.desk', h('div.empty', h('h2', titre), h('p', texte))));
+    if (!w) return message('Atelier introuvable', 'Aucun atelier « ' + R.id + ' » sur ce poste ni sur la Centrale.');
+    let rep = null;
+    try {
+      const base = baseCentrale() || '../../';
+      const r = await fetch(base + 'api/revue.php?' + new URLSearchParams({ eleve: R.eleve, app: 'technostudio', atelier: w.id }), { credentials: 'same-origin', cache: 'no-store' });
+      rep = await r.json();
+      if (!r.ok || !rep.ok) throw new Error(rep.erreur || 'erreur ' + r.status);
+    } catch (e) { return message('Travail non disponible', 'La Centrale n’a pas donné le travail de l’élève (' + e.message + ').'); }
+    const pg = Object.assign({ wid: w.id, answers: {} }, rep.travail || {});
+    pg.answers = pg.answers || {};
+    const codes = TL.sheetCodes(w);
+    const court = (x) => String(x || '').toLowerCase().replace(/^([a-z·]+)0*/, '$1');
+    let si = codes.findIndex((c, i) => court(c) === court(R.feuille) || w.steps[i].id === R.feuille);
+    if (si < 0) si = Math.max(0, w.steps.findIndex((s) => s.kind !== 'ressource'));
+    let corr = false;
+    const resume = h('div.revue-resume');
+    const choix = h('select.field.seul-feuille', { 'aria-label': 'Feuille', onchange: () => { si = +choix.value; montrer(); } },
+      w.steps.map((s, i) => (s.kind === 'ressource' ? null : h('option', { value: i }, codes[i] + ' · ' + s.title))));
+    const btnCorr = h('button.btn.small', { type: 'button', 'aria-pressed': 'false', onclick: () => { corr = !corr; btnCorr.setAttribute('aria-pressed', String(corr)); montrer(); } }, 'Montrer la correction');
+    const eleve = rep.eleve ? rep.eleve.classe + ' n° ' + rep.eleve.numero : '';
+    board.before(h('div.sous-barre.revue-barre', h('div.ssb-in', h('b', eleve), choix, btnCorr, resume)));
+    document.title = 'Revue · ' + eleve + ' · ' + w.title;
+    // État d'une question : juste, faux, corrigé (correction affichée), rendu (à corriger par l'enseignant), sans réponse
+    const etat = (b) => {
+      const a = pg.answers[b.id];
+      if (!a || (!a.attempts && !a.done && (a.value == null || a.value === '' || (typeof a.value === 'object' && !Object.keys(a.value).length)))) return ['vide', 'Pas de réponse'];
+      const essais = a.attempts ? ' · ' + a.attempts + ' essai' + (a.attempts > 1 ? 's' : '') : '';
+      if (a.revealed) return ['corrige', 'Correction affichée' + essais];
+      if (a.pendingReview && !a.teacher) return ['rendu', 'Rendu, à corriger'];
+      if (a.correct) return ['ok', (a.attempts === 1 ? 'Juste du 1er coup' : 'Juste') + essais];
+      if (a.attempts) return ['bad', (a.score > 0 ? 'En partie juste (' + Math.round(a.score * 100) + ' %)' : 'Faux') + essais];
+      return ['vide', 'Commencé, pas vérifié'];
+    };
+    function montrer() {
+      choix.value = String(si);
+      const s = w.steps[si];
+      const page = TL.renderSheet(w, s, si, { pg, readonly: true, layers: { corr } });
+      const n = { ok: 0, bad: 0, corrige: 0, rendu: 0, vide: 0 };
+      s.blocks.forEach((b) => {
+        if (!TL.isGraded(b)) return;
+        const box = page.querySelector('section.sb[data-id="' + CSS.escape(b.id) + '"]'); if (!box) return;
+        const [k, txt] = etat(b); n[k]++;
+        box.classList.add('rv', 'rv-' + k);
+        box.prepend(h('div.rv-etat.rv-' + k, txt));
+      });
+      resume.textContent = [n.ok && n.ok + ' juste', n.bad && n.bad + ' faux', n.corrige && n.corrige + ' corrigé', n.rendu && n.rendu + ' rendu', n.vide && n.vide + ' sans réponse'].filter(Boolean).join(' · ');
+      board.innerHTML = '';
+      board.append(h('div.desk', page));
+    }
+    montrer();
+  }
+
   async function startSeul() {
     document.body.classList.add('mode-seul');
     app.profile = { name: 'Élève', role: 'eleve', classe: '' }; // en mémoire seulement
