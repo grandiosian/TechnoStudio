@@ -107,6 +107,20 @@ function syntaxePython(code, nom) {
 
   syntaxePython(out.maqueen, 'Maqueen');
 
+  // Bloc « reculer / avancer » : reculer par défaut (anciens programmes), avancer si on le choisit (capteur à l'avant)
+  {
+    const sens = (champ) => ({ blocks: { languageVersion: 0, blocks: [{ type: 'rb_start', next: { block: chain(
+      Object.assign({ type: 'rb_back', inputs: { P: n(30) } }, champ ? { fields: { SENS: champ } } : {}),
+      Object.assign({ type: 'rb_back_t', inputs: { P: n(20), S: n(1) } }, champ ? { fields: { SENS: champ } } : {})) } }] } });
+    for (const [champ, v1, v2] of [[null, '-30', '-20'], ['back', '-30', '-20'], ['fwd', '30', '20']]) {
+      const w = new Blockly.Workspace();
+      Blockly.serialization.workspaces.load(sens(champ), w);
+      const cm = R.generate(w, 'mbot').code, cq = R.generate(w, 'maqueen').code;
+      assert.ok(cm.includes(`moteurs(${v1}, ${v1});`) && cm.includes(`moteurs(${v2}, ${v2});`), 'mBot, sens ' + champ + '\n' + cm);
+      assert.ok(cq.includes(`moteurs(${v1}, ${v1})`) && cq.includes(`moteurs(${v2}, ${v2})`), 'Maqueen, sens ' + champ);
+    }
+  }
+
   /* ---------- Mode direct : programmes installés dans les robots ---------- */
   const fw = { mbot: R.firmware('mbot'), maqueen: R.firmware('maqueen') };
   for (const robot of R.LIST) assert.strictEqual(C.controler(R.ROBOTS[robot].carte, fw[robot]), null, robot + ' : mode direct refusé par le serveur');

@@ -46,16 +46,19 @@
   const val = (name, check) => ({ type: 'input_value', name, check });
   const dd = (name, options) => ({ type: 'field_dropdown', name, options });
   const SIDES = [['gauche', 'left'], ['droite', 'right']];
+  const SENS = [['reculer', 'back'], ['avancer', 'fwd']];
+  const TIP_SENS = 'Choisis le sens : « reculer » si le capteur est tourné vers l’arrière du robot, « avancer » s’il est à l’avant.';
   const COLORS = [['rouge', 'rouge'], ['vert', 'vert'], ['bleu', 'bleu'], ['jaune', 'jaune'], ['violet', 'violet'], ['cyan', 'cyan'], ['blanc', 'blanc'], ['éteinte', 'off']];
   const RGB = { rouge: [150, 0, 0], vert: [0, 150, 0], bleu: [0, 0, 150], jaune: [120, 90, 0], violet: [100, 0, 120], cyan: [0, 110, 110], blanc: [110, 110, 110], off: [0, 0, 0] };
   const ICONS = [['cœur', 'HEART'], ['content', 'HAPPY'], ['triste', 'SAD'], ['oui', 'YES'], ['non', 'NO'], ['flèche haut', 'ARROW_N'], ['flèche bas', 'ARROW_S'], ['carré', 'SQUARE']];
   const DEFS = {
     rb_start: { cat: 'events', hat: true, message0: '%1 quand le robot démarre', args0: [{ type: 'field_image', src: ROBOT_ICO, width: 22, height: 22, alt: 'robot' }], tooltip: 'Le programme commence ici quand le robot est allumé (ou après le téléversement).' },
     rb_fwd: { cat: 'action', message0: 'avancer à la puissance %1 %%', args0: [val('P', 'Number')] },
-    rb_back: { cat: 'action', message0: 'reculer à la puissance %1 %%', args0: [val('P', 'Number')] },
+    // « reculer » garde son identifiant ; la liste SENS (reculer par défaut) permet d'avancer quand le capteur est monté à l'avant
+    rb_back: { cat: 'action', message0: '%1 à la puissance %2 %%', args0: [dd('SENS', SENS), val('P', 'Number')], tooltip: TIP_SENS },
     rb_turn: { cat: 'action', message0: 'tourner à %1 à la puissance %2 %%', args0: [dd('DIR', SIDES), val('P', 'Number')], tooltip: 'Une roue avance, l’autre recule : le robot tourne sur place.' },
     rb_fwd_t: { cat: 'action', message0: 'avancer à la puissance %1 %% pendant %2 s', args0: [val('P', 'Number'), val('S', 'Number')] },
-    rb_back_t: { cat: 'action', message0: 'reculer à la puissance %1 %% pendant %2 s', args0: [val('P', 'Number'), val('S', 'Number')] },
+    rb_back_t: { cat: 'action', message0: '%1 à la puissance %2 %% pendant %3 s', args0: [dd('SENS', SENS), val('P', 'Number'), val('S', 'Number')], tooltip: TIP_SENS },
     rb_turn_t: { cat: 'action', message0: 'tourner à %1 à la puissance %2 %% pendant %3 s', args0: [dd('DIR', SIDES), val('P', 'Number'), val('S', 'Number')] },
     rb_motors: { cat: 'action', message0: 'moteur gauche %1 %% moteur droit %2 %%', args0: [val('L', 'Number'), val('R', 'Number')], tooltip: 'De −100 (recule) à 100 (avance) pour chaque roue.' },
     rb_stop: { cat: 'action', message0: 'arrêter les moteurs' },
@@ -197,7 +200,7 @@
     const body = (b, n) => c.statementToCode(b, n);
     F.rb_start = () => '';
     F.rb_fwd = (b) => { need('moteurs'); const v = p(b, 'P'); return `moteurs(${v}, ${v});\n`; };
-    F.rb_back = (b) => { need('moteurs'); const v = p(b, 'P'); return `moteurs(${neg(v)}, ${neg(v)});\n`; };
+    F.rb_back = (b) => { need('moteurs'); const v = p(b, 'P'); return b.getFieldValue('SENS') === 'fwd' ? `moteurs(${v}, ${v});\n` : `moteurs(${neg(v)}, ${neg(v)});\n`; };
     F.rb_turn = (b) => { need('moteurs'); const v = p(b, 'P'); return b.getFieldValue('DIR') === 'right' ? `moteurs(${v}, ${neg(v)});\n` : `moteurs(${neg(v)}, ${v});\n`; };
     F.rb_fwd_t = (b) => F.rb_fwd(b) + (need('attendre'), `attendre(${s(b, 'S')});\nmoteurs(0, 0);\n`);
     F.rb_back_t = (b) => F.rb_back(b) + (need('attendre'), `attendre(${s(b, 'S')});\nmoteurs(0, 0);\n`);
@@ -287,7 +290,7 @@
     const ybody = (b, n) => y.statementToCode(b, n) || y.INDENT + 'pass\n';
     FY.rb_start = () => '';
     FY.rb_fwd = (b) => { yneed('moteurs'); const v = py(b, 'P'); return `moteurs(${v}, ${v})\n`; };
-    FY.rb_back = (b) => { yneed('moteurs'); const v = py(b, 'P'); return `moteurs(${neg(v)}, ${neg(v)})\n`; };
+    FY.rb_back = (b) => { yneed('moteurs'); const v = py(b, 'P'); return b.getFieldValue('SENS') === 'fwd' ? `moteurs(${v}, ${v})\n` : `moteurs(${neg(v)}, ${neg(v)})\n`; };
     FY.rb_turn = (b) => { yneed('moteurs'); const v = py(b, 'P'); return b.getFieldValue('DIR') === 'right' ? `moteurs(${v}, ${neg(v)})\n` : `moteurs(${neg(v)}, ${v})\n`; };
     FY.rb_fwd_t = (b) => FY.rb_fwd(b) + (yneed('attendre'), `attendre(${ps(b, 'S')})\nmoteurs(0, 0)\n`);
     FY.rb_back_t = (b) => FY.rb_back(b) + (yneed('attendre'), `attendre(${ps(b, 'S')})\nmoteurs(0, 0)\n`);
@@ -751,10 +754,10 @@
       this.io.highlight(b.id);
       switch (b.type) {
         case 'rb_fwd': this.moteurs(p(), p()); break;
-        case 'rb_back': this.moteurs(-p(), -p()); break;
+        case 'rb_back': { const v = f.SENS === 'fwd' ? p() : -p(); this.moteurs(v, v); break; }
         case 'rb_turn': { const v = p(); f.DIR === 'right' ? this.moteurs(v, -v) : this.moteurs(-v, v); break; }
         case 'rb_fwd_t': { const v = p(); this.moteurs(v, v); yield { wait: s() }; this.moteurs(0, 0); break; }
-        case 'rb_back_t': { const v = p(); this.moteurs(-v, -v); yield { wait: s() }; this.moteurs(0, 0); break; }
+        case 'rb_back_t': { const v = f.SENS === 'fwd' ? p() : -p(); this.moteurs(v, v); yield { wait: s() }; this.moteurs(0, 0); break; }
         case 'rb_turn_t': { const v = p(); f.DIR === 'right' ? this.moteurs(v, -v) : this.moteurs(-v, v); yield { wait: s() }; this.moteurs(0, 0); break; }
         case 'rb_motors': this.moteurs(this.num(i.L, 50), this.num(i.R, 50)); break;
         case 'rb_stop': this.moteurs(0, 0); break;
