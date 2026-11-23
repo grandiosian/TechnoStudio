@@ -424,11 +424,14 @@
       if (via === 'serveur') {
         const carte = C.carteServeur(cur.board);
         if (!carte) { log('ESP32 en MicroPython : choisis « USB direct ».'); return false; }
-        let usb = null;
+        let usb = null, microbitUsb = false;
+        if (carte === 'microbit' && TL.flash.microbitUsbPossible()) { // fenêtre « Connecter » de Chrome, dans le clic
+          try { microbitUsb = await TL.flash.choisirMicrobit(o.nouveauPort); } catch (e) { log(e.name === 'NotFoundError' ? 'Aucune micro:bit choisie : le fichier .hex sera téléchargé.' : '✗ ' + e.message); }
+        }
         if (carte !== 'microbit') { // le port se choisit dans le clic, avant d'attendre le serveur
           try { usb = await TL.flash.choisirPort(o.nouveauPort); } catch (e) { log(e.name === 'NotFoundError' ? 'Aucun port choisi.' : '✗ ' + e.message); return false; }
         }
-        try { return await TL.flash.televerser(usb, carte, cur.code, { log, progres: pourcent(log) }); } catch (e) { log('✗ ' + e.message); return false; }
+        try { return await TL.flash.televerser(usb, carte, cur.code, { log, progres: pourcent(log), microbitUsb }); } catch (e) { log('✗ ' + e.message); return false; }
       }
       if (via === 'webserial') {
         if (cur.lang !== 'mpy') { log('Carte Arduino / ESP32 C++ : choisis « Serveur ».'); return false; }

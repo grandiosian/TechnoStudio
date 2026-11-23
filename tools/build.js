@@ -14,7 +14,7 @@ fs.mkdirSync(DIST, { recursive: true });
 const html = fs.readFileSync(path.join(APP, 'index.html'), 'utf8');
 const css = fs.readFileSync(path.join(APP, 'css', 'app.css'), 'utf8');
 const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((m) => m[1]);
-const vendor = ['vendor/blockly/blockly_compressed.js', 'vendor/blockly/blocks_compressed.js', 'vendor/blockly/python_compressed.js', 'vendor/blockly/fr.js', 'vendor/esptool/esptool.js'];
+const vendor = ['vendor/blockly/blockly_compressed.js', 'vendor/blockly/blocks_compressed.js', 'vendor/blockly/python_compressed.js', 'vendor/blockly/fr.js', 'vendor/esptool/esptool.js', 'vendor/microbit-connection/microbit-connection.js'];
 const js = vendor.concat(scripts).map((s) => `/* ---- ${s} ---- */\n` + fs.readFileSync(path.join(APP, s), 'utf8')).join('\n;\n').replace(/<\/script/gi, '<\\/script');
 const body = html.slice(html.indexOf('<!--APP-->') + 10, html.indexOf('<!--/APP-->'));
 const fonts = (html.match(/<link rel="stylesheet" href="https:\/\/fonts[^>]+>/) || [''])[0];

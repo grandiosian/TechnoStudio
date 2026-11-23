@@ -285,6 +285,57 @@
     return true;
   };
 
+  /* ================= micro:bit : écriture directe par WebUSB (DAPLink) =================
+     Comme MakeCode / l'éditeur Python : la fenêtre « Connecter » de Chrome, puis le .hex est écrit
+     sans passer par le lecteur MICROBIT. Bibliothèque : @microbit/microbit-connection (vendor/). */
+  const MB_FILTRE = { vendorId: 0x0d28, productId: 0x0204 };
+  F.microbitUsbPossible = () => !!(navigator.usb && window.isSecureContext && !window.TL_NO_WEBUSB);
+  let chargementMb = null;
+  F.chargerMicrobit = function () {
+    if (window.microbitConnection) return Promise.resolve(window.microbitConnection);
+    if (!chargementMb) chargementMb = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = (window.TL_VENDOR || 'vendor/') + 'microbit-connection/microbit-connection.js';
+      s.onload = () => (window.microbitConnection ? res(window.microbitConnection) : rej(new Error('bibliothèque micro:bit indisponible')));
+      s.onerror = () => { chargementMb = null; rej(new Error('la bibliothèque micro:bit n’a pas pu être chargée.')); };
+      document.head.appendChild(s);
+    });
+    return chargementMb;
+  };
+  /** À appeler directement dans le clic : ouvre la fenêtre « Connecter » si aucune micro:bit n'est déjà autorisée.
+      → true si une micro:bit est disponible ; lève NotFoundError si l'élève ferme la fenêtre. */
+  F.choisirMicrobit = async function (nouvelle) {
+    F.chargerMicrobit().catch(() => {}); // en parallèle
+    if (!nouvelle) {
+      const deja = await navigator.usb.getDevices();
+      if (deja.some((d) => d.vendorId === MB_FILTRE.vendorId && d.productId === MB_FILTRE.productId)) return true;
+    }
+    await navigator.usb.requestDevice({ filters: [MB_FILTRE] });
+    return true;
+  };
+  const ETAPES_MB = { FindingDevice: 'Recherche de la micro:bit…', Connecting: 'Connexion à la micro:bit…', PartialFlashing: 'Écriture rapide (seules les parties modifiées)…', FullFlashing: 'Écriture complète…' };
+  /** Écrit un .hex (universel ou non) dans la micro:bit autorisée par F.choisirMicrobit. */
+  F.microbit = async function (hex, o) {
+    o = o || {};
+    const log = o.log || (() => {}), progres = o.progres || (() => {});
+    const M = await F.chargerMicrobit();
+    const usb = M.createUSBConnection({ deviceSelectionMode: M.DeviceSelectionMode.UseAnyAllowed, pauseOnHidden: false });
+    let etape = null;
+    const suivi = (stage, v) => { if (stage !== etape) { etape = stage; if (ETAPES_MB[stage]) log(ETAPES_MB[stage]); } if (typeof v === 'number') progres(v); };
+    try {
+      await usb.connect({ progress: suivi });
+      await usb.flash(M.createUniversalHexFlashDataSource(hex), { partial: true, progress: suivi });
+      log('✓ Programme écrit dans la micro:bit : elle redémarre avec.');
+      return true;
+    } finally { try { await usb.disconnect(); } catch (e) { /* déjà libérée */ } }
+  };
+  F.messageMicrobit = (e) => {
+    const m = (e && (e.message || e.code)) || String(e);
+    if (/claim|Unable to claim|access denied|interface/i.test(m)) return 'la micro:bit est déjà utilisée (autre onglet, MakeCode, éditeur Python ?) : ferme-le puis réessaie';
+    if (/timeout|timed out/i.test(m)) return 'la micro:bit ne répond pas : débranche-la, rebranche-la puis réessaie';
+    return m;
+  };
+
   /* ================= Enchaînement complet ================= */
   /** port : choisi au préalable dans le clic (F.choisirPort). */
   F.televerser = async function (port, carte, code, o) {
@@ -296,6 +347,9 @@
     if (!r.ok) { log('✗ ' + (r.erreur || 'Erreur de compilation : corrige le programme.')); return false; }
     log('✓ Compilé' + (r.cache ? ' (déjà en cache)' : r.duree ? ' en ' + (r.duree / 1000).toFixed(1) + ' s' : '') + '.');
     if (r.format === 'hex-microbit') {
+      if (o.microbitUsb) {
+        try { return await F.microbit(r.hex, o); } catch (e) { log('✗ Écriture USB impossible : ' + F.messageMicrobit(e) + '. Le fichier est téléchargé à la place.'); }
+      }
       F.enregistrerHex(r.hex, r.nom || 'microbit-technostudio.hex');
       log('✓ Fichier ' + (r.nom || 'microbit-technostudio.hex') + ' enregistré : glisse-le sur le lecteur MICROBIT (la carte redémarre avec ton programme).');
       return true;

@@ -413,10 +413,26 @@
       if (r.format !== 'hex') { log('✗ Réponse inattendue du serveur.'); return false; }
       try { return await TL.flash.avr(port, r.hex, { bauds: [115200, 57600], log, progres: pourcent(log) }); } catch (e) { R.ports.mbot = null; log('✗ ' + e.message); return false; }
     }
-    // Maqueen : le fichier .hex est écrit sur le lecteur MICROBIT (choisi d'abord, dans le clic)
+    // Maqueen : écriture directe par USB (fenêtre « Connecter » de Chrome, dans le clic) ;
+    // sinon le fichier .hex est enregistré sur le lecteur MICROBIT ou téléchargé
     const nom = o.nom || 'maqueen.hex';
+    if (TL.flash.microbitUsbPossible()) {
+      let choisie = false;
+      try { log('Choisis ta micro:bit dans la fenêtre puis « Connexion »…'); choisie = await TL.flash.choisirMicrobit(o.nouveauPort); }
+      catch (e) { log(e.name === 'NotFoundError' ? 'Aucune micro:bit choisie : le fichier .hex sera téléchargé.' : '✗ ' + e.message); }
+      if (choisie) {
+        await R.disconnect('maqueen'); // libère la micro:bit (mode direct)
+        const r = await R.compile(robot, code, log, o.cle);
+        if (!r) return false;
+        try { return await TL.flash.microbit(r.hex, { log, progres: pourcent(log) }); }
+        catch (e) { log('✗ Écriture USB impossible : ' + TL.flash.messageMicrobit(e) + '. Le fichier est téléchargé à la place.'); }
+        TL.flash.enregistrerHex(r.hex, nom);
+        log('✓ ' + nom + ' téléchargé : glisse-le sur le lecteur MICROBIT (la carte redémarre avec le programme).');
+        return true;
+      }
+    }
     let fichier = null;
-    if (window.showSaveFilePicker && !window.TL_NO_PICKER) {
+    if (window.showSaveFilePicker && !window.TL_NO_PICKER && !TL.flash.microbitUsbPossible()) {
       try {
         log('Choisis le lecteur MICROBIT puis « Enregistrer »…');
         fichier = await window.showSaveFilePicker({ suggestedName: nom, types: [{ description: 'Programme micro:bit', accept: { 'application/octet-stream': ['.hex'] } }] });
@@ -990,10 +1006,10 @@
       cible.innerHTML = '';
       const port = c.mode === 'live' ? null : c.robot === 'mbot'
         ? h('div.rbt-port.rbt-adv', R.ports.mbot ? '🔌 Port USB du mBot retenu.' : '🔌 Le port USB sera demandé au premier téléversement.', R.ports.mbot ? h('button.rbt-link', { type: 'button', onclick: (e) => { e.preventDefault(); R.ports.mbot = null; drawCible(); } }, 'changer') : null)
-        : h('div.rbt-port.rbt-adv', '💾 Le programme devient un fichier maqueen.hex à enregistrer sur le lecteur MICROBIT.');
+        : h('div.rbt-port.rbt-adv', TL.flash && TL.flash.microbitUsbPossible() ? '🔌 Branche la micro:bit en USB : Chrome te demande de la choisir, puis le programme y est écrit directement.' : '💾 Le programme devient un fichier maqueen.hex à enregistrer sur le lecteur MICROBIT.');
       cible.append(h('div.rbt-cible-t', h('span.rbt-cible-ico', { 'aria-hidden': 'true' }, R.img(c.robot)), h('div', h('b', rb.name), h('span.small.muted', rb.cable), h('span.small.muted.rbt-adv', rb.long + ' · ' + rb.langName))), port, h('details.rbt-pins.rbt-adv', h('summary', 'Branchements'), h('p.small', rb.brochage)));
       inner.querySelector('.rbt-lang').textContent = rb.langName;
-      btnUpload.title = c.robot === 'mbot' ? 'Compiler puis écrire le programme dans le mBot (câble USB)' : 'Compiler puis enregistrer maqueen.hex sur le lecteur MICROBIT';
+      btnUpload.title = c.robot === 'mbot' ? 'Compiler puis écrire le programme dans le mBot (câble USB)' : (TL.flash && TL.flash.microbitUsbPossible() ? 'Compiler puis écrire le programme dans la micro:bit (câble USB)' : 'Compiler puis enregistrer maqueen.hex sur le lecteur MICROBIT');
       if (c.liveReady) drawLive();
     }
     function setRobot(k) {
